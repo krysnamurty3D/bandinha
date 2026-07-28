@@ -434,8 +434,8 @@ const configDocRef = doc(db, "config", "main");
     if(data.coreografias.length === 0){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhuma coreografia publicada ainda.</div>`;
     }
-    const categorias = [...new Set(data.coreografias.map(c => c.categoria))];
-    return categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat))).join("");
+    const categorias = [...new Set(data.coreografias.map(c => c.categoria))].sort();
+    return categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat).sort((a,b) => a.titulo.localeCompare(b.titulo)))).join("");
   }
 
   function renderCoreografiaGroup(categoria, lista){

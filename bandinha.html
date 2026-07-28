@@ -966,8 +966,8 @@ const configDocRef = doc(db, "config", "main");
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma coreografia ainda.<br>Adicione o link do vídeo no Drive.</div>`;
     } else {
-      const categorias = [...new Set(data.coreografias.map(c => c.categoria))];
-      html += categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat))).join("");
+      const categorias = [...new Set(data.coreografias.map(c => c.categoria))].sort();
+      html += categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat).sort((a,b) => a.titulo.localeCompare(b.titulo)))).join("");
     }
     return html;
   }
