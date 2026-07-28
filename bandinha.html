@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bandinha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14172B;
+    --surface: #1F2444;
+    --surface-2: #262C52;
+    --gold: #E4B54A;
+    --cream: #F2EEE3;
+    --muted: #A9AEC8;
+    --rose: #D2677A;
+    --green: #6FA88F;
+    --line: rgba(242,238,227,0.12);
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--cream);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    max-width:560px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    padding-bottom:88px;
+  }
+  header.top{
+    padding:28px 20px 14px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  header.top::before{
+    content:"";
+    position:absolute;
+    top:-60px; right:-60px;
+    width:180px; height:180px;
+    background: radial-gradient(circle, rgba(228,181,74,0.18), transparent 70%);
+    pointer-events:none;
+  }
+  .brand{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:32px;
+    letter-spacing:0.2px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand small{
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  .staff{
+    margin-top:14px;
+    height:26px;
+    position:relative;
+  }
+  .staff svg{width:100%;height:100%;display:block;}
+
+  main{
+    flex:1;
+    padding:6px 18px 20px 18px;
+  }
+  .section-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:20px;
+    margin:18px 2px 12px 2px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .note-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--gold);
+    display:inline-block;
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:12px;
+  }
+  .empty{
+    text-align:center;
+    padding:36px 16px;
+    color:var(--muted);
+    font-size:14px;
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+  }
+  .empty .note-dot{margin-bottom:8px;}
+
+  form.inline-add{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  input[type=text], input[type=date], select{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:15px;
+    font-family:'Inter',sans-serif;
+    outline:none;
+    width:100%;
+  }
+  input::placeholder{color:var(--muted);}
+  input[type=text]:focus, input[type=date]:focus, select:focus{border-color:var(--gold);}
+
+  button{
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    border:none;
+  }
+  .btn-add{
+    background:var(--gold);
+    color:#14172B;
+    font-weight:700;
+    width:46px;
+    border-radius:10px;
+    font-size:20px;
+    flex-shrink:0;
+  }
+  .btn-add:active{transform:scale(0.95);}
+
+  .member-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .member-name{
+    font-weight:600;
+    font-size:15.5px;
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .shirt-select{width:74px;flex-shrink:0;padding:8px 6px;font-size:13px;}
+  .pay-toggle{
+    flex-shrink:0;
+    border-radius:10px;
+    padding:9px 12px;
+    font-size:12.5px;
+    font-weight:600;
+    background:var(--surface-2);
+    color:var(--rose);
+    border:1px solid rgba(210,103,122,0.4);
+    white-space:nowrap;
+  }
+  .pay-toggle.paid{
+    background:rgba(111,168,143,0.15);
+    color:var(--green);
+    border:1px solid rgba(111,168,143,0.4);
+  }
+  .del-x{
+    flex-shrink:0;
+    background:transparent;
+    color:var(--muted);
+    font-size:16px;
+    width:22px;
+    line-height:1;
+  }
+  .member-sub{
+    display:flex;
+    justify-content:space-between;
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid var(--line);
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .gender-select{
+    width:88px;
+    flex:0 0 auto;
+    padding:11px 8px;
+    font-size:13px;
+  }
+  .import-gender-select{
+    width:100%;
+    margin-bottom:10px;
+  }
+  .link-btn{
+    background:transparent;
+    color:var(--gold);
+    font-size:13px;
+    font-weight:600;
+    padding:4px 2px 14px 2px;
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .import-box{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:16px;
+  }
+  .import-box textarea{
+    width:100%;
+    min-height:110px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+    outline:none;
+    resize:vertical;
+    margin-bottom:10px;
+  }
+  .import-box textarea:focus{border-color:var(--gold);}
+  .btn-import{
+    background:var(--gold);
+    color:#14172B;
+    font-weight:700;
+    width:100%;
+    border-radius:10px;
+    padding:11px;
+    font-size:14px;
+  }
+  .btn-import:active{transform:scale(0.98);}
+
+  .check-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13.5px;
+    color:var(--muted);
+    margin-bottom:14px;
+    cursor:pointer;
+  }
+  .check-row input, .check-row-inline input{
+    accent-color:var(--gold);
+    width:15px;
+    height:15px;
+  }
+  .check-row-inline{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:11.5px;
+    color:var(--muted);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .inst-tag{
+    font-size:10.5px;
+    font-weight:700;
+    color:var(--gold);
+    background:rgba(228,181,74,0.12);
+    padding:2px 7px;
+    border-radius:8px;
+    white-space:nowrap;
+  }
+  .gender-fix-select{
+    background:transparent;
+    border:none;
+    color:var(--gold);
+    font-size:12px;
+    font-weight:600;
+    padding:0;
+  }
+  .stat-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .stat{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 14px;
+  }
+  .stat .num{font-family:'Fraunces',serif;font-size:22px;font-weight:700;}
+  .stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+
+  .song-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .song-name{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .status-pill{
+    flex-shrink:0;
+    border-radius:20px;
+    padding:7px 13px;
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .status-aprender{background:rgba(210,103,122,0.15);color:var(--rose);}
+  .status-ensaiando{background:rgba(228,181,74,0.15);color:var(--gold);}
+  .status-pronta{background:rgba(111,168,143,0.15);color:var(--green);}
+
+  .roteiro-card{padding:0;overflow:hidden;}
+  .roteiro-head{
+    padding:15px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+  }
+  .roteiro-title{font-family:'Fraunces',serif;font-weight:600;font-size:17px;}
+  .roteiro-date{font-size:12px;color:var(--gold);margin-top:2px;}
+  .roteiro-body{
+    padding:0 16px 16px 16px;
+    border-top:1px solid var(--line);
+  }
+  .item-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .item-row:last-of-type{border-bottom:none;}
+  .item-time{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    color:var(--gold);
+    font-size:14px;
+    width:52px;
+    flex-shrink:0;
+  }
+  .item-activity{flex:1;font-size:14px;}
+  .add-item-form{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+  }
+  .add-item-form input[type=text]:first-child{width:64px;flex:none;padding:11px 8px;text-align:center;}
+  .chevron{color:var(--muted);transition:transform 0.2s;font-size:14px;}
+  .chevron.open{transform:rotate(90deg);}
+
+  nav.tabbar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    display:flex;
+    max-width:560px;
+    margin:0 auto;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom)) 6px;
+    z-index:10;
+  }
+  nav.tabbar button{
+    flex:1;
+    background:transparent;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    padding:8px 4px;
+    border-radius:12px;
+    font-size:11px;
+    font-weight:600;
+  }
+  nav.tabbar button.active{color:var(--gold);background:rgba(228,181,74,0.1);}
+  nav.tabbar button svg{width:20px;height:20px;}
+
+  .hidden{display:none !important;}
+  .toast{
+    position:fixed;
+    bottom:96px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2);
+    border:1px solid var(--gold);
+    color:var(--cream);
+    padding:9px 18px;
+    border-radius:30px;
+    font-size:13px;
+    opacity:0;
+    transition:all 0.25s;
+    pointer-events:none;
+    z-index:20;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">Bandinha <small>Equipe de Canto</small></div>
+    <div class="staff">
+      <svg viewBox="0 0 400 26" preserveAspectRatio="none">
+        <line x1="0" y1="2" x2="400" y2="2" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <line x1="0" y1="8" x2="400" y2="8" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <line x1="0" y1="14" x2="400" y2="14" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <line x1="0" y1="20" x2="400" y2="20" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <circle cx="30" cy="14" r="5" fill="#E4B54A"/>
+        <circle cx="140" cy="8" r="5" fill="#E4B54A"/>
+        <circle cx="250" cy="20" r="5" fill="#E4B54A"/>
+        <circle cx="360" cy="2" r="5" fill="#E4B54A"/>
+      </svg>
+    </div>
+  </header>
+
+  <main id="main"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<nav class="tabbar">
+  <button data-tab="integrantes" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+    Integrantes
+  </button>
+  <button data-tab="musicas">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+    Músicas
+  </button>
+  <button data-tab="roteiros">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
+    Roteiros
+  </button>
+</nav>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
+  authDomain: "bandinha-a22ce.firebaseapp.com",
+  projectId: "bandinha-a22ce",
+  storageBucket: "bandinha-a22ce.firebasestorage.app",
+  messagingSenderId: "808882413270",
+  appId: "1:808882413270:web:91dbb55bc2256847ae3377"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const dataDocRef = doc(db, "bandinha", "data");
+
+(function(){
+  const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
+
+  let data = { integrantes: [], musicas: [], roteiros: [] };
+  let currentTab = "integrantes";
+  let openRoteiroId = null;
+  let loaded = false;
+  let importOpen = false;
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function showToast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(()=> t.classList.remove("show"), 1600);
+  }
+
+  async function save(){
+    try{
+      await setDoc(dataDocRef, data);
+    }catch(e){
+      console.error("Erro ao salvar:", e);
+      showToast("Erro ao salvar");
+    }
+  }
+
+  function load(){
+    onSnapshot(dataDocRef, snap => {
+      const parsed = snap.data();
+      if(parsed){
+        data.integrantes = parsed.integrantes || [];
+        data.musicas = parsed.musicas || [];
+        data.roteiros = parsed.roteiros || [];
+      }
+      loaded = true;
+      render();
+    }, e => {
+      console.error("Erro ao sincronizar:", e);
+      showToast("Erro ao sincronizar");
+    });
+  }
+
+  // ---------- RENDER ----------
+  function render(){
+    const main = document.getElementById("main");
+    if(!loaded){
+      main.innerHTML = '<div class="empty">Carregando…</div>';
+      return;
+    }
+    if(currentTab === "integrantes") main.innerHTML = renderIntegrantes();
+    else if(currentTab === "musicas") main.innerHTML = renderMusicas();
+    else main.innerHTML = renderRoteiros();
+
+    attachHandlers();
+  }
+
+  function renderIntegrantes(){
+    const total = data.integrantes.length;
+    const totalInstrumental = data.integrantes.filter(i => i.instrumental).length;
+
+    let html = `
+      <div class="stat-row">
+        <div class="stat"><div class="num">${total}</div><div class="lbl">Integrantes</div></div>
+        <div class="stat"><div class="num">${totalInstrumental}</div><div class="lbl">Instrumental</div></div>
+      </div>
+      <form class="inline-add" id="form-integrante">
+        <input type="text" id="input-integrante-nome" placeholder="Nome do integrante" required />
+        <select id="input-integrante-genero" class="gender-select" required>
+          <option value="">Sexo</option>
+          <option value="M">Homem</option>
+          <option value="F">Mulher</option>
+        </select>
+        <button type="submit" class="btn-add">+</button>
+      </form>
+      <label class="check-row">
+        <input type="checkbox" id="input-integrante-instrumental" />
+        Toca instrumento (Instrumental)
+      </label>
+      <button type="button" id="btn-toggle-import" class="link-btn">${importOpen ? "Cancelar importação" : "Colar lista de nomes"}</button>
+      <div class="import-box ${importOpen ? "" : "hidden"}">
+        <textarea id="input-import-nomes" placeholder="Cole aqui um nome por linha (ou separados por vírgula)"></textarea>
+        <select id="input-import-genero" class="import-gender-select" required>
+          <option value="">Esses nomes são de...</option>
+          <option value="M">Homens</option>
+          <option value="F">Mulheres</option>
+        </select>
+        <label class="check-row">
+          <input type="checkbox" id="input-import-instrumental" />
+          Todos esses são do Instrumental
+        </label>
+        <button type="button" id="btn-import-nomes" class="btn-import">Importar nomes</button>
+      </div>
+    `;
+
+    if(total === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum integrante ainda.<br>Adicione o primeiro nome acima.</div>`;
+    } else {
+      const homens = data.integrantes.filter(i => i.genero === "M");
+      const mulheres = data.integrantes.filter(i => i.genero === "F");
+      const semGenero = data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F");
+      const instrumental = data.integrantes.filter(i => i.instrumental);
+
+      html += renderGroup("Homens", homens);
+      html += renderGroup("Mulheres", mulheres);
+      if(semGenero.length > 0) html += renderGroup("Sem sexo definido", semGenero);
+      html += renderGroup("Instrumental", instrumental);
+    }
+    return html;
+  }
+
+  function renderGroup(titulo, lista){
+    if(lista.length === 0) return "";
+    let html = `<div class="section-title"><span class="note-dot"></span>${titulo} <span style="color:var(--muted);font-weight:400;font-size:14px;">(${lista.length})</span></div>`;
+    html += lista.map(i => {
+      return `
+      <div class="card" data-id="${i.id}">
+        <div class="member-row">
+          <div class="member-name">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
+          <select class="shirt-select" data-action="shirt" data-id="${i.id}">
+            <option value="">Cam.</option>
+            ${SHIRT_SIZES.map(s => `<option value="${s}" ${i.camisa===s?"selected":""}>${s}</option>`).join("")}
+          </select>
+          <button class="del-x" data-action="del-integrante" data-id="${i.id}">✕</button>
+        </div>
+        <div class="member-sub" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <span>Camisa: ${i.camisa ? i.camisa : "não definida"}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
+            <button class="pay-toggle ${i.pagamentoCamisa?"paid":""}" data-action="toggle-camisa-pag" data-id="${i.id}">Camisa ${i.pagamentoCamisa ? "✓" : ""}</button>
+            <button class="pay-toggle ${i.taxaEquipe?"paid":""}" data-action="toggle-taxa" data-id="${i.id}">Taxa da Equipe ${i.taxaEquipe ? "✓" : ""}</button>
+          </div>
+          <span style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label class="check-row-inline">
+              <input type="checkbox" data-action="toggle-instrumental" data-id="${i.id}" ${i.instrumental?"checked":""} /> Instrumental
+            </label>
+            <select class="gender-fix-select" data-action="fix-gender" data-id="${i.id}">
+              <option value="" ${!i.genero?"selected":""}>Sexo?</option>
+              <option value="M" ${i.genero==="M"?"selected":""}>Homem</option>
+              <option value="F" ${i.genero==="F"?"selected":""}>Mulher</option>
+            </select>
+          </span>
+        </div>
+      </div>`;
+    }).join("");
+    return html;
+  }
+
+  function renderMusicas(){
+    const total = data.musicas.length;
+    const prontas = data.musicas.filter(m => m.status === "pronta").length;
+    let html = `
+      <div class="stat-row">
+        <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
+        <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
+      </div>
+      <form class="inline-add" id="form-musica">
+        <input type="text" id="input-musica-nome" placeholder="Nome da música" required />
+        <button type="submit" class="btn-add">+</button>
+      </form>
+    `;
+    if(total === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
+    } else {
+      const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
+      html += data.musicas.map(m => `
+        <div class="card" data-id="${m.id}">
+          <div class="song-row">
+            <div class="song-name">${escapeHtml(m.nome)}</div>
+            <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
+            <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
+          </div>
+        </div>
+      `).join("");
+    }
+    return html;
+  }
+
+  function renderRoteiros(){
+    let html = `
+      <form class="inline-add" id="form-roteiro" style="flex-wrap:wrap;">
+        <input type="text" id="input-roteiro-titulo" placeholder="Título do encontro" required style="flex:1 1 auto;"/>
+        <input type="date" id="input-roteiro-data" style="flex:0 0 150px;"/>
+        <button type="submit" class="btn-add">+</button>
+      </form>
+    `;
+    if(data.roteiros.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro criado.<br>Crie o roteiro do próximo encontro.</div>`;
+    } else {
+      const ordered = [...data.roteiros].sort((a,b) => (a.data||"").localeCompare(b.data||""));
+      html += ordered.map(r => {
+        const open = openRoteiroId === r.id;
+        const itensOrdenados = [...r.itens].sort((a,b) => a.horario.localeCompare(b.horario));
+        return `
+        <div class="card roteiro-card">
+          <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
+            <div>
+              <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
+              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}</div>` : ""}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="del-x" data-action="del-roteiro" data-id="${r.id}">✕</button>
+              <span class="chevron ${open?"open":""}">▶</span>
+            </div>
+          </div>
+          <div class="roteiro-body ${open?"":"hidden"}">
+            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
+              <div class="item-row">
+                <div class="item-time">${escapeHtml(it.horario)}</div>
+                <div class="item-activity">${escapeHtml(it.atividade)}</div>
+                <button class="del-x" data-action="del-item" data-roteiro="${r.id}" data-item="${it.id}">✕</button>
+              </div>
+            `).join("")}
+            <form class="add-item-form" data-action="form-add-item" data-roteiro="${r.id}">
+              <input type="text" placeholder="19h" class="item-horario-input" required />
+              <input type="text" placeholder="Atividade (ex: Abertura, louvor...)" class="item-atividade-input" required />
+              <button type="submit" class="btn-add">+</button>
+            </form>
+          </div>
+        </div>`;
+      }).join("");
+    }
+    return html;
+  }
+
+  function formatDate(iso){
+    const [y,m,d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  // ---------- HANDLERS ----------
+  function attachHandlers(){
+    const formInt = document.getElementById("form-integrante");
+    if(formInt) formInt.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-integrante-nome");
+      const generoSelect = document.getElementById("input-integrante-genero");
+      const instrumentalCheck = document.getElementById("input-integrante-instrumental");
+      const nome = input.value.trim();
+      const genero = generoSelect.value;
+      if(!nome || !genero) { showToast("Preencha nome e sexo"); return; }
+      data.integrantes.push({ id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false });
+      instrumentalCheck.checked = false;
+      await save(); render(); showToast("Integrante adicionado");
+    });
+
+    const formMus = document.getElementById("form-musica");
+    if(formMus) formMus.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-musica-nome");
+      const nome = input.value.trim();
+      if(!nome) return;
+      data.musicas.push({ id: uid(), nome, status: "aprender" });
+      await save(); render(); showToast("Música adicionada");
+    });
+
+    const formRot = document.getElementById("form-roteiro");
+    if(formRot) formRot.addEventListener("submit", async e => {
+      e.preventDefault();
+      const titulo = document.getElementById("input-roteiro-titulo").value.trim();
+      const dataVal = document.getElementById("input-roteiro-data").value;
+      if(!titulo) return;
+      const novo = { id: uid(), titulo, data: dataVal, itens: [] };
+      data.roteiros.push(novo);
+      openRoteiroId = novo.id;
+      await save(); render(); showToast("Roteiro criado");
+    });
+
+    const btnToggleImport = document.getElementById("btn-toggle-import");
+    if(btnToggleImport) btnToggleImport.addEventListener("click", () => {
+      importOpen = !importOpen;
+      render();
+    });
+
+    const btnImportNomes = document.getElementById("btn-import-nomes");
+    if(btnImportNomes) btnImportNomes.addEventListener("click", async () => {
+      const textarea = document.getElementById("input-import-nomes");
+      const generoSelect = document.getElementById("input-import-genero");
+      const instrumentalCheck = document.getElementById("input-import-instrumental");
+      const raw = textarea.value;
+      const genero = generoSelect.value;
+      const instrumental = instrumentalCheck.checked;
+      if(!genero){ showToast("Escolha se são rapazes ou moças"); return; }
+      if(!raw.trim()){ showToast("Cole ao menos um nome"); return; }
+      const nomes = raw
+        .split(/[\n,;]/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      if(nomes.length === 0){ showToast("Nenhum nome encontrado"); return; }
+      const existentes = new Set(data.integrantes.map(i => i.nome.toLowerCase()));
+      let adicionados = 0;
+      nomes.forEach(nome => {
+        if(!existentes.has(nome.toLowerCase())){
+          data.integrantes.push({ id: uid(), nome, genero, instrumental, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false });
+          existentes.add(nome.toLowerCase());
+          adicionados++;
+        }
+      });
+      importOpen = false;
+      await save(); render();
+      const repetidos = nomes.length - adicionados;
+      showToast(`${adicionados} nome${adicionados===1?"":"s"} importado${adicionados===1?"":"s"}${repetidos>0?` (${repetidos} já existia${repetidos===1?"":"m"})`:""}`);
+    });
+
+    document.querySelectorAll('[data-action="shirt"]').forEach(el => {
+      el.addEventListener("change", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(item){ item.camisa = el.value; await save(); showToast("Tamanho salvo"); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-inscricao"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(!item) return;
+        item.inscricao = !item.inscricao;
+        await save(); render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-camisa-pag"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(!item) return;
+        item.pagamentoCamisa = !item.pagamentoCamisa;
+        await save(); render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-taxa"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(!item) return;
+        item.taxaEquipe = !item.taxaEquipe;
+        await save(); render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-instrumental"]').forEach(el => {
+      el.addEventListener("change", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(item){ item.instrumental = el.checked; await save(); render(); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="fix-gender"]').forEach(el => {
+      el.addEventListener("change", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(item){ item.genero = el.value; await save(); render(); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-integrante"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        data.integrantes = data.integrantes.filter(i => i.id !== el.dataset.id);
+        await save(); render(); showToast("Integrante removido");
+      });
+    });
+
+    document.querySelectorAll('[data-action="cycle-status"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        const order = ["aprender","ensaiando","pronta"];
+        item.status = order[(order.indexOf(item.status)+1) % order.length];
+        await save(); render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        data.musicas = data.musicas.filter(m => m.id !== el.dataset.id);
+        await save(); render(); showToast("Música removida");
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-roteiro"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        openRoteiroId = (openRoteiroId === id) ? null : id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-roteiro"]').forEach(el => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        data.roteiros = data.roteiros.filter(r => r.id !== el.dataset.id);
+        await save(); render(); showToast("Roteiro removido");
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-item"]').forEach(el => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const r = data.roteiros.find(r => r.id === el.dataset.roteiro);
+        if(r){ r.itens = r.itens.filter(it => it.id !== el.dataset.item); await save(); render(); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="form-add-item"]').forEach(form => {
+      form.addEventListener("submit", async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const r = data.roteiros.find(r => r.id === form.dataset.roteiro);
+        if(!r) return;
+        const horario = form.querySelector(".item-horario-input").value.trim();
+        const atividade = form.querySelector(".item-atividade-input").value.trim();
+        if(!horario || !atividade) return;
+        r.itens.push({ id: uid(), horario, atividade });
+        openRoteiroId = r.id;
+        await save(); render();
+      });
+    });
+  }
+
+  document.querySelectorAll("nav.tabbar button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentTab = btn.dataset.tab;
+      document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      render();
+    });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
