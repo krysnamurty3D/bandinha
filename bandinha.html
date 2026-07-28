@@ -16,6 +16,7 @@
     --muted: #A9AEC8;
     --rose: #D2677A;
     --green: #6FA88F;
+    --blue: #6E93D6;
     --line: rgba(242,238,227,0.12);
     --radius: 16px;
   }
@@ -86,11 +87,15 @@
     display:flex;
     align-items:center;
     gap:8px;
+    cursor:pointer;
+    user-select:none;
   }
+  .section-title .chevron{margin-left:auto;}
   .note-dot{
     width:8px;height:8px;border-radius:50%;
     background:var(--gold);
     display:inline-block;
+    flex-shrink:0;
   }
 
   .card{
@@ -469,6 +474,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   let openRoteiroId = null;
   let loaded = false;
   let importOpen = false;
+  let collapsedGroups = {};
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
@@ -569,20 +575,26 @@ const dataDocRef = doc(db, "bandinha", "data");
       const semGenero = data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F");
       const instrumental = data.integrantes.filter(i => i.instrumental);
 
-      html += renderGroup("Homens", homens);
-      html += renderGroup("Mulheres", mulheres);
-      if(semGenero.length > 0) html += renderGroup("Sem sexo definido", semGenero);
-      html += renderGroup("Instrumental", instrumental);
+      html += renderGroup("homens", "Homens", homens, "var(--blue)");
+      html += renderGroup("mulheres", "Mulheres", mulheres, "var(--rose)");
+      if(semGenero.length > 0) html += renderGroup("semGenero", "Sem sexo definido", semGenero, "var(--muted)");
+      html += renderGroup("instrumental", "Instrumental", instrumental, "var(--gold)");
     }
     return html;
   }
 
-  function renderGroup(titulo, lista){
+  function renderGroup(key, titulo, lista, color){
     if(lista.length === 0) return "";
-    let html = `<div class="section-title"><span class="note-dot"></span>${titulo} <span style="color:var(--muted);font-weight:400;font-size:14px;">(${lista.length})</span></div>`;
+    const collapsed = !!collapsedGroups[key];
+    let html = `
+      <div class="section-title" data-action="toggle-group" data-group="${key}">
+        <span class="note-dot" style="background:${color}"></span>${titulo} <span style="color:var(--muted);font-weight:400;font-size:14px;">(${lista.length})</span>
+        <span class="chevron ${collapsed?"":"open"}">▶</span>
+      </div>
+      <div class="${collapsed?"hidden":""}">`;
     html += lista.map(i => {
       return `
-      <div class="card" data-id="${i.id}">
+      <div class="card" data-id="${i.id}" style="border-left:3px solid ${color};">
         <div class="member-row">
           <div class="member-name">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
           <select class="shirt-select" data-action="shirt" data-id="${i.id}">
@@ -611,6 +623,7 @@ const dataDocRef = doc(db, "bandinha", "data");
         </div>
       </div>`;
     }).join("");
+    html += `</div>`;
     return html;
   }
 
@@ -818,8 +831,18 @@ const dataDocRef = doc(db, "bandinha", "data");
       });
     });
 
+    document.querySelectorAll('[data-action="toggle-group"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const g = el.dataset.group;
+        collapsedGroups[g] = !collapsedGroups[g];
+        render();
+      });
+    });
+
     document.querySelectorAll('[data-action="del-integrante"]').forEach(el => {
       el.addEventListener("click", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(!confirm(`Remover ${item ? item.nome : "este integrante"}?`)) return;
         data.integrantes = data.integrantes.filter(i => i.id !== el.dataset.id);
         await save(); render(); showToast("Integrante removido");
       });
@@ -837,6 +860,8 @@ const dataDocRef = doc(db, "bandinha", "data");
 
     document.querySelectorAll('[data-action="del-musica"]').forEach(el => {
       el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!confirm(`Remover ${item ? `"${item.nome}"` : "esta música"}?`)) return;
         data.musicas = data.musicas.filter(m => m.id !== el.dataset.id);
         await save(); render(); showToast("Música removida");
       });
@@ -853,6 +878,8 @@ const dataDocRef = doc(db, "bandinha", "data");
     document.querySelectorAll('[data-action="del-roteiro"]').forEach(el => {
       el.addEventListener("click", async (e) => {
         e.stopPropagation();
+        const r = data.roteiros.find(r => r.id === el.dataset.id);
+        if(!confirm(`Remover o roteiro ${r ? `"${r.titulo}"` : ""}?`)) return;
         data.roteiros = data.roteiros.filter(r => r.id !== el.dataset.id);
         await save(); render(); showToast("Roteiro removido");
       });
@@ -861,6 +888,7 @@ const dataDocRef = doc(db, "bandinha", "data");
     document.querySelectorAll('[data-action="del-item"]').forEach(el => {
       el.addEventListener("click", async (e) => {
         e.stopPropagation();
+        if(!confirm("Remover este horário do roteiro?")) return;
         const r = data.roteiros.find(r => r.id === el.dataset.roteiro);
         if(r){ r.itens = r.itens.filter(it => it.id !== el.dataset.item); await save(); render(); }
       });
