@@ -369,6 +369,20 @@
     margin-bottom:10px;
   }
   .lyrics-textarea:focus{border-color:var(--gold);}
+  .video-frame{
+    position:relative;
+    width:100%;
+    padding-top:56.25%;
+    border-radius:10px;
+    overflow:hidden;
+    background:#000;
+  }
+  .video-frame iframe{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    border:none;
+  }
 
   .roteiro-card{padding:0;overflow:hidden;}
   .roteiro-head{
@@ -494,6 +508,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
     Roteiros
   </button>
+  <button data-tab="coreografias">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+    Coreografias
+  </button>
 </nav>
 
 <script type="module">
@@ -515,7 +533,7 @@ const dataDocRef = doc(db, "bandinha", "data");
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [] };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [] };
   let currentTab = "integrantes";
   let openRoteiroId = null;
   let loaded = false;
@@ -524,6 +542,15 @@ const dataDocRef = doc(db, "bandinha", "data");
   let editingNameId = null;
   let openMusicaId = null;
   let editingLetraId = null;
+  let openCoreografiaId = null;
+  let editingCoreografiaId = null;
+
+  const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
+  function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
+  function extrairDriveId(url){
+    const m = String(url).match(/\/d\/([a-zA-Z0-9_-]{10,})/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+    return m ? m[1] : null;
+  }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
@@ -553,6 +580,7 @@ const dataDocRef = doc(db, "bandinha", "data");
         data.integrantes = parsed.integrantes || [];
         data.musicas = parsed.musicas || [];
         data.roteiros = parsed.roteiros || [];
+        data.coreografias = parsed.coreografias || [];
       }
       loaded = true;
       render();
@@ -571,7 +599,8 @@ const dataDocRef = doc(db, "bandinha", "data");
     }
     if(currentTab === "integrantes") main.innerHTML = renderIntegrantes();
     else if(currentTab === "musicas") main.innerHTML = renderMusicas();
-    else main.innerHTML = renderRoteiros();
+    else if(currentTab === "roteiros") main.innerHTML = renderRoteiros();
+    else main.innerHTML = renderCoreografias();
 
     attachHandlers();
   }
@@ -778,6 +807,69 @@ const dataDocRef = doc(db, "bandinha", "data");
     return `${d}/${m}/${y}`;
   }
 
+  function renderCoreografias(){
+    const total = data.coreografias.length;
+    let html = `
+      <div class="stat-row">
+        <div class="stat"><div class="num">${total}</div><div class="lbl">Coreografias</div></div>
+      </div>
+      <form class="inline-add" id="form-coreografia" style="flex-wrap:wrap;">
+        <input type="text" id="input-coreografia-categoria" placeholder="Categoria (ex: Femininas)" required style="flex:1 1 140px;"/>
+        <input type="text" id="input-coreografia-titulo" placeholder="Título da coreografia" required style="flex:2 1 200px;"/>
+        <input type="text" id="input-coreografia-link" placeholder="Link do Google Drive" required style="flex:2 1 200px;"/>
+        <button type="submit" class="btn-add">+</button>
+      </form>
+    `;
+    if(total === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma coreografia ainda.<br>Adicione o link do vídeo no Drive.</div>`;
+    } else {
+      const categorias = [...new Set(data.coreografias.map(c => c.categoria))];
+      html += categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat))).join("");
+    }
+    return html;
+  }
+
+  function renderCoreografiaGroup(categoria, lista){
+    const key = "coreo-" + categoria;
+    const collapsed = !!collapsedGroups[key];
+    const color = corCategoria(categoria);
+    let html = `
+      <div class="section-title" data-action="toggle-group" data-group="${key}">
+        <span class="note-dot" style="background:${color}"></span>${escapeHtml(categoria)} <span style="color:var(--muted);font-weight:400;font-size:14px;">(${lista.length})</span>
+        <span class="chevron ${collapsed?"":"open"}">▶</span>
+      </div>
+      <div class="${collapsed?"hidden":""}">`;
+    html += lista.map(c => {
+      const open = openCoreografiaId === c.id;
+      const editing = editingCoreografiaId === c.id;
+      return `
+      <div class="card" style="border-left:3px solid ${color};">
+        <div class="song-row">
+          ${editing ? `
+            <input type="text" class="edit-nome-input" data-field="titulo" data-id="${c.id}" value="${escapeHtml(c.titulo)}" placeholder="Título"/>
+          ` : `
+            <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}">${escapeHtml(c.titulo)}</div>
+          `}
+          <button class="del-x" data-action="del-coreografia" data-id="${c.id}">✕</button>
+        </div>
+        ${editing ? `
+          <div class="lyrics-box">
+            <input type="text" class="edit-nome-input" data-field="categoria" data-id="${c.id}" value="${escapeHtml(c.categoria)}" placeholder="Categoria" style="margin-bottom:8px;"/>
+            <input type="text" class="edit-nome-input" data-field="link" data-id="${c.id}" value="${escapeHtml(c.link || '')}" placeholder="Link do Drive" style="margin-bottom:8px;"/>
+            <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-coreografia" data-id="${c.id}">Salvar</button>
+          </div>
+        ` : open ? `
+          <div class="lyrics-box">
+            <div class="video-frame"><iframe src="https://drive.google.com/file/d/${c.driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>
+            <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-coreografia" data-id="${c.id}">Editar</button>
+          </div>
+        ` : ""}
+      </div>`;
+    }).join("");
+    html += `</div>`;
+    return html;
+  }
+
   // ---------- HANDLERS ----------
   function attachHandlers(){
     const formInt = document.getElementById("form-integrante");
@@ -814,6 +906,60 @@ const dataDocRef = doc(db, "bandinha", "data");
       data.roteiros.push(novo);
       openRoteiroId = novo.id;
       await save(); render(); showToast("Roteiro criado");
+    });
+
+    const formCoreo = document.getElementById("form-coreografia");
+    if(formCoreo) formCoreo.addEventListener("submit", async e => {
+      e.preventDefault();
+      const categoria = document.getElementById("input-coreografia-categoria").value.trim();
+      const titulo = document.getElementById("input-coreografia-titulo").value.trim();
+      const link = document.getElementById("input-coreografia-link").value.trim();
+      const driveId = extrairDriveId(link);
+      if(!categoria || !titulo || !link) return;
+      if(!driveId){ showToast("Link do Drive inválido"); return; }
+      data.coreografias.push({ id: uid(), categoria, titulo, link, driveId });
+      await save(); render(); showToast("Coreografia adicionada");
+    });
+
+    document.querySelectorAll('[data-action="toggle-coreografia"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        openCoreografiaId = (openCoreografiaId === id) ? null : id;
+        editingCoreografiaId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-coreografia"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingCoreografiaId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-coreografia"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.coreografias.find(c => c.id === el.dataset.id);
+        if(!item) return;
+        const titulo = document.querySelector(`[data-field="titulo"][data-id="${el.dataset.id}"]`).value.trim();
+        const categoria = document.querySelector(`[data-field="categoria"][data-id="${el.dataset.id}"]`).value.trim();
+        const link = document.querySelector(`[data-field="link"][data-id="${el.dataset.id}"]`).value.trim();
+        const driveId = extrairDriveId(link);
+        if(!categoria || !titulo || !link){ showToast("Preencha todos os campos"); return; }
+        if(!driveId){ showToast("Link do Drive inválido"); return; }
+        item.titulo = titulo; item.categoria = categoria; item.link = link; item.driveId = driveId;
+        editingCoreografiaId = null;
+        await save(); render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-coreografia"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.coreografias.find(c => c.id === el.dataset.id);
+        if(!confirm(`Remover ${item ? `"${item.titulo}"` : "esta coreografia"}?`)) return;
+        data.coreografias = data.coreografias.filter(c => c.id !== el.dataset.id);
+        await save(); render(); showToast("Coreografia removida");
+      });
     });
 
     const btnToggleImport = document.getElementById("btn-toggle-import");

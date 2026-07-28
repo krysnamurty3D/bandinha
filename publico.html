@@ -99,6 +99,33 @@
     width:8px;height:8px;border-radius:50%;
     background:var(--gold);
     display:inline-block;
+    flex-shrink:0;
+  }
+  .section-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:20px;
+    margin:18px 2px 12px 2px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .section-title .chevron{margin-left:auto;}
+  .video-frame{
+    position:relative;
+    width:100%;
+    padding-top:56.25%;
+    border-radius:10px;
+    overflow:hidden;
+    background:#000;
+  }
+  .video-frame iframe{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    border:none;
   }
 
   .stat-row{
@@ -242,6 +269,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
     Roteiros
   </button>
+  <button data-tab="coreografias">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+    Coreografias
+  </button>
 </nav>
 
 <script type="module">
@@ -261,11 +292,16 @@ const db = getFirestore(firebaseApp);
 const dataDocRef = doc(db, "bandinha", "data");
 
 (function(){
-  let data = { musicas: [], roteiros: [] };
+  let data = { musicas: [], roteiros: [], coreografias: [] };
   let currentTab = "musicas";
   let openRoteiroId = null;
   let openMusicaId = null;
+  let openCoreografiaId = null;
+  let collapsedGroups = {};
   let loaded = false;
+
+  const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
+  function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -277,6 +313,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       if(parsed){
         data.musicas = parsed.musicas || [];
         data.roteiros = parsed.roteiros || [];
+        data.coreografias = parsed.coreografias || [];
       }
       loaded = true;
       render();
@@ -292,7 +329,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
-    main.innerHTML = currentTab === "musicas" ? renderMusicas() : renderRoteiros();
+    main.innerHTML = currentTab === "musicas" ? renderMusicas() : currentTab === "roteiros" ? renderRoteiros() : renderCoreografias();
     attachHandlers();
   }
 
@@ -366,6 +403,42 @@ const dataDocRef = doc(db, "bandinha", "data");
     return `${d}/${m}/${y}`;
   }
 
+  function renderCoreografias(){
+    if(data.coreografias.length === 0){
+      return `<div class="empty"><div class="note-dot"></div><br>Nenhuma coreografia publicada ainda.</div>`;
+    }
+    const categorias = [...new Set(data.coreografias.map(c => c.categoria))];
+    return categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat))).join("");
+  }
+
+  function renderCoreografiaGroup(categoria, lista){
+    const key = "coreo-" + categoria;
+    const collapsed = !!collapsedGroups[key];
+    const color = corCategoria(categoria);
+    let html = `
+      <div class="section-title" data-action="toggle-group" data-group="${key}">
+        <span class="note-dot" style="background:${color}"></span>${escapeHtml(categoria)} <span style="color:var(--muted);font-weight:400;font-size:14px;">(${lista.length})</span>
+        <span class="chevron ${collapsed?"":"open"}">▶</span>
+      </div>
+      <div class="${collapsed?"hidden":""}">`;
+    html += lista.map(c => {
+      const open = openCoreografiaId === c.id;
+      return `
+      <div class="card" style="border-left:3px solid ${color};">
+        <div class="song-row">
+          <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}">${escapeHtml(c.titulo)}</div>
+        </div>
+        ${open ? `
+          <div class="lyrics-box">
+            <div class="video-frame"><iframe src="https://drive.google.com/file/d/${c.driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>
+          </div>
+        ` : ""}
+      </div>`;
+    }).join("");
+    html += `</div>`;
+    return html;
+  }
+
   // ---------- HANDLERS ----------
   function attachHandlers(){
     document.querySelectorAll('[data-action="toggle-musica"]').forEach(el => {
@@ -380,6 +453,22 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", () => {
         const id = el.dataset.id;
         openRoteiroId = (openRoteiroId === id) ? null : id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-coreografia"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        openCoreografiaId = (openCoreografiaId === id) ? null : id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-group"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const g = el.dataset.group;
+        collapsedGroups[g] = !collapsedGroups[g];
         render();
       });
     });
