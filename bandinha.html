@@ -523,11 +523,13 @@ const dataDocRef = doc(db, "bandinha", "data");
 
   function renderIntegrantes(){
     const total = data.integrantes.length;
+    const totalHomens = data.integrantes.filter(i => i.genero === "M").length;
+    const totalMulheres = data.integrantes.filter(i => i.genero === "F").length;
     const totalInstrumental = data.integrantes.filter(i => i.instrumental).length;
 
     let html = `
       <div class="stat-row">
-        <div class="stat"><div class="num">${total}</div><div class="lbl">Integrantes</div></div>
+        <div class="stat"><div class="num">${total}</div><div class="lbl">Integrantes (${totalHomens}H · ${totalMulheres}M)</div></div>
         <div class="stat"><div class="num">${totalInstrumental}</div><div class="lbl">Instrumental</div></div>
       </div>
       <form class="inline-add" id="form-integrante">
