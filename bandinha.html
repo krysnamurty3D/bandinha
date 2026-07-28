@@ -554,6 +554,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg>
     Coreografias
   </button>
+  <button data-tab="progresso">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Progresso
+  </button>
 </nav>
 
 <script type="module">
@@ -579,12 +583,13 @@ const musicasCol = collection(db, "musicas");
 const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
+const progressoCol = collection(db, "progresso");
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -597,6 +602,8 @@ const configDocRef = doc(db, "config", "main");
   let editingLetraId = null;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
+  let editingProgressoNome = null;
+  let collapsedProgressoGroups = {};
   let editingBrand = false;
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
@@ -604,6 +611,9 @@ const configDocRef = doc(db, "config", "main");
   function extrairDriveId(url){
     const m = String(url).match(/\/d\/([a-zA-Z0-9_-]{10,})/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
     return m ? m[1] : null;
+  }
+  function slugify(s){
+    return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -676,6 +686,12 @@ const configDocRef = doc(db, "config", "main");
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(progressoCol, snap => {
+      data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      markLoaded("progresso");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar progresso:", e); showToast("Erro ao sincronizar"); });
   }
 
   function loadAuth(){
@@ -751,7 +767,8 @@ const configDocRef = doc(db, "config", "main");
     if(currentTab === "integrantes") main.innerHTML = renderIntegrantes();
     else if(currentTab === "musicas") main.innerHTML = renderMusicas();
     else if(currentTab === "roteiros") main.innerHTML = renderRoteiros();
-    else main.innerHTML = renderCoreografias();
+    else if(currentTab === "coreografias") main.innerHTML = renderCoreografias();
+    else main.innerHTML = renderProgresso();
 
     attachHandlers();
     window.scrollTo(0, scrollY);
@@ -1055,6 +1072,60 @@ const configDocRef = doc(db, "config", "main");
     return html;
   }
 
+  const PROGRESSO_LABELS = { precisa_treinar: "Preciso treinar", aprendi: "Aprendi", ensaiei: "Ensaiei" };
+  const PROGRESSO_CLASSES = { precisa_treinar: "status-aprender", aprendi: "status-ensaiando", ensaiei: "status-pronta" };
+
+  function renderProgresso(){
+    const nomes = [...new Set(data.progresso.map(p => p.nome))].sort((a,b) => a.localeCompare(b));
+    let html = `
+      <div class="stat-row">
+        <div class="stat"><div class="num">${nomes.length}</div><div class="lbl">Pessoas</div></div>
+        <div class="stat"><div class="num">${data.progresso.length}</div><div class="lbl">Marcações</div></div>
+      </div>
+    `;
+    if(nomes.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Ninguém marcou progresso pessoal ainda.</div>`;
+      return html;
+    }
+    html += nomes.map(nome => {
+      const entradas = data.progresso.filter(p => p.nome === nome && p.status);
+      const key = "prog-" + nome;
+      const collapsed = !!collapsedProgressoGroups[key];
+      const editing = editingProgressoNome === nome;
+      return `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="roteiro-head" data-action="toggle-progresso-group" data-nome="${escapeHtml(nome)}">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${editing ? `
+              <input type="text" class="edit-nome-input" id="input-rename-progresso" value="${escapeHtml(nome)}" onclick="event.stopPropagation()" />
+            ` : `<div class="roteiro-title">${escapeHtml(nome)} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${entradas.length})</span></div>`}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${editing ? `
+              <button class="btn-save-nome" style="width:auto;padding:0 12px;" data-action="save-rename-progresso" data-nome="${escapeHtml(nome)}">Salvar</button>
+            ` : `
+              <button type="button" class="link-btn" style="padding:0;" data-action="rename-progresso" data-nome="${escapeHtml(nome)}">Renomear</button>
+              <button class="del-x" data-action="del-progresso-nome" data-nome="${escapeHtml(nome)}">✕</button>
+              <span class="chevron ${collapsed?"":"open"}">▶</span>
+            `}
+          </div>
+        </div>
+        <div class="roteiro-body ${collapsed?"hidden":""}">
+          ${entradas.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Sem marcações.</div>' : entradas.map(p => {
+            const musica = data.musicas.find(m => m.id === p.musicaId);
+            return `
+            <div class="item-row">
+              <div class="item-activity">${escapeHtml(musica ? musica.nome : "(música removida)")}</div>
+              <span class="status-pill ${PROGRESSO_CLASSES[p.status] || ''}">${PROGRESSO_LABELS[p.status] || p.status}</span>
+              <button class="del-x" data-action="del-progresso-entrada" data-docid="${p.docId}">✕</button>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+    }).join("");
+    return html;
+  }
+
   // ---------- HANDLERS ----------
   function attachHandlers(){
     const formInt = document.getElementById("form-integrante");
@@ -1265,6 +1336,65 @@ const configDocRef = doc(db, "config", "main");
         const g = el.dataset.group;
         collapsedGroups[g] = !collapsedGroups[g];
         render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-progresso-group"]').forEach(el => {
+      el.addEventListener("click", () => {
+        if(editingProgressoNome) return;
+        const key = "prog-" + el.dataset.nome;
+        collapsedProgressoGroups[key] = !collapsedProgressoGroups[key];
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="rename-progresso"]').forEach(el => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        editingProgressoNome = el.dataset.nome;
+        render();
+        const input = document.getElementById("input-rename-progresso");
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-rename-progresso"]').forEach(el => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const nomeAntigo = el.dataset.nome;
+        const input = document.getElementById("input-rename-progresso");
+        const novoNome = input ? input.value.trim() : "";
+        if(novoNome && novoNome !== nomeAntigo){
+          const entradas = data.progresso.filter(p => p.nome === nomeAntigo);
+          await Promise.all(entradas.map(p => {
+            const novoDocId = `${slugify(novoNome)}_${p.musicaId}`;
+            const { docId, ...campos } = p;
+            return setDoc(doc(progressoCol, novoDocId), { ...campos, nome: novoNome })
+              .then(() => deleteDoc(doc(progressoCol, docId)));
+          }));
+          showToast("Nome atualizado");
+        }
+        editingProgressoNome = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-progresso-nome"]').forEach(el => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const nome = el.dataset.nome;
+        if(!confirm(`Remover todo o progresso de "${nome}"?`)) return;
+        const entradas = data.progresso.filter(p => p.nome === nome);
+        await Promise.all(entradas.map(p => deleteDoc(doc(progressoCol, p.docId))));
+        showToast("Progresso removido");
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-progresso-entrada"]').forEach(el => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if(!confirm("Remover esta marcação?")) return;
+        await deleteDoc(doc(progressoCol, el.dataset.docid));
       });
     });
 
