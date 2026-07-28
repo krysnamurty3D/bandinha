@@ -61,7 +61,7 @@
     padding:14px 20px 14px 20px;
     font-family:'Fraunces', serif;
     font-weight:700;
-    font-size:32px;
+    font-size:calc(28px * var(--font-scale, 1));
     letter-spacing:0.2px;
     display:flex;
     align-items:baseline;
@@ -71,7 +71,7 @@
   .brand small{
     font-family:'Inter',sans-serif;
     font-weight:500;
-    font-size:16px;
+    font-size:calc(12px * var(--font-scale, 1));
     letter-spacing:1.5px;
     text-transform:uppercase;
     color:var(--gold);
@@ -85,7 +85,7 @@
     border:1px solid var(--line);
     border-radius:8px;
     padding:6px 12px;
-    font-size:15px;
+    font-size:calc(11px * var(--font-scale, 1));
     font-weight:600;
   }
   #auth-gate{
@@ -112,7 +112,7 @@
   .section-title{
     font-family:'Fraunces', serif;
     font-weight:600;
-    font-size:24px;
+    font-size:calc(20px * var(--font-scale, 1));
     margin:18px 2px 12px 2px;
     display:flex;
     align-items:center;
@@ -139,7 +139,7 @@
     text-align:center;
     padding:36px 16px;
     color:var(--muted);
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     border:1px dashed var(--line);
     border-radius:var(--radius);
   }
@@ -156,7 +156,7 @@
     color:var(--cream);
     border-radius:10px;
     padding:11px 12px;
-    font-size:19px;
+    font-size:calc(15px * var(--font-scale, 1));
     font-family:'Inter',sans-serif;
     outline:none;
     width:100%;
@@ -175,7 +175,7 @@
     font-weight:700;
     width:46px;
     border-radius:10px;
-    font-size:24px;
+    font-size:calc(20px * var(--font-scale, 1));
     flex-shrink:0;
   }
   .btn-add:active{transform:scale(0.95);}
@@ -187,7 +187,7 @@
   }
   .member-name{
     font-weight:600;
-    font-size:19.5px;
+    font-size:calc(15.5px * var(--font-scale, 1));
     flex:1;
     min-width:0;
     overflow:hidden;
@@ -201,7 +201,7 @@
     flex:1;
     min-width:0;
     font-weight:600;
-    font-size:19.5px;
+    font-size:calc(15.5px * var(--font-scale, 1));
     padding:6px 8px;
   }
   .btn-save-nome{
@@ -212,14 +212,14 @@
     width:32px;
     height:32px;
     border-radius:8px;
-    font-size:19px;
+    font-size:calc(15px * var(--font-scale, 1));
   }
-  .shirt-select{width:74px;flex-shrink:0;padding:8px 6px;font-size:17px;}
+  .shirt-select{width:74px;flex-shrink:0;padding:8px 6px;font-size:calc(13px * var(--font-scale, 1));}
   .pay-toggle{
     flex-shrink:0;
     border-radius:10px;
     padding:9px 12px;
-    font-size:16.5px;
+    font-size:calc(12.5px * var(--font-scale, 1));
     font-weight:600;
     background:var(--surface-2);
     color:var(--rose);
@@ -235,7 +235,7 @@
     flex-shrink:0;
     background:transparent;
     color:var(--muted);
-    font-size:20px;
+    font-size:calc(16px * var(--font-scale, 1));
     width:22px;
     line-height:1;
   }
@@ -245,7 +245,7 @@
     margin-top:8px;
     padding-top:8px;
     border-top:1px solid var(--line);
-    font-size:16px;
+    font-size:calc(12px * var(--font-scale, 1));
     color:var(--muted);
   }
 
@@ -253,7 +253,7 @@
     width:88px;
     flex:0 0 auto;
     padding:11px 8px;
-    font-size:17px;
+    font-size:calc(13px * var(--font-scale, 1));
   }
   .import-gender-select{
     width:100%;
@@ -262,7 +262,7 @@
   .link-btn{
     background:transparent;
     color:var(--gold);
-    font-size:17px;
+    font-size:calc(13px * var(--font-scale, 1));
     font-weight:600;
     padding:4px 2px 14px 2px;
     text-decoration:underline;
@@ -283,7 +283,7 @@
     color:var(--cream);
     border-radius:10px;
     padding:11px 12px;
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     font-family:'Inter',sans-serif;
     outline:none;
     resize:vertical;
@@ -297,7 +297,7 @@
     width:100%;
     border-radius:10px;
     padding:11px;
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
   }
   .btn-import:active{transform:scale(0.98);}
 
@@ -305,7 +305,7 @@
     display:flex;
     align-items:center;
     gap:8px;
-    font-size:17.5px;
+    font-size:calc(13.5px * var(--font-scale, 1));
     color:var(--muted);
     margin-bottom:14px;
     cursor:pointer;
@@ -319,13 +319,13 @@
     display:flex;
     align-items:center;
     gap:5px;
-    font-size:15.5px;
+    font-size:calc(11.5px * var(--font-scale, 1));
     color:var(--muted);
     cursor:pointer;
     white-space:nowrap;
   }
   .inst-tag{
-    font-size:14.5px;
+    font-size:calc(10.5px * var(--font-scale, 1));
     font-weight:700;
     color:var(--gold);
     background:rgba(240,169,60,0.12);
@@ -337,7 +337,7 @@
     background:transparent;
     border:none;
     color:var(--gold);
-    font-size:16px;
+    font-size:calc(12px * var(--font-scale, 1));
     font-weight:600;
     padding:0;
   }
@@ -353,20 +353,20 @@
     border-radius:14px;
     padding:12px 14px;
   }
-  .stat .num{font-family:'Fraunces',serif;font-size:26px;font-weight:700;}
-  .stat .lbl{font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+  .stat .num{font-family:'Fraunces',serif;font-size:calc(22px * var(--font-scale, 1));font-weight:700;}
+  .stat .lbl{font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
 
   .song-row{
     display:flex;
     align-items:center;
     gap:10px;
   }
-  .song-name{flex:1;font-weight:600;font-size:19px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .song-name{flex:1;font-weight:600;font-size:calc(15px * var(--font-scale, 1));min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
   .status-pill{
     flex-shrink:0;
     border-radius:20px;
     padding:7px 13px;
-    font-size:16px;
+    font-size:calc(12px * var(--font-scale, 1));
     font-weight:600;
     white-space:nowrap;
   }
@@ -380,7 +380,7 @@
   }
   .lyrics-text{
     white-space:pre-wrap;
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     line-height:1.6;
     color:var(--cream);
   }
@@ -392,7 +392,7 @@
     color:var(--cream);
     border-radius:10px;
     padding:11px 12px;
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     font-family:'Inter',sans-serif;
     outline:none;
     resize:vertical;
@@ -424,8 +424,8 @@
     align-items:center;
     cursor:pointer;
   }
-  .roteiro-title{font-family:'Fraunces',serif;font-weight:600;font-size:21px;}
-  .roteiro-date{font-size:16px;color:var(--gold);margin-top:2px;}
+  .roteiro-title{font-family:'Fraunces',serif;font-weight:600;font-size:calc(17px * var(--font-scale, 1));}
+  .roteiro-date{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);margin-top:2px;}
   .roteiro-body{
     padding:0 16px 16px 16px;
     border-top:1px solid var(--line);
@@ -442,18 +442,18 @@
     font-family:'Fraunces',serif;
     font-weight:600;
     color:var(--gold);
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     width:52px;
     flex-shrink:0;
   }
-  .item-activity{flex:1;font-size:18px;}
+  .item-activity{flex:1;font-size:calc(14px * var(--font-scale, 1));}
   .add-item-form{
     display:flex;
     gap:8px;
     margin-top:12px;
   }
   .add-item-form input[type=text]:first-child{width:64px;flex:none;padding:11px 8px;text-align:center;}
-  .chevron{color:var(--muted);transition:transform 0.2s;font-size:18px;}
+  .chevron{color:var(--muted);transition:transform 0.2s;font-size:calc(14px * var(--font-scale, 1));}
   .chevron.open{transform:rotate(90deg);}
 
   nav.tabbar{
@@ -477,13 +477,31 @@
     gap:4px;
     padding:8px 4px;
     border-radius:12px;
-    font-size:15px;
+    font-size:calc(11px * var(--font-scale, 1));
     font-weight:600;
   }
   nav.tabbar button.active{color:var(--gold);background:rgba(240,169,60,0.1);}
   nav.tabbar button svg{width:20px;height:20px;}
 
   .hidden{display:none !important;}
+  .font-ctrl{
+    position:fixed;
+    right:14px;
+    bottom:96px;
+    z-index:15;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    font-weight:700;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 10px rgba(0,0,0,0.35);
+  }
   .toast{
     position:fixed;
     bottom:96px;
@@ -494,7 +512,7 @@
     color:var(--cream);
     padding:9px 18px;
     border-radius:30px;
-    font-size:17px;
+    font-size:calc(13px * var(--font-scale, 1));
     opacity:0;
     transition:all 0.25s;
     pointer-events:none;
@@ -516,6 +534,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<button type="button" id="btn-font-size" class="font-ctrl hidden" title="Tamanho da fonte">Aa</button>
 
 <nav class="tabbar hidden">
   <button data-tab="integrantes" class="active">
@@ -598,6 +618,24 @@ const configDocRef = doc(db, "config", "main");
     showToast._h = setTimeout(()=> t.classList.remove("show"), 1600);
   }
 
+  const FONT_SCALES = [0.9, 1, 1.15];
+  const FONT_LABELS = ["Pequena", "Média", "Grande"];
+  function initFontScale(){
+    let saved = parseFloat(localStorage.getItem("bandinha-font-scale"));
+    let idx = FONT_SCALES.indexOf(saved);
+    if(idx === -1) idx = 1;
+    applyFontScale(idx);
+    document.getElementById("btn-font-size").addEventListener("click", () => {
+      idx = (idx + 1) % FONT_SCALES.length;
+      applyFontScale(idx);
+      showToast(`Fonte: ${FONT_LABELS[idx]}`);
+    });
+  }
+  function applyFontScale(idx){
+    document.documentElement.style.setProperty("--font-scale", FONT_SCALES[idx]);
+    localStorage.setItem("bandinha-font-scale", FONT_SCALES[idx]);
+  }
+
   function markLoaded(key){
     loadedFlags[key] = true;
     if(Object.values(loadedFlags).every(Boolean)){ loaded = true; }
@@ -661,28 +699,32 @@ const configDocRef = doc(db, "config", "main");
     const gate = document.getElementById("auth-gate");
     const appEl = document.getElementById("app");
     const navEl = document.querySelector("nav.tabbar");
+    const fontBtn = document.getElementById("btn-font-size");
     if(!authReady){
       gate.innerHTML = '<div class="empty">Carregando…</div>';
       gate.classList.remove("hidden");
       appEl.classList.add("hidden");
       navEl.classList.add("hidden");
+      fontBtn.classList.add("hidden");
       return;
     }
     if(currentUser){
       gate.classList.add("hidden");
       appEl.classList.remove("hidden");
       navEl.classList.remove("hidden");
+      fontBtn.classList.remove("hidden");
       return;
     }
     appEl.classList.add("hidden");
     navEl.classList.add("hidden");
+    fontBtn.classList.add("hidden");
     gate.classList.remove("hidden");
     gate.innerHTML = `
       <div class="login-box" style="text-align:center;">
         <div class="brand" style="padding:0 0 18px 0;justify-content:center;">Bandinha <small>Equipe de Canto</small></div>
-        <p style="color:var(--muted);font-size:15px;margin:0 0 18px 0;">Área restrita ao coordenador</p>
+        <p style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));margin:0 0 18px 0;">Área restrita ao coordenador</p>
         <button type="button" id="btn-google-login" class="btn-import">Entrar com Google</button>
-        <div id="login-error" style="color:var(--rose);font-size:17px;margin-top:10px;"></div>
+        <div id="login-error" style="color:var(--rose);font-size:calc(13px * var(--font-scale, 1));margin-top:10px;"></div>
       </div>
     `;
     document.getElementById("btn-google-login").addEventListener("click", async () => {
@@ -723,8 +765,8 @@ const configDocRef = doc(db, "config", "main");
       brand.onclick = null;
       brand.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <input type="text" id="input-brand-titulo" value="${escapeHtml(cfg.titulo)}" placeholder="Título" style="font-size:22px;padding:8px 10px;" />
-          <input type="text" id="input-brand-subtitulo" value="${escapeHtml(cfg.subtitulo)}" placeholder="Subtítulo" style="font-size:17px;padding:7px 10px;" />
+          <input type="text" id="input-brand-titulo" value="${escapeHtml(cfg.titulo)}" placeholder="Título" style="font-size:calc(18px * var(--font-scale, 1));padding:8px 10px;" />
+          <input type="text" id="input-brand-subtitulo" value="${escapeHtml(cfg.subtitulo)}" placeholder="Subtítulo" style="font-size:calc(13px * var(--font-scale, 1));padding:7px 10px;" />
           <button type="button" class="btn-save-nome" style="width:auto;padding:0 14px;height:34px;" data-action="save-brand">Salvar</button>
         </div>
       `;
@@ -809,7 +851,7 @@ const configDocRef = doc(db, "config", "main");
     const collapsed = !!collapsedGroups[key];
     let html = `
       <div class="section-title" data-action="toggle-group" data-group="${key}">
-        <span class="note-dot" style="background:${color}"></span>${titulo} <span style="color:var(--muted);font-weight:400;font-size:18px;">(${lista.length})</span>
+        <span class="note-dot" style="background:${color}"></span>${titulo} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${lista.length})</span>
         <span class="chevron ${collapsed?"":"open"}">▶</span>
       </div>
       <div class="${collapsed?"hidden":""}">`;
@@ -886,7 +928,7 @@ const configDocRef = doc(db, "config", "main");
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
                 <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
               ` : `
-                ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:17px;">Sem letra cadastrada.</div>`}
+                ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Sem letra cadastrada.</div>`}
                 <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-letra" data-id="${m.id}">${m.letra ? "Editar letra" : "Adicionar letra"}</button>
               `}
             </div>
@@ -926,7 +968,7 @@ const configDocRef = doc(db, "config", "main");
             </div>
           </div>
           <div class="roteiro-body ${open?"":"hidden"}">
-            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:17px;padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
+            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
               <div class="item-row">
                 <div class="item-time">${escapeHtml(it.horario)}</div>
                 <div class="item-activity">${escapeHtml(it.atividade)}</div>
@@ -978,7 +1020,7 @@ const configDocRef = doc(db, "config", "main");
     const color = corCategoria(categoria);
     let html = `
       <div class="section-title" data-action="toggle-group" data-group="${key}">
-        <span class="note-dot" style="background:${color}"></span>${escapeHtml(categoria)} <span style="color:var(--muted);font-weight:400;font-size:18px;">(${lista.length})</span>
+        <span class="note-dot" style="background:${color}"></span>${escapeHtml(categoria)} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${lista.length})</span>
         <span class="chevron ${collapsed?"":"open"}">▶</span>
       </div>
       <div class="${collapsed?"hidden":""}">`;
@@ -1334,6 +1376,7 @@ const configDocRef = doc(db, "config", "main");
 
   document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
 
+  initFontScale();
   loadAuth();
 })();
 </script>

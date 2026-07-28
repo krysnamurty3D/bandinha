@@ -61,7 +61,7 @@
     padding:14px 20px 14px 20px;
     font-family:'Fraunces', serif;
     font-weight:700;
-    font-size:32px;
+    font-size:calc(28px * var(--font-scale, 1));
     letter-spacing:0.2px;
     display:flex;
     align-items:baseline;
@@ -71,7 +71,7 @@
   .brand small{
     font-family:'Inter',sans-serif;
     font-weight:500;
-    font-size:16px;
+    font-size:calc(12px * var(--font-scale, 1));
     letter-spacing:1.5px;
     text-transform:uppercase;
     color:var(--gold);
@@ -92,7 +92,7 @@
     text-align:center;
     padding:36px 16px;
     color:var(--muted);
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     border:1px dashed var(--line);
     border-radius:var(--radius);
   }
@@ -106,7 +106,7 @@
   .section-title{
     font-family:'Fraunces', serif;
     font-weight:600;
-    font-size:24px;
+    font-size:calc(20px * var(--font-scale, 1));
     margin:18px 2px 12px 2px;
     display:flex;
     align-items:center;
@@ -144,20 +144,20 @@
     border-radius:14px;
     padding:12px 14px;
   }
-  .stat .num{font-family:'Fraunces',serif;font-size:26px;font-weight:700;}
-  .stat .lbl{font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+  .stat .num{font-family:'Fraunces',serif;font-size:calc(22px * var(--font-scale, 1));font-weight:700;}
+  .stat .lbl{font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
 
   .song-row{
     display:flex;
     align-items:center;
     gap:10px;
   }
-  .song-name{flex:1;font-weight:600;font-size:19px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .song-name{flex:1;font-weight:600;font-size:calc(15px * var(--font-scale, 1));min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
   .status-pill{
     flex-shrink:0;
     border-radius:20px;
     padding:7px 13px;
-    font-size:16px;
+    font-size:calc(12px * var(--font-scale, 1));
     font-weight:600;
     white-space:nowrap;
   }
@@ -171,7 +171,7 @@
   }
   .lyrics-text{
     white-space:pre-wrap;
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     line-height:1.6;
     color:var(--cream);
   }
@@ -184,8 +184,8 @@
     align-items:center;
     cursor:pointer;
   }
-  .roteiro-title{font-family:'Fraunces',serif;font-weight:600;font-size:21px;}
-  .roteiro-date{font-size:16px;color:var(--gold);margin-top:2px;}
+  .roteiro-title{font-family:'Fraunces',serif;font-weight:600;font-size:calc(17px * var(--font-scale, 1));}
+  .roteiro-date{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);margin-top:2px;}
   .roteiro-body{
     padding:0 16px 16px 16px;
     border-top:1px solid var(--line);
@@ -202,12 +202,12 @@
     font-family:'Fraunces',serif;
     font-weight:600;
     color:var(--gold);
-    font-size:18px;
+    font-size:calc(14px * var(--font-scale, 1));
     width:52px;
     flex-shrink:0;
   }
-  .item-activity{flex:1;font-size:18px;}
-  .chevron{color:var(--muted);transition:transform 0.2s;font-size:18px;}
+  .item-activity{flex:1;font-size:calc(14px * var(--font-scale, 1));}
+  .chevron{color:var(--muted);transition:transform 0.2s;font-size:calc(14px * var(--font-scale, 1));}
   .chevron.open{transform:rotate(90deg);}
 
   nav.tabbar{
@@ -234,13 +234,49 @@
     gap:4px;
     padding:8px 4px;
     border-radius:12px;
-    font-size:15px;
+    font-size:calc(11px * var(--font-scale, 1));
     font-weight:600;
   }
   nav.tabbar button.active{color:var(--gold);background:rgba(240,169,60,0.1);}
   nav.tabbar button svg{width:20px;height:20px;}
 
   .hidden{display:none !important;}
+  .font-ctrl{
+    position:fixed;
+    right:14px;
+    bottom:96px;
+    z-index:15;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    font-weight:700;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 10px rgba(0,0,0,0.35);
+  }
+  .toast{
+    position:fixed;
+    bottom:96px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2);
+    border:1px solid var(--gold);
+    color:var(--cream);
+    padding:9px 18px;
+    border-radius:30px;
+    font-size:calc(13px * var(--font-scale, 1));
+    opacity:0;
+    transition:all 0.25s;
+    pointer-events:none;
+    z-index:20;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
@@ -251,6 +287,9 @@
 
   <main id="main"></main>
 </div>
+
+<div class="toast" id="toast"></div>
+<button type="button" id="btn-font-size" class="font-ctrl" title="Tamanho da fonte">Aa</button>
 
 <nav class="tabbar">
   <button data-tab="musicas" class="active">
@@ -301,6 +340,32 @@ const configDocRef = doc(db, "config", "main");
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function showToast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(()=> t.classList.remove("show"), 1600);
+  }
+
+  const FONT_SCALES = [0.9, 1, 1.15];
+  const FONT_LABELS = ["Pequena", "Média", "Grande"];
+  function initFontScale(){
+    let saved = parseFloat(localStorage.getItem("bandinha-font-scale"));
+    let idx = FONT_SCALES.indexOf(saved);
+    if(idx === -1) idx = 1;
+    applyFontScale(idx);
+    document.getElementById("btn-font-size").addEventListener("click", () => {
+      idx = (idx + 1) % FONT_SCALES.length;
+      applyFontScale(idx);
+      showToast(`Fonte: ${FONT_LABELS[idx]}`);
+    });
+  }
+  function applyFontScale(idx){
+    document.documentElement.style.setProperty("--font-scale", FONT_SCALES[idx]);
+    localStorage.setItem("bandinha-font-scale", FONT_SCALES[idx]);
   }
 
   function markLoaded(key){
@@ -383,7 +448,7 @@ const configDocRef = doc(db, "config", "main");
           </div>
           ${open ? `
             <div class="lyrics-box">
-              ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:17px;">Letra ainda não cadastrada.</div>`}
+              ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
             </div>
           ` : ""}
         </div>
@@ -412,7 +477,7 @@ const configDocRef = doc(db, "config", "main");
             <span class="chevron ${open?"open":""}">▶</span>
           </div>
           <div class="roteiro-body ${open?"":"hidden"}">
-            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:17px;padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
+            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
               <div class="item-row">
                 <div class="item-time">${escapeHtml(it.horario)}</div>
                 <div class="item-activity">${escapeHtml(it.atividade)}</div>
@@ -444,7 +509,7 @@ const configDocRef = doc(db, "config", "main");
     const color = corCategoria(categoria);
     let html = `
       <div class="section-title" data-action="toggle-group" data-group="${key}">
-        <span class="note-dot" style="background:${color}"></span>${escapeHtml(categoria)} <span style="color:var(--muted);font-weight:400;font-size:18px;">(${lista.length})</span>
+        <span class="note-dot" style="background:${color}"></span>${escapeHtml(categoria)} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${lista.length})</span>
         <span class="chevron ${collapsed?"":"open"}">▶</span>
       </div>
       <div class="${collapsed?"hidden":""}">`;
@@ -510,6 +575,7 @@ const configDocRef = doc(db, "config", "main");
     });
   });
 
+  initFontScale();
   load();
 })();
 </script>
