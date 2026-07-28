@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bandinha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14172B;
+    --surface: #1F2444;
+    --surface-2: #262C52;
+    --gold: #E4B54A;
+    --cream: #F2EEE3;
+    --muted: #A9AEC8;
+    --rose: #D2677A;
+    --green: #6FA88F;
+    --blue: #6E93D6;
+    --line: rgba(242,238,227,0.12);
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--cream);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    max-width:560px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    padding-bottom:88px;
+  }
+  header.top{
+    padding:28px 20px 14px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  header.top::before{
+    content:"";
+    position:absolute;
+    top:-60px; right:-60px;
+    width:180px; height:180px;
+    background: radial-gradient(circle, rgba(228,181,74,0.18), transparent 70%);
+    pointer-events:none;
+  }
+  .brand{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:32px;
+    letter-spacing:0.2px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand small{
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  .staff{
+    margin-top:14px;
+    height:26px;
+    position:relative;
+  }
+  .staff svg{width:100%;height:100%;display:block;}
+
+  main{
+    flex:1;
+    padding:6px 18px 20px 18px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:12px;
+  }
+  .empty{
+    text-align:center;
+    padding:36px 16px;
+    color:var(--muted);
+    font-size:14px;
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+  }
+  .empty .note-dot{margin-bottom:8px;}
+  .note-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--gold);
+    display:inline-block;
+  }
+
+  .stat-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .stat{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 14px;
+  }
+  .stat .num{font-family:'Fraunces',serif;font-size:22px;font-weight:700;}
+  .stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+
+  .song-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .song-name{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .status-pill{
+    flex-shrink:0;
+    border-radius:20px;
+    padding:7px 13px;
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .status-aprender{background:rgba(210,103,122,0.15);color:var(--rose);}
+  .status-ensaiando{background:rgba(228,181,74,0.15);color:var(--gold);}
+  .status-pronta{background:rgba(111,168,143,0.15);color:var(--green);}
+
+  .roteiro-card{padding:0;overflow:hidden;}
+  .roteiro-head{
+    padding:15px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+  }
+  .roteiro-title{font-family:'Fraunces',serif;font-weight:600;font-size:17px;}
+  .roteiro-date{font-size:12px;color:var(--gold);margin-top:2px;}
+  .roteiro-body{
+    padding:0 16px 16px 16px;
+    border-top:1px solid var(--line);
+  }
+  .item-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .item-row:last-of-type{border-bottom:none;}
+  .item-time{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    color:var(--gold);
+    font-size:14px;
+    width:52px;
+    flex-shrink:0;
+  }
+  .item-activity{flex:1;font-size:14px;}
+  .chevron{color:var(--muted);transition:transform 0.2s;font-size:14px;}
+  .chevron.open{transform:rotate(90deg);}
+
+  nav.tabbar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    display:flex;
+    max-width:560px;
+    margin:0 auto;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom)) 6px;
+    z-index:10;
+  }
+  nav.tabbar button{
+    flex:1;
+    background:transparent;
+    color:var(--muted);
+    border:none;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    padding:8px 4px;
+    border-radius:12px;
+    font-size:11px;
+    font-weight:600;
+  }
+  nav.tabbar button.active{color:var(--gold);background:rgba(228,181,74,0.1);}
+  nav.tabbar button svg{width:20px;height:20px;}
+
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">Bandinha <small>Equipe de Canto</small></div>
+    <div class="staff">
+      <svg viewBox="0 0 400 26" preserveAspectRatio="none">
+        <line x1="0" y1="2" x2="400" y2="2" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <line x1="0" y1="8" x2="400" y2="8" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <line x1="0" y1="14" x2="400" y2="14" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <line x1="0" y1="20" x2="400" y2="20" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
+        <circle cx="30" cy="14" r="5" fill="#E4B54A"/>
+        <circle cx="140" cy="8" r="5" fill="#E4B54A"/>
+        <circle cx="250" cy="20" r="5" fill="#E4B54A"/>
+        <circle cx="360" cy="2" r="5" fill="#E4B54A"/>
+      </svg>
+    </div>
+  </header>
+
+  <main id="main"></main>
+</div>
+
+<nav class="tabbar">
+  <button data-tab="musicas" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+    Músicas
+  </button>
+  <button data-tab="roteiros">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
+    Roteiros
+  </button>
+</nav>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
+  authDomain: "bandinha-a22ce.firebaseapp.com",
+  projectId: "bandinha-a22ce",
+  storageBucket: "bandinha-a22ce.firebasestorage.app",
+  messagingSenderId: "808882413270",
+  appId: "1:808882413270:web:91dbb55bc2256847ae3377"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const dataDocRef = doc(db, "bandinha", "data");
+
+(function(){
+  let data = { musicas: [], roteiros: [] };
+  let currentTab = "musicas";
+  let openRoteiroId = null;
+  let loaded = false;
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function load(){
+    onSnapshot(dataDocRef, snap => {
+      const parsed = snap.data();
+      if(parsed){
+        data.musicas = parsed.musicas || [];
+        data.roteiros = parsed.roteiros || [];
+      }
+      loaded = true;
+      render();
+    }, e => {
+      console.error("Erro ao sincronizar:", e);
+    });
+  }
+
+  // ---------- RENDER ----------
+  function render(){
+    const main = document.getElementById("main");
+    if(!loaded){
+      main.innerHTML = '<div class="empty">Carregando…</div>';
+      return;
+    }
+    main.innerHTML = currentTab === "musicas" ? renderMusicas() : renderRoteiros();
+    attachHandlers();
+  }
+
+  function renderMusicas(){
+    const total = data.musicas.length;
+    const prontas = data.musicas.filter(m => m.status === "pronta").length;
+    let html = `
+      <div class="stat-row">
+        <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
+        <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
+      </div>
+    `;
+    if(total === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
+    } else {
+      const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
+      html += data.musicas.map(m => `
+        <div class="card">
+          <div class="song-row">
+            <div class="song-name">${escapeHtml(m.nome)}</div>
+            <span class="status-pill status-${m.status}">${labels[m.status] || m.status}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+    return html;
+  }
+
+  function renderRoteiros(){
+    let html = "";
+    if(data.roteiros.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro publicado ainda.</div>`;
+    } else {
+      const ordered = [...data.roteiros].sort((a,b) => (a.data||"").localeCompare(b.data||""));
+      html += ordered.map(r => {
+        const open = openRoteiroId === r.id;
+        const itensOrdenados = [...r.itens].sort((a,b) => a.horario.localeCompare(b.horario));
+        return `
+        <div class="card roteiro-card">
+          <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
+            <div>
+              <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
+              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}</div>` : ""}
+            </div>
+            <span class="chevron ${open?"open":""}">▶</span>
+          </div>
+          <div class="roteiro-body ${open?"":"hidden"}">
+            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
+              <div class="item-row">
+                <div class="item-time">${escapeHtml(it.horario)}</div>
+                <div class="item-activity">${escapeHtml(it.atividade)}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>`;
+      }).join("");
+    }
+    return html;
+  }
+
+  function formatDate(iso){
+    const [y,m,d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  // ---------- HANDLERS ----------
+  function attachHandlers(){
+    document.querySelectorAll('[data-action="toggle-roteiro"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        openRoteiroId = (openRoteiroId === id) ? null : id;
+        render();
+      });
+    });
+  }
+
+  document.querySelectorAll("nav.tabbar button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentTab = btn.dataset.tab;
+      document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      render();
+    });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
