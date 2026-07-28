@@ -1,27 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isCoordenador() {
+      return request.auth != null && request.auth.token.email in [
+        'krysnamurty@gmail.com'
+      ];
+    }
     match /integrantes/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isCoordenador();
     }
     match /musicas/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isCoordenador();
     }
     match /roteiros/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isCoordenador();
     }
     match /coreografias/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isCoordenador();
     }
     match /config/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isCoordenador();
     }
     match /bandinha/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isCoordenador();
     }
   }
 }
