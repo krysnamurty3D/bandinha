@@ -269,7 +269,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -281,7 +281,10 @@ const firebaseConfig = {
 };
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
-const dataDocRef = doc(db, "bandinha", "data");
+const musicasCol = collection(db, "musicas");
+const roteirosCol = collection(db, "roteiros");
+const coreografiasCol = collection(db, "coreografias");
+const configDocRef = doc(db, "config", "main");
 
 (function(){
   let data = { musicas: [], roteiros: [], coreografias: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
@@ -291,6 +294,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   let openCoreografiaId = null;
   let collapsedGroups = {};
   let loaded = false;
+  let loadedFlags = { musicas: false, roteiros: false, coreografias: false, config: false };
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
@@ -299,21 +303,40 @@ const dataDocRef = doc(db, "bandinha", "data");
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
 
+  function markLoaded(key){
+    loadedFlags[key] = true;
+    if(Object.values(loadedFlags).every(Boolean)){ loaded = true; }
+  }
+
+  function safeRender(){
+    if(openCoreografiaId){ return; }
+    render();
+  }
+
   function load(){
-    onSnapshot(dataDocRef, snap => {
-      const parsed = snap.data();
-      if(parsed){
-        data.musicas = parsed.musicas || [];
-        data.roteiros = parsed.roteiros || [];
-        data.coreografias = parsed.coreografias || [];
-        data.config = parsed.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
-      }
-      loaded = true;
-      if(openCoreografiaId){ return; }
-      render();
-    }, e => {
-      console.error("Erro ao sincronizar:", e);
-    });
+    onSnapshot(musicasCol, snap => {
+      data.musicas = snap.docs.map(d => d.data());
+      markLoaded("musicas");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar músicas:", e); });
+
+    onSnapshot(roteirosCol, snap => {
+      data.roteiros = snap.docs.map(d => d.data());
+      markLoaded("roteiros");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar roteiros:", e); });
+
+    onSnapshot(coreografiasCol, snap => {
+      data.coreografias = snap.docs.map(d => d.data());
+      markLoaded("coreografias");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar coreografias:", e); });
+
+    onSnapshot(configDocRef, snap => {
+      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+      markLoaded("config");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar config:", e); });
   }
 
   // ---------- RENDER ----------

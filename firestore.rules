@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /integrantes/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /musicas/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /roteiros/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /coreografias/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /bandinha/{docId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
