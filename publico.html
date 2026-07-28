@@ -246,7 +246,7 @@
 <body>
 <div id="app">
   <header class="top">
-    <div class="brand">Bandinha <small>Equipe de Canto</small></div>
+    <div class="brand" id="brand">Bandinha <small>Equipe de Canto</small></div>
   </header>
 
   <main id="main"></main>
@@ -284,7 +284,7 @@ const db = getFirestore(firebaseApp);
 const dataDocRef = doc(db, "bandinha", "data");
 
 (function(){
-  let data = { musicas: [], roteiros: [], coreografias: [] };
+  let data = { musicas: [], roteiros: [], coreografias: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
   let currentTab = "musicas";
   let openRoteiroId = null;
   let openMusicaId = null;
@@ -306,6 +306,7 @@ const dataDocRef = doc(db, "bandinha", "data");
         data.musicas = parsed.musicas || [];
         data.roteiros = parsed.roteiros || [];
         data.coreografias = parsed.coreografias || [];
+        data.config = parsed.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
       }
       loaded = true;
       if(openCoreografiaId){ return; }
@@ -318,6 +319,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   // ---------- RENDER ----------
   function render(){
     const main = document.getElementById("main");
+    renderBrand();
     if(!loaded){
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
@@ -326,6 +328,13 @@ const dataDocRef = doc(db, "bandinha", "data");
     main.innerHTML = currentTab === "musicas" ? renderMusicas() : currentTab === "roteiros" ? renderRoteiros() : renderCoreografias();
     attachHandlers();
     window.scrollTo(0, scrollY);
+  }
+
+  function renderBrand(){
+    const brand = document.getElementById("brand");
+    if(!brand) return;
+    const cfg = data.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+    brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
   }
 
   function renderMusicas(){

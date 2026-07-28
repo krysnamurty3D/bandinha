@@ -479,7 +479,7 @@
 <body>
 <div id="app">
   <header class="top">
-    <div class="brand">Bandinha <small>Equipe de Canto</small></div>
+    <div id="brand"></div>
   </header>
 
   <main id="main"></main>
@@ -525,7 +525,7 @@ const dataDocRef = doc(db, "bandinha", "data");
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [] };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
   let currentTab = "integrantes";
   let openRoteiroId = null;
   let loaded = false;
@@ -536,6 +536,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   let editingLetraId = null;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
+  let editingBrand = false;
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
@@ -573,6 +574,7 @@ const dataDocRef = doc(db, "bandinha", "data");
         data.musicas = parsed.musicas || [];
         data.roteiros = parsed.roteiros || [];
         data.coreografias = parsed.coreografias || [];
+        data.config = parsed.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
       }
       loaded = true;
       if(openCoreografiaId){ return; }
@@ -586,6 +588,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   // ---------- RENDER ----------
   function render(){
     const main = document.getElementById("main");
+    renderBrand();
     if(!loaded){
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
@@ -598,6 +601,38 @@ const dataDocRef = doc(db, "bandinha", "data");
 
     attachHandlers();
     window.scrollTo(0, scrollY);
+  }
+
+  function renderBrand(){
+    const brand = document.getElementById("brand");
+    if(!brand) return;
+    const cfg = data.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+    if(editingBrand){
+      brand.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <input type="text" id="input-brand-titulo" value="${escapeHtml(cfg.titulo)}" placeholder="Título" style="font-size:18px;padding:8px 10px;" />
+          <input type="text" id="input-brand-subtitulo" value="${escapeHtml(cfg.subtitulo)}" placeholder="Subtítulo" style="font-size:13px;padding:7px 10px;" />
+          <button type="button" class="btn-save-nome" style="width:auto;padding:0 14px;height:34px;" data-action="save-brand">Salvar</button>
+        </div>
+      `;
+      brand.classList.add("brand");
+      const t = document.getElementById("input-brand-titulo");
+      if(t) t.focus();
+      const btn = brand.querySelector('[data-action="save-brand"]');
+      if(btn) btn.addEventListener("click", async () => {
+        const titulo = document.getElementById("input-brand-titulo").value.trim();
+        const subtitulo = document.getElementById("input-brand-subtitulo").value.trim();
+        if(titulo){ data.config = { titulo, subtitulo }; await save(); }
+        editingBrand = false;
+        render();
+      });
+    } else {
+      brand.className = "brand";
+      brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
+      brand.setAttribute("title", "Toque para editar o título");
+      brand.style.cursor = "pointer";
+      brand.onclick = () => { editingBrand = true; render(); };
+    }
   }
 
   function renderIntegrantes(){
