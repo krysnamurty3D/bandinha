@@ -585,6 +585,7 @@ const dataDocRef = doc(db, "bandinha", "data");
         data.coreografias = parsed.coreografias || [];
       }
       loaded = true;
+      if(openCoreografiaId){ return; }
       render();
     }, e => {
       console.error("Erro ao sincronizar:", e);
@@ -599,12 +600,14 @@ const dataDocRef = doc(db, "bandinha", "data");
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
+    const scrollY = window.scrollY;
     if(currentTab === "integrantes") main.innerHTML = renderIntegrantes();
     else if(currentTab === "musicas") main.innerHTML = renderMusicas();
     else if(currentTab === "roteiros") main.innerHTML = renderRoteiros();
     else main.innerHTML = renderCoreografias();
 
     attachHandlers();
+    window.scrollTo(0, scrollY);
   }
 
   function renderIntegrantes(){
