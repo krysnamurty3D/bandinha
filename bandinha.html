@@ -608,6 +608,7 @@ const dataDocRef = doc(db, "bandinha", "data");
     if(!brand) return;
     const cfg = data.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
     if(editingBrand){
+      brand.onclick = null;
       brand.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:6px;">
           <input type="text" id="input-brand-titulo" value="${escapeHtml(cfg.titulo)}" placeholder="Título" style="font-size:22px;padding:8px 10px;" />
