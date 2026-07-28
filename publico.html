@@ -8,16 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #14172B;
-    --surface: #1F2444;
-    --surface-2: #262C52;
-    --gold: #E4B54A;
-    --cream: #F2EEE3;
-    --muted: #A9AEC8;
-    --rose: #D2677A;
-    --green: #6FA88F;
-    --blue: #6E93D6;
-    --line: rgba(242,238,227,0.12);
+    --bg: #17130F;
+    --surface: #241D17;
+    --surface-2: #2E251D;
+    --gold: #F0A93C;
+    --cream: #F4EEE1;
+    --muted: #B8A99A;
+    --rose: #D6402A;
+    --green: #7FA85E;
+    --blue: #C9932E;
+    --line: rgba(244,238,225,0.12);
     --radius: 16px;
   }
   *{box-sizing:border-box;}
@@ -39,26 +39,34 @@
     padding-bottom:88px;
   }
   header.top{
-    padding:28px 20px 14px 20px;
     position:relative;
     overflow:hidden;
+    aspect-ratio:1920/819;
+    background-image:url('header.png');
+    background-size:cover;
+    background-position:center;
+    display:flex;
+    align-items:flex-end;
   }
   header.top::before{
     content:"";
     position:absolute;
-    top:-60px; right:-60px;
-    width:180px; height:180px;
-    background: radial-gradient(circle, rgba(228,181,74,0.18), transparent 70%);
+    inset:0;
+    background:linear-gradient(to top, rgba(23,19,15,0.92) 0%, rgba(23,19,15,0.35) 45%, transparent 75%);
     pointer-events:none;
   }
   .brand{
+    position:relative;
+    z-index:1;
+    padding:14px 20px 14px 20px;
     font-family:'Fraunces', serif;
     font-weight:700;
-    font-size:32px;
+    font-size:28px;
     letter-spacing:0.2px;
     display:flex;
     align-items:baseline;
     gap:10px;
+    text-shadow:0 2px 8px rgba(0,0,0,0.6);
   }
   .brand small{
     font-family:'Inter',sans-serif;
@@ -68,12 +76,6 @@
     text-transform:uppercase;
     color:var(--gold);
   }
-  .staff{
-    margin-top:14px;
-    height:26px;
-    position:relative;
-  }
-  .staff svg{width:100%;height:100%;display:block;}
 
   main{
     flex:1;
@@ -159,9 +161,9 @@
     font-weight:600;
     white-space:nowrap;
   }
-  .status-aprender{background:rgba(210,103,122,0.15);color:var(--rose);}
-  .status-ensaiando{background:rgba(228,181,74,0.15);color:var(--gold);}
-  .status-pronta{background:rgba(111,168,143,0.15);color:var(--green);}
+  .status-aprender{background:rgba(214,64,42,0.15);color:var(--rose);}
+  .status-ensaiando{background:rgba(240,169,60,0.15);color:var(--gold);}
+  .status-pronta{background:rgba(127,168,94,0.15);color:var(--green);}
   .lyrics-box{
     margin-top:12px;
     padding-top:12px;
@@ -235,7 +237,7 @@
     font-size:11px;
     font-weight:600;
   }
-  nav.tabbar button.active{color:var(--gold);background:rgba(228,181,74,0.1);}
+  nav.tabbar button.active{color:var(--gold);background:rgba(240,169,60,0.1);}
   nav.tabbar button svg{width:20px;height:20px;}
 
   .hidden{display:none !important;}
@@ -245,18 +247,6 @@
 <div id="app">
   <header class="top">
     <div class="brand">Bandinha <small>Equipe de Canto</small></div>
-    <div class="staff">
-      <svg viewBox="0 0 400 26" preserveAspectRatio="none">
-        <line x1="0" y1="2" x2="400" y2="2" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
-        <line x1="0" y1="8" x2="400" y2="8" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
-        <line x1="0" y1="14" x2="400" y2="14" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
-        <line x1="0" y1="20" x2="400" y2="20" stroke="rgba(242,238,227,0.18)" stroke-width="1"/>
-        <circle cx="30" cy="14" r="5" fill="#E4B54A"/>
-        <circle cx="140" cy="8" r="5" fill="#E4B54A"/>
-        <circle cx="250" cy="20" r="5" fill="#E4B54A"/>
-        <circle cx="360" cy="2" r="5" fill="#E4B54A"/>
-      </svg>
-    </div>
   </header>
 
   <main id="main"></main>
