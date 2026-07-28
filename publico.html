@@ -308,7 +308,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -324,6 +324,7 @@ const musicasCol = collection(db, "musicas");
 const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
+const progressoCol = collection(db, "progresso");
 
 (function(){
   let data = { musicas: [], roteiros: [], coreografias: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
@@ -334,12 +335,34 @@ const configDocRef = doc(db, "config", "main");
   let collapsedGroups = {};
   let loaded = false;
   let loadedFlags = { musicas: false, roteiros: false, coreografias: false, config: false };
+  let meuNome = localStorage.getItem("bandinha-nome") || "";
+  let meuProgresso = {};
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function slugify(s){
+    return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  let progressoUnsub = null;
+  function loadMeuProgresso(){
+    if(progressoUnsub) progressoUnsub();
+    meuProgresso = {};
+    if(!meuNome){ render(); return; }
+    const q = query(progressoCol, where("nome", "==", meuNome));
+    progressoUnsub = onSnapshot(q, snap => {
+      meuProgresso = {};
+      snap.docs.forEach(d => {
+        const f = d.data();
+        meuProgresso[f.musicaId] = f.status;
+      });
+      render();
+    }, e => console.error("Erro ao sincronizar progresso:", e));
   }
 
   function showToast(msg){
@@ -425,6 +448,30 @@ const configDocRef = doc(db, "config", "main");
     brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
   }
 
+  const MEU_PROGRESSO_OPTS = [
+    { key: "precisa_treinar", label: "Preciso treinar", cls: "status-aprender" },
+    { key: "aprendi", label: "Aprendi", cls: "status-ensaiando" },
+    { key: "ensaiei", label: "Ensaiei", cls: "status-pronta" }
+  ];
+
+  function renderNomeBox(){
+    if(meuNome){
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">
+        <span>Seu progresso pessoal: <strong style="color:var(--cream);">${escapeHtml(meuNome)}</strong></span>
+        <button type="button" class="link-btn" style="padding:0;" data-action="trocar-nome">trocar</button>
+      </div>`;
+    }
+    return `
+      <div class="card">
+        <div style="margin-bottom:10px;font-size:calc(15px * var(--font-scale, 1));">Digite seu nome para marcar seu progresso pessoal em cada música</div>
+        <form id="form-nome" class="inline-add" style="margin-bottom:0;">
+          <input type="text" id="input-meu-nome" placeholder="Seu nome" required />
+          <button type="submit" class="btn-add">✓</button>
+        </form>
+      </div>
+    `;
+  }
+
   function renderMusicas(){
     const total = data.musicas.length;
     const prontas = data.musicas.filter(m => m.status === "pronta").length;
@@ -433,6 +480,7 @@ const configDocRef = doc(db, "config", "main");
         <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
         <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
       </div>
+      ${renderNomeBox()}
     `;
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
@@ -440,12 +488,20 @@ const configDocRef = doc(db, "config", "main");
       const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
       html += data.musicas.map(m => {
         const open = openMusicaId === m.id;
+        const meuStatus = meuProgresso[m.id];
         return `
         <div class="card">
           <div class="song-row">
             <div class="song-name" data-action="toggle-musica" data-id="${m.id}">${escapeHtml(m.nome)}</div>
             <span class="status-pill status-${m.status}">${labels[m.status] || m.status}</span>
           </div>
+          ${meuNome ? `
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+              ${MEU_PROGRESSO_OPTS.map(o => `
+                <button type="button" class="status-pill ${meuStatus===o.key ? o.cls : ''}" style="${meuStatus===o.key ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-progresso" data-id="${m.id}" data-status="${o.key}">${o.label}${meuStatus===o.key ? ' ✓' : ''}</button>
+              `).join("")}
+            </div>
+          ` : ""}
           ${open ? `
             <div class="lyrics-box">
               ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
@@ -533,6 +589,39 @@ const configDocRef = doc(db, "config", "main");
 
   // ---------- HANDLERS ----------
   function attachHandlers(){
+    const formNome = document.getElementById("form-nome");
+    if(formNome) formNome.addEventListener("submit", e => {
+      e.preventDefault();
+      const nome = document.getElementById("input-meu-nome").value.trim();
+      if(!nome) return;
+      meuNome = nome;
+      localStorage.setItem("bandinha-nome", nome);
+      loadMeuProgresso();
+    });
+
+    document.querySelectorAll('[data-action="trocar-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        meuNome = "";
+        localStorage.removeItem("bandinha-nome");
+        loadMeuProgresso();
+      });
+    });
+
+    document.querySelectorAll('[data-action="set-progresso"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!meuNome) return;
+        const musicaId = el.dataset.id;
+        const status = el.dataset.status;
+        const novoStatus = meuProgresso[musicaId] === status ? null : status;
+        const docId = `${slugify(meuNome)}_${musicaId}`;
+        if(novoStatus){
+          await setDoc(doc(progressoCol, docId), { nome: meuNome, musicaId, status: novoStatus, atualizadoEm: Date.now() });
+        } else {
+          await setDoc(doc(progressoCol, docId), { nome: meuNome, musicaId, status: "", atualizadoEm: Date.now() });
+        }
+      });
+    });
+
     document.querySelectorAll('[data-action="toggle-musica"]').forEach(el => {
       el.addEventListener("click", () => {
         const id = el.dataset.id;
@@ -577,6 +666,7 @@ const configDocRef = doc(db, "config", "main");
 
   initFontScale();
   load();
+  if(meuNome) loadMeuProgresso();
 })();
 </script>
 </body>
