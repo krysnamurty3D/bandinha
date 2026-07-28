@@ -76,6 +76,34 @@
     text-transform:uppercase;
     color:var(--gold);
   }
+  .btn-logout{
+    position:absolute;
+    top:14px; right:14px;
+    z-index:2;
+    background:rgba(23,19,15,0.6);
+    color:var(--cream);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 12px;
+    font-size:15px;
+    font-weight:600;
+  }
+  #auth-gate{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .login-box{
+    width:100%;
+    max-width:340px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px 24px;
+  }
+  .login-box form{display:flex;flex-direction:column;}
 
   main{
     flex:1;
@@ -477,9 +505,11 @@
 </style>
 </head>
 <body>
-<div id="app">
+<div id="auth-gate"></div>
+<div id="app" class="hidden">
   <header class="top">
     <div id="brand"></div>
+    <button type="button" id="btn-logout" class="btn-logout">Sair</button>
   </header>
 
   <main id="main"></main>
@@ -487,7 +517,7 @@
 
 <div class="toast" id="toast"></div>
 
-<nav class="tabbar">
+<nav class="tabbar hidden">
   <button data-tab="integrantes" class="active">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
     Integrantes
@@ -508,7 +538,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -520,12 +551,22 @@ const firebaseConfig = {
 };
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
-const dataDocRef = doc(db, "bandinha", "data");
+const auth = getAuth(firebaseApp);
+const googleProvider = new GoogleAuthProvider();
+const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
+const integrantesCol = collection(db, "integrantes");
+const musicasCol = collection(db, "musicas");
+const roteirosCol = collection(db, "roteiros");
+const coreografiasCol = collection(db, "coreografias");
+const configDocRef = doc(db, "config", "main");
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
   let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, config: false };
+  let currentUser = null;
+  let authReady = false;
   let currentTab = "integrantes";
   let openRoteiroId = null;
   let loaded = false;
@@ -557,31 +598,102 @@ const dataDocRef = doc(db, "bandinha", "data");
     showToast._h = setTimeout(()=> t.classList.remove("show"), 1600);
   }
 
-  async function save(){
-    try{
-      await setDoc(dataDocRef, data);
-    }catch(e){
-      console.error("Erro ao salvar:", e);
-      showToast("Erro ao salvar");
-    }
+  function markLoaded(key){
+    loadedFlags[key] = true;
+    if(Object.values(loadedFlags).every(Boolean)){ loaded = true; }
+  }
+
+  function safeRender(){
+    if(openCoreografiaId){ return; }
+    render();
   }
 
   function load(){
-    onSnapshot(dataDocRef, snap => {
-      const parsed = snap.data();
-      if(parsed){
-        data.integrantes = parsed.integrantes || [];
-        data.musicas = parsed.musicas || [];
-        data.roteiros = parsed.roteiros || [];
-        data.coreografias = parsed.coreografias || [];
-        data.config = parsed.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+    onSnapshot(integrantesCol, snap => {
+      data.integrantes = snap.docs.map(d => d.data());
+      markLoaded("integrantes");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar integrantes:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(musicasCol, snap => {
+      data.musicas = snap.docs.map(d => d.data());
+      markLoaded("musicas");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar músicas:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(roteirosCol, snap => {
+      data.roteiros = snap.docs.map(d => d.data());
+      markLoaded("roteiros");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar roteiros:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(coreografiasCol, snap => {
+      data.coreografias = snap.docs.map(d => d.data());
+      markLoaded("coreografias");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar coreografias:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(configDocRef, snap => {
+      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+      markLoaded("config");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar config:", e); showToast("Erro ao sincronizar"); });
+  }
+
+  function loadAuth(){
+    onAuthStateChanged(auth, user => {
+      if(user && !EMAILS_PERMITIDOS.includes(user.email)){
+        signOut(auth);
+        authReady = true;
+        currentUser = null;
+        renderAuthGate();
+        showToast("Este e-mail não tem acesso ao painel");
+        return;
       }
-      loaded = true;
-      if(openCoreografiaId){ return; }
-      render();
-    }, e => {
-      console.error("Erro ao sincronizar:", e);
-      showToast("Erro ao sincronizar");
+      currentUser = user;
+      authReady = true;
+      renderAuthGate();
+      if(user){ load(); }
+    });
+  }
+
+  function renderAuthGate(){
+    const gate = document.getElementById("auth-gate");
+    const appEl = document.getElementById("app");
+    const navEl = document.querySelector("nav.tabbar");
+    if(!authReady){
+      gate.innerHTML = '<div class="empty">Carregando…</div>';
+      gate.classList.remove("hidden");
+      appEl.classList.add("hidden");
+      navEl.classList.add("hidden");
+      return;
+    }
+    if(currentUser){
+      gate.classList.add("hidden");
+      appEl.classList.remove("hidden");
+      navEl.classList.remove("hidden");
+      return;
+    }
+    appEl.classList.add("hidden");
+    navEl.classList.add("hidden");
+    gate.classList.remove("hidden");
+    gate.innerHTML = `
+      <div class="login-box" style="text-align:center;">
+        <div class="brand" style="padding:0 0 18px 0;justify-content:center;">Bandinha <small>Equipe de Canto</small></div>
+        <p style="color:var(--muted);font-size:15px;margin:0 0 18px 0;">Área restrita ao coordenador</p>
+        <button type="button" id="btn-google-login" class="btn-import">Entrar com Google</button>
+        <div id="login-error" style="color:var(--rose);font-size:17px;margin-top:10px;"></div>
+      </div>
+    `;
+    document.getElementById("btn-google-login").addEventListener("click", async () => {
+      const errEl = document.getElementById("login-error");
+      errEl.textContent = "";
+      try{
+        await signInWithPopup(auth, googleProvider);
+      }catch(err){
+        console.error(err);
+        errEl.textContent = "Não foi possível entrar. Tente novamente.";
+      }
     });
   }
 
@@ -623,7 +735,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       if(btn) btn.addEventListener("click", async () => {
         const titulo = document.getElementById("input-brand-titulo").value.trim();
         const subtitulo = document.getElementById("input-brand-subtitulo").value.trim();
-        if(titulo){ data.config = { titulo, subtitulo }; await save(); }
+        if(titulo){ await setDoc(configDocRef, { titulo, subtitulo }); }
         editingBrand = false;
         render();
       });
@@ -912,9 +1024,9 @@ const dataDocRef = doc(db, "bandinha", "data");
       const nome = input.value.trim();
       const genero = generoSelect.value;
       if(!nome || !genero) { showToast("Preencha nome e sexo"); return; }
-      data.integrantes.push({ id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false });
+      const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false };
       instrumentalCheck.checked = false;
-      await save(); render(); showToast("Integrante adicionado");
+      await setDoc(doc(integrantesCol, novoInt.id), novoInt); showToast("Integrante adicionado");
     });
 
     const formMus = document.getElementById("form-musica");
@@ -923,8 +1035,8 @@ const dataDocRef = doc(db, "bandinha", "data");
       const input = document.getElementById("input-musica-nome");
       const nome = input.value.trim();
       if(!nome) return;
-      data.musicas.push({ id: uid(), nome, status: "aprender", letra: "" });
-      await save(); render(); showToast("Música adicionada");
+      const novaMus = { id: uid(), nome, status: "aprender", letra: "" };
+      await setDoc(doc(musicasCol, novaMus.id), novaMus); showToast("Música adicionada");
     });
 
     const formRot = document.getElementById("form-roteiro");
@@ -934,9 +1046,8 @@ const dataDocRef = doc(db, "bandinha", "data");
       const dataVal = document.getElementById("input-roteiro-data").value;
       if(!titulo) return;
       const novo = { id: uid(), titulo, data: dataVal, itens: [] };
-      data.roteiros.push(novo);
       openRoteiroId = novo.id;
-      await save(); render(); showToast("Roteiro criado");
+      await setDoc(doc(roteirosCol, novo.id), novo); showToast("Roteiro criado");
     });
 
     const formCoreo = document.getElementById("form-coreografia");
@@ -948,8 +1059,8 @@ const dataDocRef = doc(db, "bandinha", "data");
       const driveId = extrairDriveId(link);
       if(!categoria || !titulo || !link) return;
       if(!driveId){ showToast("Link do Drive inválido"); return; }
-      data.coreografias.push({ id: uid(), categoria, titulo, link, driveId });
-      await save(); render(); showToast("Coreografia adicionada");
+      const novaCoreo = { id: uid(), categoria, titulo, link, driveId };
+      await setDoc(doc(coreografiasCol, novaCoreo.id), novaCoreo); showToast("Coreografia adicionada");
     });
 
     document.querySelectorAll('[data-action="toggle-coreografia"]').forEach(el => {
@@ -978,9 +1089,8 @@ const dataDocRef = doc(db, "bandinha", "data");
         const driveId = extrairDriveId(link);
         if(!categoria || !titulo || !link){ showToast("Preencha todos os campos"); return; }
         if(!driveId){ showToast("Link do Drive inválido"); return; }
-        item.titulo = titulo; item.categoria = categoria; item.link = link; item.driveId = driveId;
         editingCoreografiaId = null;
-        await save(); render();
+        await updateDoc(doc(coreografiasCol, item.id), { titulo, categoria, link, driveId }); render();
       });
     });
 
@@ -988,8 +1098,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const item = data.coreografias.find(c => c.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.titulo}"` : "esta coreografia"}?`)) return;
-        data.coreografias = data.coreografias.filter(c => c.id !== el.dataset.id);
-        await save(); render(); showToast("Coreografia removida");
+        await deleteDoc(doc(coreografiasCol, el.dataset.id)); showToast("Coreografia removida");
       });
     });
 
@@ -1015,16 +1124,17 @@ const dataDocRef = doc(db, "bandinha", "data");
         .filter(s => s.length > 0);
       if(nomes.length === 0){ showToast("Nenhum nome encontrado"); return; }
       const existentes = new Set(data.integrantes.map(i => i.nome.toLowerCase()));
-      let adicionados = 0;
+      const novos = [];
       nomes.forEach(nome => {
         if(!existentes.has(nome.toLowerCase())){
-          data.integrantes.push({ id: uid(), nome, genero, instrumental, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false });
+          novos.push({ id: uid(), nome, genero, instrumental, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false });
           existentes.add(nome.toLowerCase());
-          adicionados++;
         }
       });
       importOpen = false;
-      await save(); render();
+      await Promise.all(novos.map(n => setDoc(doc(integrantesCol, n.id), n)));
+      render();
+      const adicionados = novos.length;
       const repetidos = nomes.length - adicionados;
       showToast(`${adicionados} nome${adicionados===1?"":"s"} importado${adicionados===1?"":"s"}${repetidos>0?` (${repetidos} já existia${repetidos===1?"":"m"})`:""}`);
     });
@@ -1032,7 +1142,7 @@ const dataDocRef = doc(db, "bandinha", "data");
     document.querySelectorAll('[data-action="shirt"]').forEach(el => {
       el.addEventListener("change", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
-        if(item){ item.camisa = el.value; await save(); showToast("Tamanho salvo"); }
+        if(item){ await updateDoc(doc(integrantesCol, item.id), { camisa: el.value }); showToast("Tamanho salvo"); }
       });
     });
 
@@ -1048,7 +1158,7 @@ const dataDocRef = doc(db, "bandinha", "data");
     async function commitNomeEdit(id, input){
       const item = data.integrantes.find(i => i.id === id);
       const novoNome = input.value.trim();
-      if(item && novoNome){ item.nome = novoNome; await save(); }
+      if(item && novoNome){ await updateDoc(doc(integrantesCol, id), { nome: novoNome }); }
       editingNameId = null;
       render();
     }
@@ -1074,8 +1184,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
-        item.inscricao = !item.inscricao;
-        await save(); render();
+        await updateDoc(doc(integrantesCol, item.id), { inscricao: !item.inscricao });
       });
     });
 
@@ -1083,8 +1192,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
-        item.pagamentoCamisa = !item.pagamentoCamisa;
-        await save(); render();
+        await updateDoc(doc(integrantesCol, item.id), { pagamentoCamisa: !item.pagamentoCamisa });
       });
     });
 
@@ -1092,22 +1200,21 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
-        item.taxaEquipe = !item.taxaEquipe;
-        await save(); render();
+        await updateDoc(doc(integrantesCol, item.id), { taxaEquipe: !item.taxaEquipe });
       });
     });
 
     document.querySelectorAll('[data-action="toggle-instrumental"]').forEach(el => {
       el.addEventListener("change", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
-        if(item){ item.instrumental = el.checked; await save(); render(); }
+        if(item){ await updateDoc(doc(integrantesCol, item.id), { instrumental: el.checked }); }
       });
     });
 
     document.querySelectorAll('[data-action="fix-gender"]').forEach(el => {
       el.addEventListener("change", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
-        if(item){ item.genero = el.value; await save(); render(); }
+        if(item){ await updateDoc(doc(integrantesCol, item.id), { genero: el.value }); }
       });
     });
 
@@ -1123,8 +1230,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!confirm(`Remover ${item ? item.nome : "este integrante"}?`)) return;
-        data.integrantes = data.integrantes.filter(i => i.id !== el.dataset.id);
-        await save(); render(); showToast("Integrante removido");
+        await deleteDoc(doc(integrantesCol, el.dataset.id)); showToast("Integrante removido");
       });
     });
 
@@ -1148,7 +1254,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const textarea = document.querySelector('.lyrics-textarea');
         const item = data.musicas.find(m => m.id === el.dataset.id);
-        if(item && textarea){ item.letra = textarea.value.trim(); await save(); }
+        if(item && textarea){ await updateDoc(doc(musicasCol, item.id), { letra: textarea.value.trim() }); }
         editingLetraId = null;
         render();
       });
@@ -1159,8 +1265,8 @@ const dataDocRef = doc(db, "bandinha", "data");
         const item = data.musicas.find(m => m.id === el.dataset.id);
         if(!item) return;
         const order = ["aprender","ensaiando","pronta"];
-        item.status = order[(order.indexOf(item.status)+1) % order.length];
-        await save(); render();
+        const novoStatus = order[(order.indexOf(item.status)+1) % order.length];
+        await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
       });
     });
 
@@ -1168,8 +1274,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("click", async () => {
         const item = data.musicas.find(m => m.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.nome}"` : "esta música"}?`)) return;
-        data.musicas = data.musicas.filter(m => m.id !== el.dataset.id);
-        await save(); render(); showToast("Música removida");
+        await deleteDoc(doc(musicasCol, el.dataset.id)); showToast("Música removida");
       });
     });
 
@@ -1186,8 +1291,7 @@ const dataDocRef = doc(db, "bandinha", "data");
         e.stopPropagation();
         const r = data.roteiros.find(r => r.id === el.dataset.id);
         if(!confirm(`Remover o roteiro ${r ? `"${r.titulo}"` : ""}?`)) return;
-        data.roteiros = data.roteiros.filter(r => r.id !== el.dataset.id);
-        await save(); render(); showToast("Roteiro removido");
+        await deleteDoc(doc(roteirosCol, el.dataset.id)); showToast("Roteiro removido");
       });
     });
 
@@ -1196,7 +1300,10 @@ const dataDocRef = doc(db, "bandinha", "data");
         e.stopPropagation();
         if(!confirm("Remover este horário do roteiro?")) return;
         const r = data.roteiros.find(r => r.id === el.dataset.roteiro);
-        if(r){ r.itens = r.itens.filter(it => it.id !== el.dataset.item); await save(); render(); }
+        if(r){
+          const novosItens = r.itens.filter(it => it.id !== el.dataset.item);
+          await updateDoc(doc(roteirosCol, r.id), { itens: novosItens });
+        }
       });
     });
 
@@ -1209,9 +1316,9 @@ const dataDocRef = doc(db, "bandinha", "data");
         const horario = form.querySelector(".item-horario-input").value.trim();
         const atividade = form.querySelector(".item-atividade-input").value.trim();
         if(!horario || !atividade) return;
-        r.itens.push({ id: uid(), horario, atividade });
         openRoteiroId = r.id;
-        await save(); render();
+        const novosItens = [...r.itens, { id: uid(), horario, atividade }];
+        await updateDoc(doc(roteirosCol, r.id), { itens: novosItens });
       });
     });
   }
@@ -1225,7 +1332,9 @@ const dataDocRef = doc(db, "bandinha", "data");
     });
   });
 
-  load();
+  document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
+
+  loadAuth();
 })();
 </script>
 </body>
