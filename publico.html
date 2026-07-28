@@ -121,7 +121,7 @@
     align-items:center;
     gap:10px;
   }
-  .song-name{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .song-name{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
   .status-pill{
     flex-shrink:0;
     border-radius:20px;
@@ -133,6 +133,17 @@
   .status-aprender{background:rgba(210,103,122,0.15);color:var(--rose);}
   .status-ensaiando{background:rgba(228,181,74,0.15);color:var(--gold);}
   .status-pronta{background:rgba(111,168,143,0.15);color:var(--green);}
+  .lyrics-box{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--line);
+  }
+  .lyrics-text{
+    white-space:pre-wrap;
+    font-size:14px;
+    line-height:1.6;
+    color:var(--cream);
+  }
 
   .roteiro-card{padding:0;overflow:hidden;}
   .roteiro-head{
@@ -253,6 +264,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   let data = { musicas: [], roteiros: [] };
   let currentTab = "musicas";
   let openRoteiroId = null;
+  let openMusicaId = null;
   let loaded = false;
 
   function escapeHtml(s){
@@ -297,14 +309,22 @@ const dataDocRef = doc(db, "bandinha", "data");
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
     } else {
       const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
-      html += data.musicas.map(m => `
+      html += data.musicas.map(m => {
+        const open = openMusicaId === m.id;
+        return `
         <div class="card">
           <div class="song-row">
-            <div class="song-name">${escapeHtml(m.nome)}</div>
+            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">${escapeHtml(m.nome)}</div>
             <span class="status-pill status-${m.status}">${labels[m.status] || m.status}</span>
           </div>
+          ${open ? `
+            <div class="lyrics-box">
+              ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:13px;">Letra ainda não cadastrada.</div>`}
+            </div>
+          ` : ""}
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
     return html;
   }
@@ -348,6 +368,14 @@ const dataDocRef = doc(db, "bandinha", "data");
 
   // ---------- HANDLERS ----------
   function attachHandlers(){
+    document.querySelectorAll('[data-action="toggle-musica"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        openMusicaId = (openMusicaId === id) ? null : id;
+        render();
+      });
+    });
+
     document.querySelectorAll('[data-action="toggle-roteiro"]').forEach(el => {
       el.addEventListener("click", () => {
         const id = el.dataset.id;

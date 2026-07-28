@@ -331,7 +331,7 @@
     align-items:center;
     gap:10px;
   }
-  .song-name{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .song-name{flex:1;font-weight:600;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
   .status-pill{
     flex-shrink:0;
     border-radius:20px;
@@ -343,6 +343,32 @@
   .status-aprender{background:rgba(210,103,122,0.15);color:var(--rose);}
   .status-ensaiando{background:rgba(228,181,74,0.15);color:var(--gold);}
   .status-pronta{background:rgba(111,168,143,0.15);color:var(--green);}
+  .lyrics-box{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--line);
+  }
+  .lyrics-text{
+    white-space:pre-wrap;
+    font-size:14px;
+    line-height:1.6;
+    color:var(--cream);
+  }
+  .lyrics-textarea{
+    width:100%;
+    min-height:160px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+    outline:none;
+    resize:vertical;
+    margin-bottom:10px;
+  }
+  .lyrics-textarea:focus{border-color:var(--gold);}
 
   .roteiro-card{padding:0;overflow:hidden;}
   .roteiro-head{
@@ -496,6 +522,8 @@ const dataDocRef = doc(db, "bandinha", "data");
   let importOpen = false;
   let collapsedGroups = {};
   let editingNameId = null;
+  let openMusicaId = null;
+  let editingLetraId = null;
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
@@ -670,15 +698,30 @@ const dataDocRef = doc(db, "bandinha", "data");
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
-      html += data.musicas.map(m => `
+      html += data.musicas.map(m => {
+        const open = openMusicaId === m.id;
+        const editingLetra = editingLetraId === m.id;
+        return `
         <div class="card" data-id="${m.id}">
           <div class="song-row">
-            <div class="song-name">${escapeHtml(m.nome)}</div>
+            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">${escapeHtml(m.nome)}</div>
             <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
             <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
           </div>
+          ${open ? `
+            <div class="lyrics-box">
+              ${editingLetra ? `
+                <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
+                <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
+              ` : `
+                ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:13px;">Sem letra cadastrada.</div>`}
+                <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-letra" data-id="${m.id}">${m.letra ? "Editar letra" : "Adicionar letra"}</button>
+              `}
+            </div>
+          ` : ""}
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
     return html;
   }
@@ -757,7 +800,7 @@ const dataDocRef = doc(db, "bandinha", "data");
       const input = document.getElementById("input-musica-nome");
       const nome = input.value.trim();
       if(!nome) return;
-      data.musicas.push({ id: uid(), nome, status: "aprender" });
+      data.musicas.push({ id: uid(), nome, status: "aprender", letra: "" });
       await save(); render(); showToast("Música adicionada");
     });
 
@@ -905,6 +948,32 @@ const dataDocRef = doc(db, "bandinha", "data");
         if(!confirm(`Remover ${item ? item.nome : "este integrante"}?`)) return;
         data.integrantes = data.integrantes.filter(i => i.id !== el.dataset.id);
         await save(); render(); showToast("Integrante removido");
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-musica"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        openMusicaId = (openMusicaId === id) ? null : id;
+        editingLetraId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-letra"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingLetraId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-letra"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const textarea = document.querySelector('.lyrics-textarea');
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(item && textarea){ item.letra = textarea.value.trim(); await save(); }
+        editingLetraId = null;
+        render();
       });
     });
 
