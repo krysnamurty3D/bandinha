@@ -850,10 +850,11 @@ const progressoCol = collection(db, "progresso");
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhum integrante ainda.<br>Adicione o primeiro nome acima.</div>`;
     } else {
-      const homens = data.integrantes.filter(i => i.genero === "M");
-      const mulheres = data.integrantes.filter(i => i.genero === "F");
-      const semGenero = data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F");
-      const instrumental = data.integrantes.filter(i => i.instrumental);
+      const porNome = (a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+      const homens = data.integrantes.filter(i => i.genero === "M").sort(porNome);
+      const mulheres = data.integrantes.filter(i => i.genero === "F").sort(porNome);
+      const semGenero = data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F").sort(porNome);
+      const instrumental = data.integrantes.filter(i => i.instrumental).sort(porNome);
 
       html += renderGroup("homens", "Homens", homens, "var(--blue)");
       html += renderGroup("mulheres", "Mulheres", mulheres, "var(--rose)");
