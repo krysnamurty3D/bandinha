@@ -163,6 +163,26 @@
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
+    cursor:pointer;
+    border-bottom:1px dashed transparent;
+  }
+  .member-name:hover{border-bottom:1px dashed var(--muted);}
+  .edit-nome-input{
+    flex:1;
+    min-width:0;
+    font-weight:600;
+    font-size:15.5px;
+    padding:6px 8px;
+  }
+  .btn-save-nome{
+    flex-shrink:0;
+    background:var(--gold);
+    color:#14172B;
+    font-weight:700;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    font-size:15px;
   }
   .shirt-select{width:74px;flex-shrink:0;padding:8px 6px;font-size:13px;}
   .pay-toggle{
@@ -475,6 +495,7 @@ const dataDocRef = doc(db, "bandinha", "data");
   let loaded = false;
   let importOpen = false;
   let collapsedGroups = {};
+  let editingNameId = null;
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
@@ -596,7 +617,12 @@ const dataDocRef = doc(db, "bandinha", "data");
       return `
       <div class="card" data-id="${i.id}" style="border-left:3px solid ${color};">
         <div class="member-row">
-          <div class="member-name">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
+          ${editingNameId === i.id ? `
+            <input type="text" class="edit-nome-input" data-id="${i.id}" value="${escapeHtml(i.nome)}" />
+            <button class="btn-save-nome" data-action="save-nome" data-id="${i.id}">✓</button>
+          ` : `
+            <div class="member-name" data-action="edit-nome" data-id="${i.id}" title="Toque para editar o nome">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
+          `}
           <select class="shirt-select" data-action="shirt" data-id="${i.id}">
             <option value="">Cam.</option>
             ${SHIRT_SIZES.map(s => `<option value="${s}" ${i.camisa===s?"selected":""}>${s}</option>`).join("")}
@@ -787,6 +813,40 @@ const dataDocRef = doc(db, "bandinha", "data");
       el.addEventListener("change", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(item){ item.camisa = el.value; await save(); showToast("Tamanho salvo"); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingNameId = el.dataset.id;
+        render();
+        const input = document.querySelector('.edit-nome-input');
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+
+    async function commitNomeEdit(id, input){
+      const item = data.integrantes.find(i => i.id === id);
+      const novoNome = input.value.trim();
+      if(item && novoNome){ item.nome = novoNome; await save(); }
+      editingNameId = null;
+      render();
+    }
+
+    document.querySelectorAll('[data-action="save-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const input = document.querySelector('.edit-nome-input');
+        if(input) commitNomeEdit(el.dataset.id, input);
+      });
+    });
+
+    document.querySelectorAll('.edit-nome-input').forEach(el => {
+      el.addEventListener("keydown", e => {
+        if(e.key === "Enter"){ e.preventDefault(); commitNomeEdit(el.dataset.id, el); }
+        else if(e.key === "Escape"){ editingNameId = null; render(); }
+      });
+      el.addEventListener("blur", () => {
+        if(editingNameId === el.dataset.id) commitNomeEdit(el.dataset.id, el);
       });
     });
 
