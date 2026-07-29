@@ -157,6 +157,7 @@
     flex:0 0 auto;
     width:78px;
     display:flex;
+    flex-direction:column;
     align-items:center;
     justify-content:center;
     font-weight:800;
@@ -164,6 +165,12 @@
     color:var(--agenda-accent, var(--gold));
     line-height:1;
     padding:14px 6px;
+  }
+  .agenda-month{
+    font-weight:700;
+    font-size:calc(12px * var(--font-scale, 1));
+    letter-spacing:1px;
+    margin-top:4px;
   }
   .agenda-body{
     flex:1 1 auto;
@@ -1224,6 +1231,7 @@ const agendaCol = collection(db, "agenda");
   }
 
   const AGENDA_DIAS_SEMANA = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+  const AGENDA_MESES = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
   const AGENDA_CORES = ["var(--blue)","var(--green)","var(--gold)","var(--rose)"];
 
   function agendaRelativo(iso, hojeIso){
@@ -1262,7 +1270,7 @@ const agendaCol = collection(db, "agenda");
       const tags = (a.tags || "").split(",").map(t => t.trim()).filter(Boolean);
       return `
       <div class="agenda-card" style="--agenda-accent:${cor};${passado ? "opacity:0.55;" : ""}">
-        <div class="agenda-daynum">${d}</div>
+        <div class="agenda-daynum">${d}<span class="agenda-month">${AGENDA_MESES[parseInt(m, 10) - 1]}</span></div>
         <div class="agenda-body">
           <div class="agenda-toprow">
             <div class="agenda-weekday">${weekday}</div>
