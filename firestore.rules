@@ -28,6 +28,10 @@ service cloud.firestore {
     match /progresso/{docId} {
       allow read, write: if true;
     }
+    match /agenda/{docId} {
+      allow read: if true;
+      allow write: if isCoordenador();
+    }
     match /bandinha/{docId} {
       allow read, write: if isCoordenador();
     }

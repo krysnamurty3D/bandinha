@@ -558,6 +558,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     Progresso
   </button>
+  <button data-tab="agenda">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Agenda
+  </button>
 </nav>
 
 <script type="module">
@@ -584,12 +588,13 @@ const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const progressoCol = collection(db, "progresso");
+const agendaCol = collection(db, "agenda");
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -603,6 +608,7 @@ const progressoCol = collection(db, "progresso");
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
+  let editingAgendaId = null;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
 
@@ -692,6 +698,12 @@ const progressoCol = collection(db, "progresso");
       markLoaded("progresso");
       safeRender();
     }, e => { console.error("Erro ao sincronizar progresso:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(agendaCol, snap => {
+      data.agenda = snap.docs.map(d => d.data());
+      markLoaded("agenda");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar agenda:", e); showToast("Erro ao sincronizar"); });
   }
 
   function loadAuth(){
@@ -768,7 +780,8 @@ const progressoCol = collection(db, "progresso");
     else if(currentTab === "musicas") main.innerHTML = renderMusicas();
     else if(currentTab === "roteiros") main.innerHTML = renderRoteiros();
     else if(currentTab === "coreografias") main.innerHTML = renderCoreografias();
-    else main.innerHTML = renderProgresso();
+    else if(currentTab === "progresso") main.innerHTML = renderProgresso();
+    else main.innerHTML = renderAgenda();
 
     attachHandlers();
     window.scrollTo(0, scrollY);
@@ -1127,6 +1140,45 @@ const progressoCol = collection(db, "progresso");
     return html;
   }
 
+  function renderAgenda(){
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const hojeIso = hoje.toISOString().slice(0,10);
+    let html = `
+      <form class="inline-add" id="form-agenda" style="flex-wrap:wrap;">
+        <input type="date" id="input-agenda-data" required style="flex:0 0 150px;"/>
+        <input type="text" id="input-agenda-obs" placeholder="Observação (opcional)" style="flex:1 1 200px;"/>
+        <button type="submit" class="btn-add">+</button>
+      </form>
+    `;
+    if(data.agenda.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum dia de ensaio marcado ainda.</div>`;
+      return html;
+    }
+    const ordenada = [...data.agenda].sort((a,b) => a.data.localeCompare(b.data));
+    html += ordenada.map(a => {
+      const editing = editingAgendaId === a.id;
+      const passado = a.data < hojeIso;
+      return `
+      <div class="card" style="${passado ? "opacity:0.55;" : ""}">
+        <div class="roteiro-head" style="padding:0;cursor:default;">
+          <div class="roteiro-title" style="color:${passado ? "var(--muted)" : "var(--gold)"};">${formatDate(a.data)}</div>
+          <button class="del-x" data-action="del-agenda" data-id="${a.id}">✕</button>
+        </div>
+        ${editing ? `
+          <div style="margin-top:10px;">
+            <input type="text" class="edit-nome-input" id="input-edit-agenda-obs" data-id="${a.id}" value="${escapeHtml(a.observacoes || "")}" placeholder="Observação" style="margin-bottom:8px;"/>
+            <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-agenda-obs" data-id="${a.id}">Salvar</button>
+          </div>
+        ` : `
+          <div style="margin-top:8px;color:var(--muted);font-size:calc(14px * var(--font-scale, 1));cursor:pointer;" data-action="edit-agenda-obs" data-id="${a.id}">
+            ${a.observacoes ? escapeHtml(a.observacoes) : "<span style=\"text-decoration:underline;\">Adicionar observação</span>"}
+          </div>
+        `}
+      </div>`;
+    }).join("");
+    return html;
+  }
+
   // ---------- HANDLERS ----------
   function attachHandlers(){
     const formInt = document.getElementById("form-integrante");
@@ -1175,6 +1227,41 @@ const progressoCol = collection(db, "progresso");
       if(!driveId){ showToast("Link do Drive inválido"); return; }
       const novaCoreo = { id: uid(), categoria, titulo, link, driveId };
       await setDoc(doc(coreografiasCol, novaCoreo.id), novaCoreo); showToast("Coreografia adicionada");
+    });
+
+    const formAgenda = document.getElementById("form-agenda");
+    if(formAgenda) formAgenda.addEventListener("submit", async e => {
+      e.preventDefault();
+      const dataVal = document.getElementById("input-agenda-data").value;
+      const obs = document.getElementById("input-agenda-obs").value.trim();
+      if(!dataVal) return;
+      const novo = { id: uid(), data: dataVal, observacoes: obs };
+      await setDoc(doc(agendaCol, novo.id), novo); showToast("Dia marcado na agenda");
+    });
+
+    document.querySelectorAll('[data-action="edit-agenda-obs"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingAgendaId = el.dataset.id;
+        render();
+        const input = document.getElementById("input-edit-agenda-obs");
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-agenda-obs"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const input = document.getElementById("input-edit-agenda-obs");
+        if(input){ await updateDoc(doc(agendaCol, el.dataset.id), { observacoes: input.value.trim() }); }
+        editingAgendaId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-agenda"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Remover este dia da agenda?")) return;
+        await deleteDoc(doc(agendaCol, el.dataset.id)); showToast("Dia removido");
+      });
     });
 
     document.querySelectorAll('[data-action="toggle-coreografia"]').forEach(el => {
