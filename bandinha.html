@@ -143,6 +143,89 @@
     border:1px dashed var(--line);
     border-radius:var(--radius);
   }
+
+  .agenda-card{
+    display:flex;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-left:4px solid var(--agenda-accent, var(--gold));
+    border-radius:var(--radius);
+    margin-bottom:12px;
+    overflow:hidden;
+  }
+  .agenda-daynum{
+    flex:0 0 auto;
+    width:78px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:800;
+    font-size:calc(38px * var(--font-scale, 1));
+    color:var(--agenda-accent, var(--gold));
+    line-height:1;
+    padding:14px 6px;
+  }
+  .agenda-body{
+    flex:1 1 auto;
+    min-width:0;
+    padding:14px 14px 14px 0;
+  }
+  .agenda-toprow{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding-bottom:10px;
+    margin-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .agenda-weekday{
+    font-weight:700;
+    font-size:calc(15px * var(--font-scale, 1));
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--agenda-accent, var(--gold));
+  }
+  .agenda-badge{
+    margin-left:auto;
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:4px 12px;
+    font-size:calc(12px * var(--font-scale, 1));
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  .agenda-mainrow{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .agenda-time{
+    color:var(--muted);
+    font-weight:600;
+    font-size:calc(14px * var(--font-scale, 1));
+    flex:0 0 auto;
+  }
+  .agenda-title{
+    font-weight:700;
+    font-size:calc(16px * var(--font-scale, 1));
+    flex:1 1 auto;
+    min-width:120px;
+  }
+  .agenda-tags{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+  .agenda-tag{
+    background:rgba(240,169,60,0.15);
+    color:var(--gold);
+    border-radius:20px;
+    padding:4px 12px;
+    font-size:calc(12px * var(--font-scale, 1));
+    font-weight:700;
+  }
   .empty .note-dot{margin-bottom:8px;}
 
   form.inline-add{
@@ -1140,13 +1223,28 @@ const agendaCol = collection(db, "agenda");
     return html;
   }
 
+  const AGENDA_DIAS_SEMANA = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+  const AGENDA_CORES = ["var(--blue)","var(--green)","var(--gold)","var(--rose)"];
+
+  function agendaRelativo(iso, hojeIso){
+    const diffMs = new Date(iso + "T00:00:00") - new Date(hojeIso + "T00:00:00");
+    const dias = Math.round(diffMs / 86400000);
+    if(dias === 0) return "hoje";
+    if(dias === 1) return "amanhã";
+    if(dias > 1) return `em ${dias} dias`;
+    if(dias === -1) return "ontem";
+    return `há ${Math.abs(dias)} dias`;
+  }
+
   function renderAgenda(){
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const hojeIso = hoje.toISOString().slice(0,10);
     let html = `
       <form class="inline-add" id="form-agenda" style="flex-wrap:wrap;">
         <input type="date" id="input-agenda-data" required style="flex:0 0 150px;"/>
-        <input type="text" id="input-agenda-obs" placeholder="Observação (opcional)" style="flex:1 1 200px;"/>
+        <input type="time" id="input-agenda-hora" style="flex:0 0 110px;"/>
+        <input type="text" id="input-agenda-titulo" placeholder="Título (ex: Culto da Família)" style="flex:1 1 200px;"/>
+        <input type="text" id="input-agenda-tags" placeholder="Tags separadas por vírgula" style="flex:1 1 200px;"/>
         <button type="submit" class="btn-add">+</button>
       </form>
     `;
@@ -1154,26 +1252,35 @@ const agendaCol = collection(db, "agenda");
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhum dia de ensaio marcado ainda.</div>`;
       return html;
     }
-    const ordenada = [...data.agenda].sort((a,b) => a.data.localeCompare(b.data));
-    html += ordenada.map(a => {
+    const ordenada = [...data.agenda].sort((a,b) => a.data.localeCompare(b.data) || (a.hora || "").localeCompare(b.hora || ""));
+    html += ordenada.map((a, i) => {
       const editing = editingAgendaId === a.id;
       const passado = a.data < hojeIso;
+      const [y, m, d] = a.data.split("-");
+      const weekday = AGENDA_DIAS_SEMANA[new Date(a.data + "T00:00:00").getDay()];
+      const cor = passado ? "var(--muted)" : AGENDA_CORES[i % AGENDA_CORES.length];
+      const tags = (a.tags || "").split(",").map(t => t.trim()).filter(Boolean);
       return `
-      <div class="card" style="${passado ? "opacity:0.55;" : ""}">
-        <div class="roteiro-head" style="padding:0;cursor:default;">
-          <div class="roteiro-title" style="color:${passado ? "var(--muted)" : "var(--gold)"};">${formatDate(a.data)}</div>
-          <button class="del-x" data-action="del-agenda" data-id="${a.id}">✕</button>
-        </div>
-        ${editing ? `
-          <div style="margin-top:10px;">
-            <input type="text" class="edit-nome-input" id="input-edit-agenda-obs" data-id="${a.id}" value="${escapeHtml(a.observacoes || "")}" placeholder="Observação" style="margin-bottom:8px;"/>
+      <div class="agenda-card" style="--agenda-accent:${cor};${passado ? "opacity:0.55;" : ""}">
+        <div class="agenda-daynum">${d}</div>
+        <div class="agenda-body">
+          <div class="agenda-toprow">
+            <div class="agenda-weekday">${weekday}</div>
+            <div class="agenda-badge">${agendaRelativo(a.data, hojeIso)}</div>
+            <button class="del-x" data-action="del-agenda" data-id="${a.id}">✕</button>
+          </div>
+          ${editing ? `
+            <input type="text" class="edit-nome-input" id="input-edit-agenda-titulo" data-id="${a.id}" value="${escapeHtml(a.titulo || "")}" placeholder="Título" style="margin-bottom:8px;"/>
+            <input type="text" class="edit-nome-input" id="input-edit-agenda-tags" data-id="${a.id}" value="${escapeHtml(a.tags || "")}" placeholder="Tags separadas por vírgula" style="margin-bottom:8px;"/>
             <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-agenda-obs" data-id="${a.id}">Salvar</button>
-          </div>
-        ` : `
-          <div style="margin-top:8px;color:var(--muted);font-size:calc(14px * var(--font-scale, 1));cursor:pointer;" data-action="edit-agenda-obs" data-id="${a.id}">
-            ${a.observacoes ? escapeHtml(a.observacoes) : "<span style=\"text-decoration:underline;\">Adicionar observação</span>"}
-          </div>
-        `}
+          ` : `
+            <div class="agenda-mainrow" data-action="edit-agenda-obs" data-id="${a.id}" style="cursor:pointer;">
+              ${a.hora ? `<div class="agenda-time">${a.hora}</div>` : ""}
+              <div class="agenda-title">${a.titulo ? escapeHtml(a.titulo) : "<span style=\"color:var(--muted);text-decoration:underline;\">Adicionar título</span>"}</div>
+            </div>
+            ${tags.length > 0 ? `<div class="agenda-tags">${tags.map(t => `<span class="agenda-tag">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+          `}
+        </div>
       </div>`;
     }).join("");
     return html;
@@ -1233,9 +1340,11 @@ const agendaCol = collection(db, "agenda");
     if(formAgenda) formAgenda.addEventListener("submit", async e => {
       e.preventDefault();
       const dataVal = document.getElementById("input-agenda-data").value;
-      const obs = document.getElementById("input-agenda-obs").value.trim();
+      const hora = document.getElementById("input-agenda-hora").value;
+      const titulo = document.getElementById("input-agenda-titulo").value.trim();
+      const tags = document.getElementById("input-agenda-tags").value.trim();
       if(!dataVal) return;
-      const novo = { id: uid(), data: dataVal, observacoes: obs };
+      const novo = { id: uid(), data: dataVal, hora, titulo, tags };
       await setDoc(doc(agendaCol, novo.id), novo); showToast("Dia marcado na agenda");
     });
 
@@ -1243,15 +1352,18 @@ const agendaCol = collection(db, "agenda");
       el.addEventListener("click", () => {
         editingAgendaId = el.dataset.id;
         render();
-        const input = document.getElementById("input-edit-agenda-obs");
+        const input = document.getElementById("input-edit-agenda-titulo");
         if(input){ input.focus(); input.select(); }
       });
     });
 
     document.querySelectorAll('[data-action="save-agenda-obs"]').forEach(el => {
       el.addEventListener("click", async () => {
-        const input = document.getElementById("input-edit-agenda-obs");
-        if(input){ await updateDoc(doc(agendaCol, el.dataset.id), { observacoes: input.value.trim() }); }
+        const tituloInput = document.getElementById("input-edit-agenda-titulo");
+        const tagsInput = document.getElementById("input-edit-agenda-tags");
+        if(tituloInput && tagsInput){
+          await updateDoc(doc(agendaCol, el.dataset.id), { titulo: tituloInput.value.trim(), tags: tagsInput.value.trim() });
+        }
         editingAgendaId = null;
         render();
       });
