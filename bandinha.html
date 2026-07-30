@@ -367,6 +367,36 @@
     font-weight:700;
     font-size:calc(14px * var(--font-scale, 1));
   }
+  .ring-timer{
+    position:relative;
+    width:min(180px, 55vw);
+    height:min(180px, 55vw);
+    margin:8px auto;
+  }
+  .ring-timer svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:rgba(244,238,225,0.1);stroke-width:8;}
+  .ring-progress{
+    fill:none;
+    stroke:var(--rose);
+    stroke-width:8;
+    stroke-linecap:round;
+    transition:stroke-dashoffset 1s linear;
+  }
+  .ring-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring-time{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:calc(30px * var(--font-scale, 1));
+    color:var(--cream);
+  }
+  .aovivo-timer{font-family:'Montserrat',sans-serif;font-weight:800;font-size:calc(30px * var(--font-scale, 1));}
+  .aovivo-timer.esgotado{color:var(--rose);}
   .del-x{
     flex-shrink:0;
     background:transparent;
@@ -793,7 +823,6 @@ const functionsApp = getFunctions(firebaseApp);
   let editingProgressoNome = null;
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
-  let selectedEtapaAtual = null;
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
   let enviandoUrgente = false;
@@ -1445,24 +1474,38 @@ const functionsApp = getFunctions(firebaseApp);
     return `há ${Math.abs(dias)} dias`;
   }
 
+  function renderRingTimer(restanteSeg, totalSeg){
+    const r = 54;
+    const c = 2 * Math.PI * r;
+    const fracao = totalSeg > 0 ? Math.min(1, restanteSeg / totalSeg) : 0;
+    const offset = c * (1 - fracao);
+    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
+    const ss = String(restanteSeg % 60).padStart(2, "0");
+    return `
+      <div class="ring-timer">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="${r}"></circle>
+          <circle class="ring-progress" cx="60" cy="60" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${offset}"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-time">${mm}:${ss}</div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderAoVivoStatus(){
     const a = data.aoVivo;
     if(!a) return "";
     const restanteSeg = Math.max(0, Math.round((a.disparadoEm + a.minutos * 60000 - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
-    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
-    const ss = String(restanteSeg % 60).padStart(2, "0");
     return `
-      <div class="card" style="border-left:3px solid ${a.urgente ? "var(--rose)" : "var(--gold)"};margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-          <div>
-            <div style="font-weight:700;">${a.urgente ? "🚨 URGENTE — corram para " + escapeHtml(a.proximaEtapa) : `${escapeHtml(a.etapaAtual)} → ${escapeHtml(a.proximaEtapa)}`}</div>
-            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${a.urgente ? "Aviso urgente ativo" : esgotado ? "Tempo esgotado" : `Faltam ${mm}:${ss}`}</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-shrink:0;">
-            ${!a.urgente && a.minutos > 0 ? `<button type="button" id="btn-reiniciar-aovivo" class="link-btn" style="white-space:nowrap;">Reiniciar</button>` : ""}
-            <button type="button" id="btn-parar-aovivo" class="del-x" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">Parar</button>
-          </div>
+      <div class="card" style="border-left:3px solid ${a.urgente ? "var(--rose)" : "var(--gold)"};margin-bottom:16px;text-align:center;">
+        <div style="font-weight:700;margin-bottom:10px;">${a.urgente ? "🚨 URGENTE — corram para " + escapeHtml(a.proximaEtapa) : "📍 " + escapeHtml(a.proximaEtapa)}</div>
+        ${a.urgente ? "" : esgotado ? `<div class="aovivo-timer esgotado">Tempo esgotado</div>` : renderRingTimer(restanteSeg, a.minutos * 60)}
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
+          ${!a.urgente && a.minutos > 0 ? `<button type="button" id="btn-reiniciar-aovivo" class="link-btn" style="white-space:nowrap;">Reiniciar</button>` : ""}
+          <button type="button" id="btn-parar-aovivo" class="del-x" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">Parar</button>
         </div>
       </div>
     `;
@@ -1479,7 +1522,7 @@ const functionsApp = getFunctions(firebaseApp);
   function renderAoVivo(){
     let html = renderAoVivoStatus() + `
       <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
-        Escolha a etapa atual e a próxima, ajuste os minutos e dispare — todo mundo que ativou notificação recebe na hora.
+        Escolha a próxima etapa, ajuste os minutos e dispare — todo mundo que ativou notificação recebe na hora.
       </div>
       <form class="inline-add" id="form-local" style="flex-wrap:wrap;">
         <input type="text" id="input-local-nome" placeholder="Novo badge (ex: Palco, Almoço, Livre)" style="flex:1 1 200px;" required/>
@@ -1498,8 +1541,8 @@ const functionsApp = getFunctions(firebaseApp);
 
       html += `
         <div class="card" style="margin-top:4px;">
-          <label class="stepper-label">Etapa atual</label>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">${renderBadgeChips("select-etapa-atual", selectedEtapaAtual)}</div>
+          <label class="stepper-label">Próxima etapa</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">${renderBadgeChips("select-proxima-etapa", selectedProximaEtapa)}</div>
 
           <label class="stepper-label">Minutos</label>
           <div class="stepper-row">
@@ -1510,15 +1553,12 @@ const functionsApp = getFunctions(firebaseApp);
             <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="10">+10</button>
           </div>
 
-          <label class="stepper-label" style="margin-top:16px;">Próxima etapa</label>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">${renderBadgeChips("select-proxima-etapa", selectedProximaEtapa)}</div>
-
-          <label class="stepper-label">Avisar antes de terminar</label>
+          <label class="stepper-label" style="margin-top:16px;">Avisar antes de terminar</label>
           <div style="display:flex;gap:8px;">
             <button type="button" class="pay-toggle ${avisoAntesMin === 10 ? "paid" : ""}" data-action="select-aviso-antes" data-min="10">Avisar 10 min antes</button>
             <button type="button" class="pay-toggle ${avisoAntesMin === 5 ? "paid" : ""}" data-action="select-aviso-antes" data-min="5">Avisar 5 min antes</button>
           </div>
-          <button type="button" id="btn-disparar-aviso" class="btn-import" style="margin-top:14px;" ${(!selectedEtapaAtual || !selectedProximaEtapa || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
+          <button type="button" id="btn-disparar-aviso" class="btn-import" style="margin-top:14px;" ${(!selectedProximaEtapa || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
           <button type="button" id="btn-urgente" class="btn-urgente" ${(!selectedProximaEtapa || enviandoUrgente) ? "disabled" : ""}>${enviandoUrgente ? "Enviando..." : "🚨 Urgente — corram agora"}</button>
         </div>
       `;
@@ -1664,13 +1704,6 @@ const functionsApp = getFunctions(firebaseApp);
       }
     });
 
-    document.querySelectorAll('[data-action="select-etapa-atual"]').forEach(el => {
-      el.addEventListener("click", () => {
-        selectedEtapaAtual = (selectedEtapaAtual === el.dataset.nome) ? null : el.dataset.nome;
-        render();
-      });
-    });
-
     document.querySelectorAll('[data-action="select-proxima-etapa"]').forEach(el => {
       el.addEventListener("click", () => {
         selectedProximaEtapa = (selectedProximaEtapa === el.dataset.nome) ? null : el.dataset.nome;
@@ -1682,7 +1715,6 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", async () => {
         const item = data.locais.find(l => l.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.nome}"` : "este local"}?`)) return;
-        if(item && selectedEtapaAtual === item.nome) selectedEtapaAtual = null;
         if(item && selectedProximaEtapa === item.nome) selectedProximaEtapa = null;
         try{
           await deleteDoc(doc(locaisCol, el.dataset.id));
@@ -1716,11 +1748,11 @@ const functionsApp = getFunctions(firebaseApp);
 
     const btnDisparar = document.getElementById("btn-disparar-aviso");
     if(btnDisparar) btnDisparar.addEventListener("click", async () => {
-      if(!selectedEtapaAtual || !selectedProximaEtapa){ showToast("Escolha a etapa atual e a próxima"); return; }
+      if(!selectedProximaEtapa){ showToast("Escolha a próxima etapa"); return; }
       enviandoAviso = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ etapaAtual: selectedEtapaAtual, proximaEtapa: selectedProximaEtapa, minutos: avisoMinutosValor, avisoAntesMin });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ proximaEtapa: selectedProximaEtapa, minutos: avisoMinutosValor, avisoAntesMin });
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
@@ -1737,7 +1769,7 @@ const functionsApp = getFunctions(firebaseApp);
       enviandoUrgente = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ etapaAtual: selectedEtapaAtual || selectedProximaEtapa, proximaEtapa: selectedProximaEtapa, minutos: 0, urgente: true });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ proximaEtapa: selectedProximaEtapa, minutos: 0, urgente: true });
         showToast("Aviso urgente enviado!");
       }catch(err){
         console.error(err);
@@ -2182,8 +2214,14 @@ const functionsApp = getFunctions(firebaseApp);
   setInterval(() => {
     const focused = document.activeElement;
     const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
-    if((currentTab === "roteiros" || currentTab === "aovivo") && loaded && !isTyping) render();
+    if(currentTab === "roteiros" && loaded && !isTyping) render();
   }, 30000);
+
+  setInterval(() => {
+    const focused = document.activeElement;
+    const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
+    if(currentTab === "aovivo" && loaded && !isTyping) render();
+  }, 1000);
 })();
 </script>
 </body>

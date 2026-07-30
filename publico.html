@@ -960,7 +960,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(!data.aoVivo){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
     }
-    const { etapaAtual, proximaEtapa, minutos, disparadoEm, urgente } = data.aoVivo;
+    const { proximaEtapa, minutos, disparadoEm, urgente } = data.aoVivo;
     const totalSeg = minutos * 60;
     const fimMs = disparadoEm + minutos * 60000;
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
@@ -977,8 +977,6 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }
     return `
       <div class="card aovivo-card">
-        <div class="aovivo-label">Etapa atual</div>
-        <div class="aovivo-badge">📍 ${escapeHtml(etapaAtual)}</div>
         ${esgotado ? `<div class="aovivo-timer esgotado">Já!</div>` : renderRingTimer(restanteSeg, totalSeg)}
         <div class="aovivo-label" style="margin-top:14px;">Próxima etapa</div>
         <div class="aovivo-badge" style="margin-top:6px;">📍 ${escapeHtml(proximaEtapa)}</div>

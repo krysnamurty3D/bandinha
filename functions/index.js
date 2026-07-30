@@ -17,7 +17,7 @@ async function sendToAll(title, body) {
   const tokens = tokensSnap.docs.map(d => d.id);
   const res = await getMessaging().sendEachForMulticast({
     tokens,
-    notification: { title, body }
+    data: { title, body }
   });
   const invalidos = [];
   res.responses.forEach((r, i) => {
@@ -48,7 +48,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
-  const { etapaAtual, proximaEtapa, minutos, urgente, avisoAntesMin } = request.data || {};
+  const { proximaEtapa, minutos, urgente, avisoAntesMin } = request.data || {};
   if (!proximaEtapa || typeof minutos !== "number" || minutos < 0) {
     throw new HttpsError("invalid-argument", "Informe a próxima etapa e os minutos.");
   }
@@ -56,9 +56,8 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     ? `🚨 Urgente — corram para ${proximaEtapa} agora!`
     : minutos === 0
       ? `Posicionem-se agora em ${proximaEtapa}`
-      : `Agora: ${etapaAtual || proximaEtapa}. Em ${minutos} min: ${proximaEtapa}`;
+      : `Em ${minutos} min: ${proximaEtapa}`;
   await db.collection("aoVivo").doc("atual").set({
-    etapaAtual: etapaAtual || proximaEtapa,
     proximaEtapa,
     minutos,
     disparadoEm: Date.now(),
