@@ -890,7 +890,11 @@ const functionsApp = getFunctions(firebaseApp);
       data.locais = snap.docs.map(d => d.data());
       markLoaded("locais");
       safeRender();
-    }, e => { console.error("Erro ao sincronizar locais:", e); showToast("Erro ao sincronizar"); });
+    }, e => {
+      console.error("Erro ao sincronizar locais:", e);
+      markLoaded("locais");
+      safeRender();
+    });
   }
 
   function loadAuth(){
