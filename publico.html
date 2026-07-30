@@ -351,6 +351,7 @@
     justify-content:center;
     box-shadow:0 2px 10px rgba(0,0,0,0.35);
   }
+  .font-ctrl.push-ctrl{bottom:150px;}
   .toast{
     position:fixed;
     bottom:96px;
@@ -382,6 +383,7 @@
 
 <div class="toast" id="toast"></div>
 <button type="button" id="btn-font-size" class="font-ctrl" title="Tamanho da fonte">Aa</button>
+<button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações">🔔</button>
 
 <nav class="tabbar">
   <button data-tab="musicas" class="active">
@@ -405,6 +407,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -422,6 +425,8 @@ const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const agendaCol = collection(db, "agenda");
 const progressoCol = collection(db, "progresso");
+const pushTokensCol = collection(db, "pushTokens");
+const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
 
 (function(){
   let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
@@ -490,6 +495,30 @@ const progressoCol = collection(db, "progresso");
   function applyFontScale(idx){
     document.documentElement.style.setProperty("--font-scale", FONT_SCALES[idx]);
     localStorage.setItem("bandinha-font-scale", FONT_SCALES[idx]);
+  }
+
+  function initPush(){
+    const btn = document.getElementById("btn-push");
+    btn.addEventListener("click", () => ativarPush(btn));
+    isSupported().then(supported => {
+      if(supported) btn.classList.remove("hidden");
+    });
+  }
+
+  async function ativarPush(btn){
+    try{
+      const permissao = await Notification.requestPermission();
+      if(permissao !== "granted"){ showToast("Permissão de notificação negada"); return; }
+      const registration = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+      const messaging = getMessaging(firebaseApp);
+      const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+      if(!token){ showToast("Não foi possível gerar o token de notificação"); return; }
+      await setDoc(doc(pushTokensCol, token), { token, criadoEm: Date.now(), plataforma: "publico" });
+      showToast("Notificações ativadas!");
+    }catch(err){
+      console.error(err);
+      showToast("Erro ao ativar notificações");
+    }
   }
 
   function markLoaded(key){
@@ -823,6 +852,7 @@ const progressoCol = collection(db, "progresso");
   });
 
   initFontScale();
+  initPush();
   load();
   if(meuNome) loadMeuProgresso();
 })();

@@ -35,5 +35,10 @@ service cloud.firestore {
     match /bandinha/{docId} {
       allow read, write: if isCoordenador();
     }
+    match /pushTokens/{docId} {
+      allow read: if false;
+      allow create, update: if request.resource.data.keys().hasOnly(['token','criadoEm','plataforma']) && request.resource.data.token == docId;
+      allow delete: if isCoordenador();
+    }
   }
 }
