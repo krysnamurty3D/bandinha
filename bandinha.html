@@ -287,6 +287,18 @@
     border-bottom:1px dashed transparent;
   }
   .member-name:hover{border-bottom:1px dashed var(--muted);}
+  .confirm-dot{
+    width:11px;height:11px;border-radius:50%;
+    flex-shrink:0;
+    border:2px solid var(--muted);
+    background:transparent;
+    padding:0;
+    cursor:pointer;
+  }
+  .confirm-dot.confirmed{
+    background:var(--green);
+    border-color:var(--green);
+  }
   .edit-nome-input{
     flex:1;
     min-width:0;
@@ -924,11 +936,16 @@ const agendaCol = collection(db, "agenda");
     const totalHomens = data.integrantes.filter(i => i.genero === "M").length;
     const totalMulheres = data.integrantes.filter(i => i.genero === "F").length;
     const totalInstrumental = data.integrantes.filter(i => i.instrumental).length;
+    const totalConfirmados = data.integrantes.filter(i => i.confirmado).length;
 
     let html = `
       <div class="stat-row">
         <div class="stat"><div class="num">${total}</div><div class="lbl">Integrantes (${totalHomens}H · ${totalMulheres}M)</div></div>
         <div class="stat"><div class="num">${totalInstrumental}</div><div class="lbl">Instrumental</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:0 2px 14px 2px;">
+        <span style="display:flex;align-items:center;gap:6px;"><span class="confirm-dot confirmed" style="cursor:default;"></span>Confirmado (${totalConfirmados})</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span class="confirm-dot" style="cursor:default;"></span>A convidar (${total - totalConfirmados})</span>
       </div>
       <form class="inline-add" id="form-integrante">
         <input type="text" id="input-integrante-nome" placeholder="Nome do integrante" required />
@@ -989,6 +1006,7 @@ const agendaCol = collection(db, "agenda");
       return `
       <div class="card" data-id="${i.id}" style="border-left:3px solid ${color};">
         <div class="member-row">
+          <button class="confirm-dot ${i.confirmado ? "confirmed" : ""}" data-action="toggle-confirmado" data-id="${i.id}" title="${i.confirmado ? "Confirmado — toque para desmarcar" : "A convidar — toque para confirmar"}"></button>
           ${editingNameId === i.id ? `
             <input type="text" class="edit-nome-input" data-id="${i.id}" value="${escapeHtml(i.nome)}" />
             <button class="btn-save-nome" data-action="save-nome" data-id="${i.id}">✓</button>
@@ -1315,7 +1333,7 @@ const agendaCol = collection(db, "agenda");
       const nome = input.value.trim();
       const genero = generoSelect.value;
       if(!nome || !genero) { showToast("Preencha nome e sexo"); return; }
-      const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false };
+      const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false, confirmado: false };
       instrumentalCheck.checked = false;
       await setDoc(doc(integrantesCol, novoInt.id), novoInt); showToast("Integrante adicionado");
     });
@@ -1458,7 +1476,7 @@ const agendaCol = collection(db, "agenda");
       const novos = [];
       nomes.forEach(nome => {
         if(!existentes.has(nome.toLowerCase())){
-          novos.push({ id: uid(), nome, genero, instrumental, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false });
+          novos.push({ id: uid(), nome, genero, instrumental, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false, confirmado: false });
           existentes.add(nome.toLowerCase());
         }
       });
@@ -1540,6 +1558,13 @@ const agendaCol = collection(db, "agenda");
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
         await updateDoc(doc(integrantesCol, item.id), { taxaEquipe: !item.taxaEquipe });
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-confirmado"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(item){ await updateDoc(doc(integrantesCol, item.id), { confirmado: !item.confirmado }); }
       });
     });
 
