@@ -48,7 +48,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
-  const { local, minutos, urgente } = request.data || {};
+  const { local, minutos, urgente, avisoAntesMin } = request.data || {};
   if (!local || typeof minutos !== "number" || minutos < 0) {
     throw new HttpsError("invalid-argument", "Informe o local e os minutos.");
   }
@@ -57,40 +57,30 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     : minutos === 0
       ? `Posicionem-se agora em ${local}`
       : `Faltam ${minutos} min — posicionem-se em ${local}`;
-  await db.collection("aoVivo").doc("atual").set({ tipo: "local", local, minutos, disparadoEm: Date.now(), urgente: !!urgente });
+  await db.collection("aoVivo").doc("atual").set({
+    tipo: "local",
+    local,
+    minutos,
+    disparadoEm: Date.now(),
+    urgente: !!urgente,
+    avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
+    avisoAntesEnviado: false
+  });
   await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto);
   return { ok: true };
 });
 
-exports.iniciarIntervalo = onCall(async request => {
-  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
-    throw new HttpsError("permission-denied", "Apenas o coordenador pode iniciar o intervalo.");
-  }
-  const { local, minutos } = request.data || {};
-  if (!local || typeof minutos !== "number" || minutos <= 0) {
-    throw new HttpsError("invalid-argument", "Informe o local e a duração em minutos.");
-  }
-  await db.collection("aoVivo").doc("atual").set({
-    tipo: "intervalo",
-    local,
-    minutos,
-    disparadoEm: Date.now(),
-    avisoCincoEnviado: false
-  });
-  await sendToAll("Intervalo iniciado", `${minutos} min de intervalo — próxima entrada: ${local}`);
-  return { ok: true };
-});
-
-exports.avisoIntervalo = onSchedule("* * * * *", async () => {
+exports.avisoAntesFim = onSchedule("* * * * *", async () => {
   const ref = db.collection("aoVivo").doc("atual");
   const snap = await ref.get();
   if (!snap.exists) return;
   const a = snap.data();
-  if (a.tipo !== "intervalo" || a.avisoCincoEnviado) return;
+  if (a.urgente || !a.minutos || a.avisoAntesEnviado) return;
+  const limiar = a.avisoAntesMin || 5;
   const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
-  if (restanteMin <= 5 && restanteMin > 4) {
-    await sendToAll("Intervalo acabando", `Faltam 5 minutos — preparem-se para ${a.local}`);
-    await ref.update({ avisoCincoEnviado: true });
+  if (restanteMin <= limiar && restanteMin > limiar - 1) {
+    await sendToAll("Atenção", `Faltam ${limiar} minutos — preparem-se para ${a.local}`);
+    await ref.update({ avisoAntesEnviado: true });
   }
 });
 

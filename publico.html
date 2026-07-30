@@ -975,16 +975,6 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         </div>
       `;
     }
-    if(tipo === "intervalo"){
-      return `
-        <div class="card aovivo-card">
-          <div class="aovivo-badge">⏸ Intervalo</div>
-          ${esgotado ? `<div class="aovivo-timer esgotado">Acabou!</div>` : renderRingTimer(restanteSeg, totalSeg)}
-          <div class="aovivo-label">${esgotado ? "voltem para" : "próxima entrada"}</div>
-          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(local)}</div>
-        </div>
-      `;
-    }
     return `
       <div class="card aovivo-card">
         <div class="aovivo-badge">📍 ${escapeHtml(local)}</div>
