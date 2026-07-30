@@ -674,7 +674,7 @@ const progressoCol = collection(db, "progresso");
 
   function renderCoreografiaGroup(categoria, lista){
     const key = "coreo-" + categoria;
-    const collapsed = !!collapsedGroups[key];
+    const collapsed = collapsedGroups[key] === undefined ? true : !!collapsedGroups[key];
     const color = corCategoria(categoria);
     let html = `
       <div class="section-title" data-action="toggle-group" data-group="${key}">
