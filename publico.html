@@ -278,6 +278,18 @@
   }
   .roteiro-title{font-family:'Montserrat',sans-serif;font-weight:600;font-size:calc(17px * var(--font-scale, 1));}
   .roteiro-date{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);margin-top:2px;}
+  .roteiro-countdown{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);font-weight:700;margin-top:4px;}
+  .roteiro-info-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    align-items:center;
+    color:var(--muted);
+    font-size:calc(13px * var(--font-scale, 1));
+    margin-bottom:12px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
   .roteiro-body{
     padding:0 16px 16px 16px;
     border-top:1px solid var(--line);
@@ -664,16 +676,24 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
       html += ordered.map(r => {
         const open = openRoteiroId === r.id;
         const itensOrdenados = [...r.itens].sort((a,b) => a.horario.localeCompare(b.horario));
+        const countdown = roteiroCountdown(r);
         return `
         <div class="card roteiro-card">
           <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
             <div>
               <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
-              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}</div>` : ""}
+              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}${r.hora ? ` às ${r.hora}` : ""}</div>` : ""}
+              ${countdown ? `<div class="roteiro-countdown">⏱ ${countdown}</div>` : ""}
             </div>
             <span class="chevron ${open?"open":""}">▶</span>
           </div>
           <div class="roteiro-body ${open?"":"hidden"}">
+            ${(r.hora || r.local) ? `
+              <div class="roteiro-info-row">
+                ${r.hora ? `<span>🕐 ${r.hora}</span>` : ""}
+                ${r.local ? `<span>📍 ${escapeHtml(r.local)}</span>` : ""}
+              </div>
+            ` : ""}
             ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
               <div class="item-row">
                 <div class="item-time">${escapeHtml(it.horario)}</div>
@@ -690,6 +710,19 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
   function formatDate(iso){
     const [y,m,d] = iso.split("-");
     return `${d}/${m}/${y}`;
+  }
+
+  function roteiroCountdown(r){
+    if(!r.data) return null;
+    const alvo = new Date(`${r.data}T${r.hora || "00:00"}:00`).getTime();
+    const diffMin = Math.round((alvo - Date.now()) / 60000);
+    if(diffMin <= 0) return null;
+    const dias = Math.floor(diffMin / 1440);
+    const horas = Math.floor((diffMin % 1440) / 60);
+    const minutos = diffMin % 60;
+    if(dias > 0) return `Faltam ${dias}d ${horas}h`;
+    if(horas > 0) return `Faltam ${horas}h ${minutos}min`;
+    return `Faltam ${minutos}min`;
   }
 
   function renderCoreografias(){
@@ -855,6 +888,12 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
   initPush();
   load();
   if(meuNome) loadMeuProgresso();
+
+  setInterval(() => {
+    const focused = document.activeElement;
+    const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
+    if(currentTab === "roteiros" && loaded && !isTyping) render();
+  }, 30000);
 })();
 </script>
 </body>

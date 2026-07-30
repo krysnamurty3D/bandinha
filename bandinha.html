@@ -548,6 +548,19 @@
   }
   .roteiro-title{font-family:'Montserrat',sans-serif;font-weight:600;font-size:calc(17px * var(--font-scale, 1));}
   .roteiro-date{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);margin-top:2px;}
+  .roteiro-countdown{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);font-weight:700;margin-top:4px;}
+  .roteiro-info-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    align-items:center;
+    color:var(--muted);
+    font-size:calc(13px * var(--font-scale, 1));
+    cursor:pointer;
+    margin-bottom:12px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
   .roteiro-body{
     padding:0 16px 16px 16px;
     border-top:1px solid var(--line);
@@ -737,6 +750,7 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
   let editingAgendaId = null;
+  let editingRoteiroInfoId = null;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
 
@@ -1151,6 +1165,8 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
       <form class="inline-add" id="form-roteiro" style="flex-wrap:wrap;">
         <input type="text" id="input-roteiro-titulo" placeholder="Título do encontro" required style="flex:1 1 auto;"/>
         <input type="date" id="input-roteiro-data" style="flex:0 0 150px;"/>
+        <input type="time" id="input-roteiro-hora" style="flex:0 0 110px;"/>
+        <input type="text" id="input-roteiro-local" placeholder="Local de encontro (opcional)" style="flex:1 1 200px;"/>
         <button type="submit" class="btn-add">+</button>
       </form>
     `;
@@ -1160,13 +1176,16 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
       const ordered = [...data.roteiros].sort((a,b) => (a.data||"").localeCompare(b.data||""));
       html += ordered.map(r => {
         const open = openRoteiroId === r.id;
+        const editingInfo = editingRoteiroInfoId === r.id;
         const itensOrdenados = [...r.itens].sort((a,b) => a.horario.localeCompare(b.horario));
+        const countdown = roteiroCountdown(r);
         return `
         <div class="card roteiro-card">
           <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
             <div>
               <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
-              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}</div>` : ""}
+              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}${r.hora ? ` às ${r.hora}` : ""}</div>` : ""}
+              ${countdown ? `<div class="roteiro-countdown">⏱ ${countdown}</div>` : ""}
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
               <button class="del-x" data-action="del-roteiro" data-id="${r.id}">✕</button>
@@ -1174,6 +1193,18 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
             </div>
           </div>
           <div class="roteiro-body ${open?"":"hidden"}">
+            ${editingInfo ? `
+              <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">
+                <input type="time" class="edit-nome-input" id="input-edit-roteiro-hora" data-id="${r.id}" value="${r.hora || ''}" style="margin-bottom:8px;"/>
+                <input type="text" class="edit-nome-input" id="input-edit-roteiro-local" data-id="${r.id}" value="${escapeHtml(r.local || '')}" placeholder="Local de encontro" style="margin-bottom:8px;"/>
+                <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-roteiro-info" data-id="${r.id}">Salvar</button>
+              </div>
+            ` : `
+              <div class="roteiro-info-row" data-action="edit-roteiro-info" data-id="${r.id}">
+                <span>🕐 ${r.hora ? r.hora : "Definir hora"}</span>
+                <span>📍 ${r.local ? escapeHtml(r.local) : "Adicionar local de encontro"}</span>
+              </div>
+            `}
             ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
               <div class="item-row">
                 <div class="item-time">${escapeHtml(it.horario)}</div>
@@ -1196,6 +1227,19 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
   function formatDate(iso){
     const [y,m,d] = iso.split("-");
     return `${d}/${m}/${y}`;
+  }
+
+  function roteiroCountdown(r){
+    if(!r.data) return null;
+    const alvo = new Date(`${r.data}T${r.hora || "00:00"}:00`).getTime();
+    const diffMin = Math.round((alvo - Date.now()) / 60000);
+    if(diffMin <= 0) return null;
+    const dias = Math.floor(diffMin / 1440);
+    const horas = Math.floor((diffMin % 1440) / 60);
+    const minutos = diffMin % 60;
+    if(dias > 0) return `Faltam ${dias}d ${horas}h`;
+    if(horas > 0) return `Faltam ${horas}h ${minutos}min`;
+    return `Faltam ${minutos}min`;
   }
 
   function renderCoreografias(){
@@ -1412,10 +1456,31 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
       e.preventDefault();
       const titulo = document.getElementById("input-roteiro-titulo").value.trim();
       const dataVal = document.getElementById("input-roteiro-data").value;
+      const hora = document.getElementById("input-roteiro-hora").value;
+      const local = document.getElementById("input-roteiro-local").value.trim();
       if(!titulo) return;
-      const novo = { id: uid(), titulo, data: dataVal, itens: [] };
+      const novo = { id: uid(), titulo, data: dataVal, hora, local, itens: [] };
       openRoteiroId = novo.id;
       await setDoc(doc(roteirosCol, novo.id), novo); showToast("Roteiro criado");
+    });
+
+    document.querySelectorAll('[data-action="edit-roteiro-info"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingRoteiroInfoId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-roteiro-info"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const horaInput = document.getElementById("input-edit-roteiro-hora");
+        const localInput = document.getElementById("input-edit-roteiro-local");
+        if(horaInput && localInput){
+          await updateDoc(doc(roteirosCol, el.dataset.id), { hora: horaInput.value, local: localInput.value.trim() });
+        }
+        editingRoteiroInfoId = null;
+        render();
+      });
     });
 
     const formCoreo = document.getElementById("form-coreografia");
@@ -1839,6 +1904,12 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
   initFontScale();
   initPush();
   loadAuth();
+
+  setInterval(() => {
+    const focused = document.activeElement;
+    const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
+    if(currentTab === "roteiros" && loaded && !isTyping) render();
+  }, 30000);
 })();
 </script>
 </body>
