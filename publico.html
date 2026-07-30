@@ -857,12 +857,22 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(!data.aoVivo){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
     }
-    const { local, minutos, disparadoEm } = data.aoVivo;
+    const { tipo, local, minutos, disparadoEm } = data.aoVivo;
     const fimMs = disparadoEm + minutos * 60000;
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
     const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
     const ss = String(restanteSeg % 60).padStart(2, "0");
+    if(tipo === "intervalo"){
+      return `
+        <div class="card aovivo-card">
+          <div class="aovivo-badge">⏸ Intervalo</div>
+          <div class="aovivo-timer ${esgotado ? "esgotado" : ""}">${esgotado ? "Acabou!" : `${mm}:${ss}`}</div>
+          <div class="aovivo-label">${esgotado ? "voltem para" : "próxima entrada"}</div>
+          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(local)}</div>
+        </div>
+      `;
+    }
     return `
       <div class="card aovivo-card">
         <div class="aovivo-badge">📍 ${escapeHtml(local)}</div>

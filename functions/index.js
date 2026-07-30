@@ -54,9 +54,41 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   const texto = minutos === 0
     ? `Posicionem-se agora em ${local}`
     : `Faltam ${minutos} min — posicionem-se em ${local}`;
-  await db.collection("aoVivo").doc("atual").set({ local, minutos, disparadoEm: Date.now() });
+  await db.collection("aoVivo").doc("atual").set({ tipo: "local", local, minutos, disparadoEm: Date.now() });
   await sendToAll("Aviso ao vivo", texto);
   return { ok: true };
+});
+
+exports.iniciarIntervalo = onCall(async request => {
+  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
+    throw new HttpsError("permission-denied", "Apenas o coordenador pode iniciar o intervalo.");
+  }
+  const { local, minutos } = request.data || {};
+  if (!local || typeof minutos !== "number" || minutos <= 0) {
+    throw new HttpsError("invalid-argument", "Informe o local e a duração em minutos.");
+  }
+  await db.collection("aoVivo").doc("atual").set({
+    tipo: "intervalo",
+    local,
+    minutos,
+    disparadoEm: Date.now(),
+    avisoCincoEnviado: false
+  });
+  await sendToAll("Intervalo iniciado", `${minutos} min de intervalo — próxima entrada: ${local}`);
+  return { ok: true };
+});
+
+exports.avisoIntervalo = onSchedule("* * * * *", async () => {
+  const ref = db.collection("aoVivo").doc("atual");
+  const snap = await ref.get();
+  if (!snap.exists) return;
+  const a = snap.data();
+  if (a.tipo !== "intervalo" || a.avisoCincoEnviado) return;
+  const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
+  if (restanteMin <= 5 && restanteMin > 4) {
+    await sendToAll("Intervalo acabando", `Faltam 5 minutos — preparem-se para ${a.local}`);
+    await ref.update({ avisoCincoEnviado: true });
+  }
 });
 
 const LIMIARES = [

@@ -760,6 +760,7 @@ const functionsApp = getFunctions(firebaseApp);
   let editingRoteiroInfoId = null;
   let selectedLocalAoVivo = null;
   let enviandoAviso = false;
+  let enviandoIntervalo = false;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
 
@@ -1427,6 +1428,16 @@ const functionsApp = getFunctions(firebaseApp);
           <input type="number" id="input-aviso-minutos" min="0" placeholder="Ex: 5" style="margin-bottom:14px;"/>
           <button type="button" id="btn-disparar-aviso" class="btn-import" ${(!selectedLocalAoVivo || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
         </div>
+
+        <div class="card" style="margin-top:14px;">
+          <div class="section-title" style="margin:0 0 14px 0;cursor:default;">Intervalo</div>
+          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Duração do intervalo (minutos)</label>
+          <input type="number" id="input-intervalo-minutos" min="1" placeholder="Ex: 40" style="margin-bottom:14px;"/>
+          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Próxima entrada</label>
+          <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Selecione um local acima"}</div>
+          <button type="button" id="btn-iniciar-intervalo" class="btn-import" ${(!selectedLocalAoVivo || enviandoIntervalo) ? "disabled" : ""}>${enviandoIntervalo ? "Iniciando..." : "Iniciar intervalo"}</button>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:10px;">Um aviso automático é enviado faltando 5 minutos para o fim.</div>
+        </div>
       `;
     }
     return html;
@@ -1607,6 +1618,24 @@ const functionsApp = getFunctions(firebaseApp);
         showToast("Erro ao enviar aviso");
       }
       enviandoAviso = false;
+      render();
+    });
+
+    const btnIniciarIntervalo = document.getElementById("btn-iniciar-intervalo");
+    if(btnIniciarIntervalo) btnIniciarIntervalo.addEventListener("click", async () => {
+      const minutosInput = document.getElementById("input-intervalo-minutos");
+      const minutos = parseInt(minutosInput.value, 10);
+      if(!selectedLocalAoVivo || isNaN(minutos) || minutos <= 0){ showToast("Escolha o local e a duração"); return; }
+      enviandoIntervalo = true;
+      render();
+      try{
+        await httpsCallable(functionsApp, "iniciarIntervalo")({ local: selectedLocalAoVivo, minutos });
+        showToast("Intervalo iniciado!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao iniciar intervalo");
+      }
+      enviandoIntervalo = false;
       render();
     });
 
