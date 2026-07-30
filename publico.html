@@ -413,6 +413,43 @@
     white-space:nowrap;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .urgente-overlay{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    background:rgba(31,10,8,0.97);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:24px;
+    animation:urgente-pulse 1s infinite;
+  }
+  @keyframes urgente-pulse{
+    0%, 100%{background:rgba(31,10,8,0.97);}
+    50%{background:rgba(60,15,12,0.97);}
+  }
+  .urgente-badge{
+    font-size:calc(24px * var(--font-scale, 1));
+    font-weight:800;
+    color:var(--rose);
+    letter-spacing:1px;
+    margin-bottom:18px;
+  }
+  .urgente-local{
+    font-size:calc(30px * var(--font-scale, 1));
+    font-weight:800;
+    color:var(--cream);
+    margin-bottom:32px;
+  }
+  .urgente-ok{
+    width:auto;
+    padding:14px 40px;
+    background:var(--rose);
+    color:var(--cream);
+  }
 </style>
 </head>
 <body>
@@ -425,6 +462,11 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="urgente-overlay" class="urgente-overlay hidden">
+  <div class="urgente-badge">🚨 URGENTE</div>
+  <div class="urgente-local" id="urgente-overlay-local"></div>
+  <button type="button" id="btn-urgente-ok" class="btn-import urgente-ok">Entendi</button>
+</div>
 <button type="button" id="btn-font-size" class="font-ctrl" title="Tamanho da fonte">Aa</button>
 <button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações">🔔</button>
 
@@ -479,6 +521,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 (function(){
   let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
   let currentTab = "musicas";
+  let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
   let openMusicaId = null;
   let openCoreografiaId = null;
@@ -613,12 +656,24 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     onSnapshot(aoVivoDocRef, snap => {
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
+      checarUrgente();
       safeRender();
     }, e => {
       console.error("Erro ao sincronizar ao vivo:", e);
       markLoaded("aoVivo");
       safeRender();
     });
+  }
+
+  function checarUrgente(){
+    const a = data.aoVivo;
+    if(!a || a.tipo !== "local" || !a.urgente) return;
+    const recente = (Date.now() - a.disparadoEm) < 3 * 60000;
+    if(!recente || a.disparadoEm === ultimoUrgenteVisto) return;
+    ultimoUrgenteVisto = a.disparadoEm;
+    document.getElementById("urgente-overlay-local").textContent = "📍 " + a.local;
+    document.getElementById("urgente-overlay").classList.remove("hidden");
+    if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
   }
 
   // ---------- RENDER ----------
@@ -967,6 +1022,13 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       btn.classList.add("active");
       render();
     });
+  });
+
+  document.getElementById("btn-urgente-ok").addEventListener("click", () => {
+    document.getElementById("urgente-overlay").classList.add("hidden");
+    currentTab = "aovivo";
+    document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.toggle("active", b.dataset.tab === "aovivo"));
+    render();
   });
 
   initFontScale();
