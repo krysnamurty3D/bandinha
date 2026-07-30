@@ -695,11 +695,11 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
   function checarUrgente(){
     const a = data.aoVivo;
-    if(!a || a.tipo !== "local" || !a.urgente) return;
+    if(!a || !a.urgente) return;
     const recente = (Date.now() - a.disparadoEm) < 3 * 60000;
     if(!recente || a.disparadoEm === ultimoUrgenteVisto) return;
     ultimoUrgenteVisto = a.disparadoEm;
-    document.getElementById("urgente-overlay-local").textContent = "📍 " + a.local;
+    document.getElementById("urgente-overlay-local").textContent = "📍 " + a.proximaEtapa;
     document.getElementById("urgente-overlay").classList.remove("hidden");
     if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
   }
@@ -960,26 +960,28 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(!data.aoVivo){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
     }
-    const { tipo, local, minutos, disparadoEm, urgente } = data.aoVivo;
+    const { etapaAtual, proximaEtapa, minutos, disparadoEm, urgente } = data.aoVivo;
     const totalSeg = minutos * 60;
     const fimMs = disparadoEm + minutos * 60000;
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
-    if(tipo === "local" && urgente){
+    if(urgente){
       return `
         <div class="card aovivo-card" style="border-color:var(--rose);">
           <div class="aovivo-badge" style="background:rgba(214,64,42,0.2);color:var(--rose);">🚨 URGENTE</div>
           <div class="aovivo-timer esgotado">Agora!</div>
           <div class="aovivo-label">corram para</div>
-          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(local)}</div>
+          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(proximaEtapa)}</div>
         </div>
       `;
     }
     return `
       <div class="card aovivo-card">
-        <div class="aovivo-badge">📍 ${escapeHtml(local)}</div>
+        <div class="aovivo-label">Etapa atual</div>
+        <div class="aovivo-badge">📍 ${escapeHtml(etapaAtual)}</div>
         ${esgotado ? `<div class="aovivo-timer esgotado">Já!</div>` : renderRingTimer(restanteSeg, totalSeg)}
-        <div class="aovivo-label">${esgotado ? "Posicionem-se agora" : "para se posicionarem"}</div>
+        <div class="aovivo-label" style="margin-top:14px;">Próxima etapa</div>
+        <div class="aovivo-badge" style="margin-top:6px;">📍 ${escapeHtml(proximaEtapa)}</div>
       </div>
     `;
   }

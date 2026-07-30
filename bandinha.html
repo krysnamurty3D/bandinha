@@ -793,7 +793,8 @@ const functionsApp = getFunctions(firebaseApp);
   let editingProgressoNome = null;
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
-  let selectedLocalAoVivo = null;
+  let selectedEtapaAtual = null;
+  let selectedProximaEtapa = null;
   let enviandoAviso = false;
   let enviandoUrgente = false;
   let avisoMinutosValor = 5;
@@ -1447,7 +1448,6 @@ const functionsApp = getFunctions(firebaseApp);
   function renderAoVivoStatus(){
     const a = data.aoVivo;
     if(!a) return "";
-    const totalSeg = a.minutos * 60;
     const restanteSeg = Math.max(0, Math.round((a.disparadoEm + a.minutos * 60000 - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
     const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
@@ -1456,7 +1456,7 @@ const functionsApp = getFunctions(firebaseApp);
       <div class="card" style="border-left:3px solid ${a.urgente ? "var(--rose)" : "var(--gold)"};margin-bottom:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <div>
-            <div style="font-weight:700;">${a.urgente ? "🚨 URGENTE" : "📍"} ${escapeHtml(a.local)}</div>
+            <div style="font-weight:700;">${a.urgente ? "🚨 URGENTE — corram para " + escapeHtml(a.proximaEtapa) : `${escapeHtml(a.etapaAtual)} → ${escapeHtml(a.proximaEtapa)}`}</div>
             <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${a.urgente ? "Aviso urgente ativo" : esgotado ? "Tempo esgotado" : `Faltam ${mm}:${ss}`}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -1468,10 +1468,18 @@ const functionsApp = getFunctions(firebaseApp);
     `;
   }
 
+  function renderBadgeChips(action, selected){
+    return data.locais.map(l => `
+      <button type="button" class="pay-toggle ${selected === l.nome ? "paid" : ""}" data-action="${action}" data-nome="${escapeHtml(l.nome)}">
+        📍 ${escapeHtml(l.nome)}
+      </button>
+    `).join("");
+  }
+
   function renderAoVivo(){
     let html = renderAoVivoStatus() + `
       <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
-        Escolha o badge, ajuste os minutos com os botões e dispare — todo mundo que ativou notificação recebe na hora.
+        Escolha a etapa atual e a próxima, ajuste os minutos e dispare — todo mundo que ativou notificação recebe na hora.
       </div>
       <form class="inline-add" id="form-local" style="flex-wrap:wrap;">
         <input type="text" id="input-local-nome" placeholder="Novo badge (ex: Palco, Almoço, Livre)" style="flex:1 1 200px;" required/>
@@ -1481,24 +1489,18 @@ const functionsApp = getFunctions(firebaseApp);
     if(data.locais.length === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhum badge cadastrado ainda.</div>`;
     } else {
-      html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;">`;
-      html += data.locais.map(l => `
-        <button type="button" class="pay-toggle ${selectedLocalAoVivo === l.nome ? "paid" : ""}" data-action="select-local" data-nome="${escapeHtml(l.nome)}">
-          📍 ${escapeHtml(l.nome)}
-        </button>
-      `).join("");
-      html += `</div>`;
-      html += `<button type="button" id="btn-toggle-gerenciar-locais" class="link-btn">${gerenciarLocais ? "Concluir" : "Gerenciar badges"}</button>`;
+      html += `<button type="button" id="btn-toggle-gerenciar-locais" class="link-btn" style="margin-bottom:10px;">${gerenciarLocais ? "Concluir" : "Gerenciar badges"}</button>`;
       if(gerenciarLocais){
-        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">`;
+        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">`;
         html += data.locais.map(l => `<button class="del-x" data-action="del-local" data-id="${l.id}" title="Remover ${escapeHtml(l.nome)}" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">✕ ${escapeHtml(l.nome)}</button>`).join("");
         html += `</div>`;
       }
 
       html += `
-        <div class="card" style="margin-top:18px;">
-          <label class="stepper-label">Badge selecionado</label>
-          <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Nenhum badge selecionado"}</div>
+        <div class="card" style="margin-top:4px;">
+          <label class="stepper-label">Etapa atual</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">${renderBadgeChips("select-etapa-atual", selectedEtapaAtual)}</div>
+
           <label class="stepper-label">Minutos</label>
           <div class="stepper-row">
             <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="-10">-10</button>
@@ -1507,13 +1509,17 @@ const functionsApp = getFunctions(firebaseApp);
             <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="5">+5</button>
             <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="10">+10</button>
           </div>
-          <label class="stepper-label" style="margin-top:14px;">Avisar antes de terminar</label>
+
+          <label class="stepper-label" style="margin-top:16px;">Próxima etapa</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">${renderBadgeChips("select-proxima-etapa", selectedProximaEtapa)}</div>
+
+          <label class="stepper-label">Avisar antes de terminar</label>
           <div style="display:flex;gap:8px;">
             <button type="button" class="pay-toggle ${avisoAntesMin === 10 ? "paid" : ""}" data-action="select-aviso-antes" data-min="10">Avisar 10 min antes</button>
             <button type="button" class="pay-toggle ${avisoAntesMin === 5 ? "paid" : ""}" data-action="select-aviso-antes" data-min="5">Avisar 5 min antes</button>
           </div>
-          <button type="button" id="btn-disparar-aviso" class="btn-import" style="margin-top:14px;" ${(!selectedLocalAoVivo || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
-          <button type="button" id="btn-urgente" class="btn-urgente" ${(!selectedLocalAoVivo || enviandoUrgente) ? "disabled" : ""}>${enviandoUrgente ? "Enviando..." : "🚨 Urgente — corram agora"}</button>
+          <button type="button" id="btn-disparar-aviso" class="btn-import" style="margin-top:14px;" ${(!selectedEtapaAtual || !selectedProximaEtapa || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
+          <button type="button" id="btn-urgente" class="btn-urgente" ${(!selectedProximaEtapa || enviandoUrgente) ? "disabled" : ""}>${enviandoUrgente ? "Enviando..." : "🚨 Urgente — corram agora"}</button>
         </div>
       `;
     }
@@ -1658,9 +1664,16 @@ const functionsApp = getFunctions(firebaseApp);
       }
     });
 
-    document.querySelectorAll('[data-action="select-local"]').forEach(el => {
+    document.querySelectorAll('[data-action="select-etapa-atual"]').forEach(el => {
       el.addEventListener("click", () => {
-        selectedLocalAoVivo = (selectedLocalAoVivo === el.dataset.nome) ? null : el.dataset.nome;
+        selectedEtapaAtual = (selectedEtapaAtual === el.dataset.nome) ? null : el.dataset.nome;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="select-proxima-etapa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        selectedProximaEtapa = (selectedProximaEtapa === el.dataset.nome) ? null : el.dataset.nome;
         render();
       });
     });
@@ -1669,7 +1682,8 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", async () => {
         const item = data.locais.find(l => l.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.nome}"` : "este local"}?`)) return;
-        if(item && selectedLocalAoVivo === item.nome) selectedLocalAoVivo = null;
+        if(item && selectedEtapaAtual === item.nome) selectedEtapaAtual = null;
+        if(item && selectedProximaEtapa === item.nome) selectedProximaEtapa = null;
         try{
           await deleteDoc(doc(locaisCol, el.dataset.id));
           showToast("Local removido");
@@ -1702,11 +1716,11 @@ const functionsApp = getFunctions(firebaseApp);
 
     const btnDisparar = document.getElementById("btn-disparar-aviso");
     if(btnDisparar) btnDisparar.addEventListener("click", async () => {
-      if(!selectedLocalAoVivo){ showToast("Escolha o badge"); return; }
+      if(!selectedEtapaAtual || !selectedProximaEtapa){ showToast("Escolha a etapa atual e a próxima"); return; }
       enviandoAviso = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos: avisoMinutosValor, avisoAntesMin });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ etapaAtual: selectedEtapaAtual, proximaEtapa: selectedProximaEtapa, minutos: avisoMinutosValor, avisoAntesMin });
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
@@ -1718,12 +1732,12 @@ const functionsApp = getFunctions(firebaseApp);
 
     const btnUrgente = document.getElementById("btn-urgente");
     if(btnUrgente) btnUrgente.addEventListener("click", async () => {
-      if(!selectedLocalAoVivo){ showToast("Escolha o badge"); return; }
-      if(!confirm(`Enviar aviso URGENTE para correr até "${selectedLocalAoVivo}"?`)) return;
+      if(!selectedProximaEtapa){ showToast("Escolha a próxima etapa"); return; }
+      if(!confirm(`Enviar aviso URGENTE para correr até "${selectedProximaEtapa}"?`)) return;
       enviandoUrgente = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos: 0, urgente: true });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ etapaAtual: selectedEtapaAtual || selectedProximaEtapa, proximaEtapa: selectedProximaEtapa, minutos: 0, urgente: true });
         showToast("Aviso urgente enviado!");
       }catch(err){
         console.error(err);

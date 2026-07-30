@@ -48,18 +48,18 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
-  const { local, minutos, urgente, avisoAntesMin } = request.data || {};
-  if (!local || typeof minutos !== "number" || minutos < 0) {
-    throw new HttpsError("invalid-argument", "Informe o local e os minutos.");
+  const { etapaAtual, proximaEtapa, minutos, urgente, avisoAntesMin } = request.data || {};
+  if (!proximaEtapa || typeof minutos !== "number" || minutos < 0) {
+    throw new HttpsError("invalid-argument", "Informe a próxima etapa e os minutos.");
   }
   const texto = urgente
-    ? `🚨 Urgente — corram para ${local} agora!`
+    ? `🚨 Urgente — corram para ${proximaEtapa} agora!`
     : minutos === 0
-      ? `Posicionem-se agora em ${local}`
-      : `Faltam ${minutos} min — posicionem-se em ${local}`;
+      ? `Posicionem-se agora em ${proximaEtapa}`
+      : `Agora: ${etapaAtual || proximaEtapa}. Em ${minutos} min: ${proximaEtapa}`;
   await db.collection("aoVivo").doc("atual").set({
-    tipo: "local",
-    local,
+    etapaAtual: etapaAtual || proximaEtapa,
+    proximaEtapa,
     minutos,
     disparadoEm: Date.now(),
     urgente: !!urgente,
@@ -79,7 +79,7 @@ exports.avisoAntesFim = onSchedule("* * * * *", async () => {
   const limiar = a.avisoAntesMin || 5;
   const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
   if (restanteMin <= limiar && restanteMin > limiar - 1) {
-    await sendToAll("Atenção", `Faltam ${limiar} minutos — preparem-se para ${a.local}`);
+    await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`);
     await ref.update({ avisoAntesEnviado: true });
   }
 });
