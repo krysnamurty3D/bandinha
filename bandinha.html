@@ -699,6 +699,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     Agenda
   </button>
+  <button data-tab="aovivo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+    Ao Vivo
+  </button>
 </nav>
 
 <script type="module">
@@ -706,6 +710,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -728,13 +733,15 @@ const configDocRef = doc(db, "config", "main");
 const progressoCol = collection(db, "progresso");
 const agendaCol = collection(db, "agenda");
 const pushTokensCol = collection(db, "pushTokens");
+const locaisCol = collection(db, "locais");
 const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
+const functionsApp = getFunctions(firebaseApp);
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -751,6 +758,8 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
   let editingProgressoNome = null;
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
+  let selectedLocalAoVivo = null;
+  let enviandoAviso = false;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
 
@@ -876,6 +885,12 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
       markLoaded("agenda");
       safeRender();
     }, e => { console.error("Erro ao sincronizar agenda:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(locaisCol, snap => {
+      data.locais = snap.docs.map(d => d.data());
+      markLoaded("locais");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar locais:", e); showToast("Erro ao sincronizar"); });
   }
 
   function loadAuth(){
@@ -957,7 +972,8 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
     else if(currentTab === "roteiros") main.innerHTML = renderRoteiros();
     else if(currentTab === "coreografias") main.innerHTML = renderCoreografias();
     else if(currentTab === "progresso") main.innerHTML = renderProgresso();
-    else main.innerHTML = renderAgenda();
+    else if(currentTab === "agenda") main.innerHTML = renderAgenda();
+    else main.innerHTML = renderAoVivo();
 
     attachHandlers();
     window.scrollTo(0, scrollY);
@@ -1375,6 +1391,43 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
     return `há ${Math.abs(dias)} dias`;
   }
 
+  function renderAoVivo(){
+    let html = `
+      <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
+        Escolha o local, defina quantos minutos faltam e dispare — todo mundo que ativou notificação recebe na hora.
+      </div>
+      <form class="inline-add" id="form-local" style="flex-wrap:wrap;">
+        <input type="text" id="input-local-nome" placeholder="Novo local (ex: Palco)" style="flex:1 1 200px;" required/>
+        <button type="submit" class="btn-add">+</button>
+      </form>
+    `;
+    if(data.locais.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum local cadastrado ainda.</div>`;
+    } else {
+      html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;">`;
+      html += data.locais.map(l => `
+        <button type="button" class="pay-toggle ${selectedLocalAoVivo === l.nome ? "paid" : ""}" data-action="select-local" data-nome="${escapeHtml(l.nome)}">
+          📍 ${escapeHtml(l.nome)}
+        </button>
+      `).join("");
+      html += `</div>`;
+      html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+      html += data.locais.map(l => `<button class="del-x" data-action="del-local" data-id="${l.id}" title="Remover ${escapeHtml(l.nome)}" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">✕ ${escapeHtml(l.nome)}</button>`).join("");
+      html += `</div>`;
+
+      html += `
+        <div class="card" style="margin-top:18px;">
+          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Local selecionado</label>
+          <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Nenhum local selecionado"}</div>
+          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Minutos restantes</label>
+          <input type="number" id="input-aviso-minutos" min="0" placeholder="Ex: 5" style="margin-bottom:14px;"/>
+          <button type="button" id="btn-disparar-aviso" class="btn-import" ${(!selectedLocalAoVivo || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
+        </div>
+      `;
+    }
+    return html;
+  }
+
   function renderAgenda(){
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const hojeIso = hoje.toISOString().slice(0,10);
@@ -1494,6 +1547,50 @@ const VAPID_KEY = "COLE_AQUI_A_CHAVE_VAPID_DO_FIREBASE";
       if(!driveId){ showToast("Link do Drive inválido"); return; }
       const novaCoreo = { id: uid(), categoria, titulo, link, driveId };
       await setDoc(doc(coreografiasCol, novaCoreo.id), novaCoreo); showToast("Coreografia adicionada");
+    });
+
+    const formLocal = document.getElementById("form-local");
+    if(formLocal) formLocal.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-local-nome");
+      const nome = input.value.trim();
+      if(!nome) return;
+      const novo = { id: uid(), nome };
+      await setDoc(doc(locaisCol, novo.id), novo); showToast("Local adicionado");
+    });
+
+    document.querySelectorAll('[data-action="select-local"]').forEach(el => {
+      el.addEventListener("click", () => {
+        selectedLocalAoVivo = (selectedLocalAoVivo === el.dataset.nome) ? null : el.dataset.nome;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-local"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.locais.find(l => l.id === el.dataset.id);
+        if(!confirm(`Remover ${item ? `"${item.nome}"` : "este local"}?`)) return;
+        if(item && selectedLocalAoVivo === item.nome) selectedLocalAoVivo = null;
+        await deleteDoc(doc(locaisCol, el.dataset.id)); showToast("Local removido");
+      });
+    });
+
+    const btnDisparar = document.getElementById("btn-disparar-aviso");
+    if(btnDisparar) btnDisparar.addEventListener("click", async () => {
+      const minutosInput = document.getElementById("input-aviso-minutos");
+      const minutos = parseInt(minutosInput.value, 10);
+      if(!selectedLocalAoVivo || isNaN(minutos) || minutos < 0){ showToast("Escolha o local e os minutos"); return; }
+      enviandoAviso = true;
+      render();
+      try{
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos });
+        showToast("Aviso enviado!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao enviar aviso");
+      }
+      enviandoAviso = false;
+      render();
     });
 
     const formAgenda = document.getElementById("form-agenda");

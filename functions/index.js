@@ -3,6 +3,9 @@ const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+
+const COORDENADOR_EMAIL = "krysnamurty@gmail.com";
 
 initializeApp();
 const db = getFirestore();
@@ -38,6 +41,21 @@ exports.onNovoRoteiro = onDocumentCreated("roteiros/{id}", async event => {
 exports.onNovaMusica = onDocumentCreated("musicas/{id}", async event => {
   const m = event.data.data();
   await sendToAll("Nova música adicionada", m.nome || "");
+});
+
+exports.enviarAvisoAoVivo = onCall(async request => {
+  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
+    throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
+  }
+  const { local, minutos } = request.data || {};
+  if (!local || typeof minutos !== "number" || minutos < 0) {
+    throw new HttpsError("invalid-argument", "Informe o local e os minutos.");
+  }
+  const texto = minutos === 0
+    ? `Posicionem-se agora em ${local}`
+    : `Faltam ${minutos} min — posicionem-se em ${local}`;
+  await sendToAll("Aviso ao vivo", texto);
+  return { ok: true };
 });
 
 const LIMIARES = [
