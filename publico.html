@@ -210,6 +210,34 @@
     color:var(--cream);
   }
   .aovivo-timer.esgotado{color:var(--rose);}
+  .ring-timer{
+    position:relative;
+    width:min(220px, 60vw);
+    height:min(220px, 60vw);
+    margin:8px auto;
+  }
+  .ring-timer svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:rgba(244,238,225,0.1);stroke-width:8;}
+  .ring-progress{
+    fill:none;
+    stroke:var(--rose);
+    stroke-width:8;
+    stroke-linecap:round;
+    transition:stroke-dashoffset 1s linear;
+  }
+  .ring-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring-time{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:calc(38px * var(--font-scale, 1));
+    color:var(--cream);
+  }
   .aovivo-label{
     color:var(--muted);
     font-size:calc(13px * var(--font-scale, 1));
@@ -908,16 +936,35 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }).join("");
   }
 
+  function renderRingTimer(restanteSeg, totalSeg){
+    const r = 54;
+    const c = 2 * Math.PI * r;
+    const fracao = totalSeg > 0 ? Math.min(1, restanteSeg / totalSeg) : 0;
+    const offset = c * (1 - fracao);
+    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
+    const ss = String(restanteSeg % 60).padStart(2, "0");
+    return `
+      <div class="ring-timer">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="${r}"></circle>
+          <circle class="ring-progress" cx="60" cy="60" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${offset}"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-time">${mm}:${ss}</div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderAoVivo(){
     if(!data.aoVivo){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
     }
     const { tipo, local, minutos, disparadoEm, urgente } = data.aoVivo;
+    const totalSeg = minutos * 60;
     const fimMs = disparadoEm + minutos * 60000;
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
-    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
-    const ss = String(restanteSeg % 60).padStart(2, "0");
     if(tipo === "local" && urgente){
       return `
         <div class="card aovivo-card" style="border-color:var(--rose);">
@@ -932,7 +979,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       return `
         <div class="card aovivo-card">
           <div class="aovivo-badge">⏸ Intervalo</div>
-          <div class="aovivo-timer ${esgotado ? "esgotado" : ""}">${esgotado ? "Acabou!" : `${mm}:${ss}`}</div>
+          ${esgotado ? `<div class="aovivo-timer esgotado">Acabou!</div>` : renderRingTimer(restanteSeg, totalSeg)}
           <div class="aovivo-label">${esgotado ? "voltem para" : "próxima entrada"}</div>
           <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(local)}</div>
         </div>
@@ -941,7 +988,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     return `
       <div class="card aovivo-card">
         <div class="aovivo-badge">📍 ${escapeHtml(local)}</div>
-        <div class="aovivo-timer ${esgotado ? "esgotado" : ""}">${esgotado ? "Já!" : `${mm}:${ss}`}</div>
+        ${esgotado ? `<div class="aovivo-timer esgotado">Já!</div>` : renderRingTimer(restanteSeg, totalSeg)}
         <div class="aovivo-label">${esgotado ? "Posicionem-se agora" : "para se posicionarem"}</div>
       </div>
     `;
