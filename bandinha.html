@@ -329,6 +329,14 @@
     width:22px;
     line-height:1;
   }
+  .edit-x{
+    flex-shrink:0;
+    background:transparent;
+    color:var(--muted);
+    font-size:calc(15px * var(--font-scale, 1));
+    width:22px;
+    line-height:1;
+  }
   .member-sub{
     display:flex;
     justify-content:space-between;
@@ -693,6 +701,7 @@ const agendaCol = collection(db, "agenda");
   let importOpen = false;
   let collapsedGroups = {};
   let editingNameId = null;
+  let expandedMemberId = null;
   let openMusicaId = null;
   let editingLetraId = null;
   let openCoreografiaId = null;
@@ -984,15 +993,16 @@ const agendaCol = collection(db, "agenda");
             <input type="text" class="edit-nome-input" data-id="${i.id}" value="${escapeHtml(i.nome)}" />
             <button class="btn-save-nome" data-action="save-nome" data-id="${i.id}">✓</button>
           ` : `
-            <div class="member-name" data-action="edit-nome" data-id="${i.id}" title="Toque para editar o nome">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
+            <div class="member-name" data-action="toggle-membro" data-id="${i.id}" title="Toque para ver detalhes">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
           `}
           <select class="shirt-select" data-action="shirt" data-id="${i.id}">
             <option value="">Cam.</option>
             ${SHIRT_SIZES.map(s => `<option value="${s}" ${i.camisa===s?"selected":""}>${s}</option>`).join("")}
           </select>
+          ${editingNameId === i.id ? "" : `<button class="edit-x" data-action="edit-nome" data-id="${i.id}" title="Editar nome">✎</button>`}
           <button class="del-x" data-action="del-integrante" data-id="${i.id}">✕</button>
         </div>
-        <div class="member-sub" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div class="member-sub ${expandedMemberId === i.id ? "" : "hidden"}" style="flex-direction:column;align-items:stretch;gap:8px;">
           <span>Camisa: ${i.camisa ? i.camisa : "não definida"}</span>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
@@ -1464,6 +1474,14 @@ const agendaCol = collection(db, "agenda");
       el.addEventListener("change", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(item){ await updateDoc(doc(integrantesCol, item.id), { camisa: el.value }); showToast("Tamanho salvo"); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-membro"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        expandedMemberId = (expandedMemberId === id) ? null : id;
+        render();
       });
     });
 
