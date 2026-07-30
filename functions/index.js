@@ -1,4 +1,4 @@
-// Cloud Functions for Bandinha push notifications (auto-deploy, retry 4)
+// Cloud Functions for Bandinha push notifications (auto-deploy, retry 5)
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
