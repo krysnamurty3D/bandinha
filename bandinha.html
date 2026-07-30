@@ -768,14 +768,15 @@ const progressoCol = collection(db, "progresso");
 const agendaCol = collection(db, "agenda");
 const pushTokensCol = collection(db, "pushTokens");
 const locaisCol = collection(db, "locais");
+const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -931,6 +932,16 @@ const functionsApp = getFunctions(firebaseApp);
     }, e => {
       console.error("Erro ao sincronizar locais:", e);
       markLoaded("locais");
+      safeRender();
+    });
+
+    onSnapshot(aoVivoDocRef, snap => {
+      data.aoVivo = snap.exists() ? snap.data() : null;
+      markLoaded("aoVivo");
+      safeRender();
+    }, e => {
+      console.error("Erro ao sincronizar ao vivo:", e);
+      markLoaded("aoVivo");
       safeRender();
     });
   }
@@ -1433,8 +1444,32 @@ const functionsApp = getFunctions(firebaseApp);
     return `há ${Math.abs(dias)} dias`;
   }
 
+  function renderAoVivoStatus(){
+    const a = data.aoVivo;
+    if(!a) return "";
+    const totalSeg = a.minutos * 60;
+    const restanteSeg = Math.max(0, Math.round((a.disparadoEm + a.minutos * 60000 - Date.now()) / 1000));
+    const esgotado = restanteSeg <= 0;
+    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
+    const ss = String(restanteSeg % 60).padStart(2, "0");
+    return `
+      <div class="card" style="border-left:3px solid ${a.urgente ? "var(--rose)" : "var(--gold)"};margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div>
+            <div style="font-weight:700;">${a.urgente ? "🚨 URGENTE" : "📍"} ${escapeHtml(a.local)}</div>
+            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${a.urgente ? "Aviso urgente ativo" : esgotado ? "Tempo esgotado" : `Faltam ${mm}:${ss}`}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            ${!a.urgente && a.minutos > 0 ? `<button type="button" id="btn-reiniciar-aovivo" class="link-btn" style="white-space:nowrap;">Reiniciar</button>` : ""}
+            <button type="button" id="btn-parar-aovivo" class="del-x" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">Parar</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderAoVivo(){
-    let html = `
+    let html = renderAoVivoStatus() + `
       <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
         Escolha o badge, ajuste os minutos com os botões e dispare — todo mundo que ativou notificação recebe na hora.
       </div>
@@ -1696,6 +1731,29 @@ const functionsApp = getFunctions(firebaseApp);
       }
       enviandoUrgente = false;
       render();
+    });
+
+    const btnPararAoVivo = document.getElementById("btn-parar-aovivo");
+    if(btnPararAoVivo) btnPararAoVivo.addEventListener("click", async () => {
+      if(!confirm("Parar o aviso ao vivo atual?")) return;
+      try{
+        await deleteDoc(aoVivoDocRef);
+        showToast("Aviso ao vivo parado");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao parar aviso");
+      }
+    });
+
+    const btnReiniciarAoVivo = document.getElementById("btn-reiniciar-aovivo");
+    if(btnReiniciarAoVivo) btnReiniciarAoVivo.addEventListener("click", async () => {
+      try{
+        await updateDoc(aoVivoDocRef, { disparadoEm: Date.now(), avisoAntesEnviado: false });
+        showToast("Timer reiniciado");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao reiniciar");
+      }
     });
 
     const formAgenda = document.getElementById("form-agenda");
@@ -2110,7 +2168,7 @@ const functionsApp = getFunctions(firebaseApp);
   setInterval(() => {
     const focused = document.activeElement;
     const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
-    if(currentTab === "roteiros" && loaded && !isTyping) render();
+    if((currentTab === "roteiros" || currentTab === "aovivo") && loaded && !isTyping) render();
   }, 30000);
 })();
 </script>
