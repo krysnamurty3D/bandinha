@@ -1,3 +1,4 @@
+// Cloud Functions for Bandinha push notifications
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
