@@ -186,6 +186,37 @@
     font-size:calc(12px * var(--font-scale, 1));
     font-weight:700;
   }
+  .aovivo-card{
+    text-align:center;
+    padding:36px 20px;
+  }
+  .aovivo-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(240,169,60,0.15);
+    color:var(--gold);
+    border-radius:20px;
+    padding:8px 18px;
+    font-size:calc(15px * var(--font-scale, 1));
+    font-weight:700;
+    margin-bottom:20px;
+  }
+  .aovivo-timer{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:calc(56px * var(--font-scale, 1));
+    letter-spacing:1px;
+    color:var(--cream);
+  }
+  .aovivo-timer.esgotado{color:var(--rose);}
+  .aovivo-label{
+    color:var(--muted);
+    font-size:calc(13px * var(--font-scale, 1));
+    margin-top:8px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
   .empty .note-dot{margin-bottom:8px;}
   .note-dot{
     width:8px;height:8px;border-radius:50%;
@@ -414,6 +445,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     Agenda
   </button>
+  <button data-tab="aovivo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+    Ao Vivo
+  </button>
 </nav>
 
 <script type="module">
@@ -438,17 +473,18 @@ const configDocRef = doc(db, "config", "main");
 const agendaCol = collection(db, "agenda");
 const progressoCol = collection(db, "progresso");
 const pushTokensCol = collection(db, "pushTokens");
+const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 
 (function(){
-  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
   let currentTab = "musicas";
   let openRoteiroId = null;
   let openMusicaId = null;
   let openCoreografiaId = null;
   let collapsedGroups = {};
   let loaded = false;
-  let loadedFlags = { musicas: false, roteiros: false, coreografias: false, agenda: false, config: false };
+  let loadedFlags = { musicas: false, roteiros: false, coreografias: false, agenda: false, aoVivo: false, config: false };
   let meuNome = localStorage.getItem("bandinha-nome") || "";
   let meuProgresso = {};
 
@@ -573,6 +609,16 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       markLoaded("agenda");
       safeRender();
     }, e => { console.error("Erro ao sincronizar agenda:", e); });
+
+    onSnapshot(aoVivoDocRef, snap => {
+      data.aoVivo = snap.exists() ? snap.data() : null;
+      markLoaded("aoVivo");
+      safeRender();
+    }, e => {
+      console.error("Erro ao sincronizar ao vivo:", e);
+      markLoaded("aoVivo");
+      safeRender();
+    });
   }
 
   // ---------- RENDER ----------
@@ -584,7 +630,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       return;
     }
     const scrollY = window.scrollY;
-    main.innerHTML = currentTab === "musicas" ? renderMusicas() : currentTab === "roteiros" ? renderRoteiros() : currentTab === "coreografias" ? renderCoreografias() : renderAgenda();
+    main.innerHTML = currentTab === "musicas" ? renderMusicas() : currentTab === "roteiros" ? renderRoteiros() : currentTab === "coreografias" ? renderCoreografias() : currentTab === "agenda" ? renderAgenda() : renderAoVivo();
     attachHandlers();
     window.scrollTo(0, scrollY);
   }
@@ -807,6 +853,25 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }).join("");
   }
 
+  function renderAoVivo(){
+    if(!data.aoVivo){
+      return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
+    }
+    const { local, minutos, disparadoEm } = data.aoVivo;
+    const fimMs = disparadoEm + minutos * 60000;
+    const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
+    const esgotado = restanteSeg <= 0;
+    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
+    const ss = String(restanteSeg % 60).padStart(2, "0");
+    return `
+      <div class="card aovivo-card">
+        <div class="aovivo-badge">📍 ${escapeHtml(local)}</div>
+        <div class="aovivo-timer ${esgotado ? "esgotado" : ""}">${esgotado ? "Já!" : `${mm}:${ss}`}</div>
+        <div class="aovivo-label">${esgotado ? "Posicionem-se agora" : "para se posicionarem"}</div>
+      </div>
+    `;
+  }
+
   // ---------- HANDLERS ----------
   function attachHandlers(){
     const formNome = document.getElementById("form-nome");
@@ -894,6 +959,10 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
     if(currentTab === "roteiros" && loaded && !isTyping) render();
   }, 30000);
+
+  setInterval(() => {
+    if(currentTab === "aovivo" && loaded) render();
+  }, 1000);
 })();
 </script>
 </body>

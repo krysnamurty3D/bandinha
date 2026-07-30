@@ -54,6 +54,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   const texto = minutos === 0
     ? `Posicionem-se agora em ${local}`
     : `Faltam ${minutos} min — posicionem-se em ${local}`;
+  await db.collection("aoVivo").doc("atual").set({ local, minutos, disparadoEm: Date.now() });
   await sendToAll("Aviso ao vivo", texto);
   return { ok: true };
 });
