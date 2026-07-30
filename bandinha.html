@@ -349,6 +349,16 @@
     width:22px;
     line-height:1;
   }
+  .eye-x{
+    flex-shrink:0;
+    background:transparent;
+    color:var(--muted);
+    font-size:calc(15px * var(--font-scale, 1));
+    width:22px;
+    line-height:1;
+  }
+  .eye-x.hidden-item{color:var(--rose);}
+  .card.item-hidden{opacity:0.5;}
   .member-sub{
     display:flex;
     justify-content:space-between;
@@ -1071,14 +1081,16 @@ const agendaCol = collection(db, "agenda");
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
         const { titulo, artista } = splitMusica(m.nome);
+        const oculta = m.visivel === false;
         return `
-        <div class="card" data-id="${m.id}">
+        <div class="card ${oculta ? "item-hidden" : ""}" data-id="${m.id}">
           <div class="song-row">
             <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
               <div class="song-title">${escapeHtml(titulo)}</div>
               ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
             </div>
             <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
+            <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
             <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
           </div>
           ${open ? `
@@ -1186,14 +1198,16 @@ const agendaCol = collection(db, "agenda");
     html += lista.map(c => {
       const open = openCoreografiaId === c.id;
       const editing = editingCoreografiaId === c.id;
+      const oculta = c.visivel === false;
       return `
-      <div class="card" style="border-left:3px solid ${color};">
+      <div class="card ${oculta ? "item-hidden" : ""}" style="border-left:3px solid ${color};">
         <div class="song-row">
           ${editing ? `
             <input type="text" class="edit-nome-input" data-field="titulo" data-id="${c.id}" value="${escapeHtml(c.titulo)}" placeholder="Título"/>
           ` : `
             <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}"><div class="song-title">${escapeHtml(c.titulo)}</div></div>
           `}
+          <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-coreografia" data-id="${c.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
           <button class="del-x" data-action="del-coreografia" data-id="${c.id}">✕</button>
         </div>
         ${editing ? `
@@ -1453,6 +1467,16 @@ const agendaCol = collection(db, "agenda");
       });
     });
 
+    document.querySelectorAll('[data-action="toggle-visivel-coreografia"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.coreografias.find(c => c.id === el.dataset.id);
+        if(!item) return;
+        const oculta = item.visivel === false;
+        await updateDoc(doc(coreografiasCol, item.id), { visivel: oculta });
+        showToast(oculta ? "Coreografia visível na página pública" : "Coreografia ocultada da página pública");
+      });
+    });
+
     document.querySelectorAll('[data-action="del-coreografia"]').forEach(el => {
       el.addEventListener("click", async () => {
         const item = data.coreografias.find(c => c.id === el.dataset.id);
@@ -1700,6 +1724,16 @@ const agendaCol = collection(db, "agenda");
         const order = ["aprender","ensaiando","pronta"];
         const novoStatus = order[(order.indexOf(item.status)+1) % order.length];
         await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-visivel-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        const oculta = item.visivel === false;
+        await updateDoc(doc(musicasCol, item.id), { visivel: oculta });
+        showToast(oculta ? "Música visível na página pública" : "Música ocultada da página pública");
       });
     });
 

@@ -580,8 +580,9 @@ const progressoCol = collection(db, "progresso");
   }
 
   function renderMusicas(){
-    const total = data.musicas.length;
-    const prontas = data.musicas.filter(m => m.status === "pronta").length;
+    const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
+    const total = musicasVisiveis.length;
+    const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
     let html = `
       <div class="stat-row">
         <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
@@ -593,7 +594,7 @@ const progressoCol = collection(db, "progresso");
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
     } else {
       const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
-      html += data.musicas.map(m => {
+      html += musicasVisiveis.map(m => {
         const open = openMusicaId === m.id;
         const meuStatus = meuProgresso[m.id];
         const { titulo, artista } = splitMusica(m.nome);
@@ -663,11 +664,12 @@ const progressoCol = collection(db, "progresso");
   }
 
   function renderCoreografias(){
-    if(data.coreografias.length === 0){
+    const coreografiasVisiveis = data.coreografias.filter(c => c.visivel !== false);
+    if(coreografiasVisiveis.length === 0){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhuma coreografia publicada ainda.</div>`;
     }
-    const categorias = [...new Set(data.coreografias.map(c => c.categoria))].sort();
-    return categorias.map(cat => renderCoreografiaGroup(cat, data.coreografias.filter(c => c.categoria === cat).sort((a,b) => a.titulo.localeCompare(b.titulo)))).join("");
+    const categorias = [...new Set(coreografiasVisiveis.map(c => c.categoria))].sort();
+    return categorias.map(cat => renderCoreografiaGroup(cat, coreografiasVisiveis.filter(c => c.categoria === cat).sort((a,b) => a.titulo.localeCompare(b.titulo)))).join("");
   }
 
   function renderCoreografiaGroup(categoria, lista){
