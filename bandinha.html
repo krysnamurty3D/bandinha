@@ -1560,7 +1560,14 @@ const functionsApp = getFunctions(firebaseApp);
       const nome = input.value.trim();
       if(!nome) return;
       const novo = { id: uid(), nome };
-      await setDoc(doc(locaisCol, novo.id), novo); showToast("Local adicionado");
+      try{
+        await setDoc(doc(locaisCol, novo.id), novo);
+        showToast("Local adicionado");
+        input.value = "";
+      }catch(err){
+        console.error("Erro ao adicionar local:", err);
+        showToast("Erro: regras do Firestore ainda não publicadas");
+      }
     });
 
     document.querySelectorAll('[data-action="select-local"]').forEach(el => {
@@ -1575,7 +1582,13 @@ const functionsApp = getFunctions(firebaseApp);
         const item = data.locais.find(l => l.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.nome}"` : "este local"}?`)) return;
         if(item && selectedLocalAoVivo === item.nome) selectedLocalAoVivo = null;
-        await deleteDoc(doc(locaisCol, el.dataset.id)); showToast("Local removido");
+        try{
+          await deleteDoc(doc(locaisCol, el.dataset.id));
+          showToast("Local removido");
+        }catch(err){
+          console.error("Erro ao remover local:", err);
+          showToast("Erro: regras do Firestore ainda não publicadas");
+        }
       });
     });
 
