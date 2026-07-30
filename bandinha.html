@@ -471,7 +471,9 @@
     align-items:center;
     gap:10px;
   }
-  .song-name{flex:1;font-weight:600;font-size:calc(15px * var(--font-scale, 1));min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .song-name{flex:1;min-width:0;cursor:pointer;}
+  .song-title{font-weight:600;font-size:calc(15px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .song-artist{font-weight:400;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
   .status-pill{
     flex-shrink:0;
     border-radius:20px;
@@ -736,6 +738,10 @@ const agendaCol = collection(db, "agenda");
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function splitMusica(nome){
+    const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
+    return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
   }
   function showToast(msg){
     const t = document.getElementById("toast");
@@ -1064,10 +1070,14 @@ const agendaCol = collection(db, "agenda");
       html += data.musicas.map(m => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
+        const { titulo, artista } = splitMusica(m.nome);
         return `
         <div class="card" data-id="${m.id}">
           <div class="song-row">
-            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">${escapeHtml(m.nome)}</div>
+            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
+              <div class="song-title">${escapeHtml(titulo)}</div>
+              ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
+            </div>
             <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
             <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
           </div>
@@ -1182,7 +1192,7 @@ const agendaCol = collection(db, "agenda");
           ${editing ? `
             <input type="text" class="edit-nome-input" data-field="titulo" data-id="${c.id}" value="${escapeHtml(c.titulo)}" placeholder="Título"/>
           ` : `
-            <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}">${escapeHtml(c.titulo)}</div>
+            <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}"><div class="song-title">${escapeHtml(c.titulo)}</div></div>
           `}
           <button class="del-x" data-action="del-coreografia" data-id="${c.id}">✕</button>
         </div>

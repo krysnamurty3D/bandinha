@@ -242,7 +242,9 @@
     align-items:center;
     gap:10px;
   }
-  .song-name{flex:1;font-weight:600;font-size:calc(15px * var(--font-scale, 1));min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .song-name{flex:1;min-width:0;cursor:pointer;}
+  .song-title{font-weight:600;font-size:calc(15px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .song-artist{font-weight:400;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
   .status-pill{
     flex-shrink:0;
     border-radius:20px;
@@ -439,6 +441,10 @@ const progressoCol = collection(db, "progresso");
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
+  function splitMusica(nome){
+    const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
+    return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
+  }
 
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -590,10 +596,14 @@ const progressoCol = collection(db, "progresso");
       html += data.musicas.map(m => {
         const open = openMusicaId === m.id;
         const meuStatus = meuProgresso[m.id];
+        const { titulo, artista } = splitMusica(m.nome);
         return `
         <div class="card">
           <div class="song-row">
-            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">${escapeHtml(m.nome)}</div>
+            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
+              <div class="song-title">${escapeHtml(titulo)}</div>
+              ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
+            </div>
             <span class="status-pill status-${m.status}">${labels[m.status] || m.status}</span>
           </div>
           ${meuNome ? `
@@ -675,7 +685,7 @@ const progressoCol = collection(db, "progresso");
       return `
       <div class="card" style="border-left:3px solid ${color};">
         <div class="song-row">
-          <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}">${escapeHtml(c.titulo)}</div>
+          <div class="song-name" data-action="toggle-coreografia" data-id="${c.id}"><div class="song-title">${escapeHtml(c.titulo)}</div></div>
         </div>
         ${open ? `
           <div class="lyrics-box">
