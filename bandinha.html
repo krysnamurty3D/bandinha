@@ -1766,7 +1766,6 @@ const functionsApp = getFunctions(firebaseApp);
     const btnUrgente = document.getElementById("btn-urgente");
     if(btnUrgente) btnUrgente.addEventListener("click", async () => {
       if(!selectedProximaEtapa){ showToast("Escolha a próxima etapa"); return; }
-      if(!confirm(`Enviar aviso URGENTE para correr até "${selectedProximaEtapa}"?`)) return;
       enviandoUrgente = true;
       render();
       try{
