@@ -11,13 +11,13 @@ const COORDENADOR_EMAIL = "krysnamurty@gmail.com";
 initializeApp();
 const db = getFirestore();
 
-async function sendToAll(title, body) {
+async function sendToAll(title, body, url) {
   const tokensSnap = await db.collection("pushTokens").get();
   if (tokensSnap.empty) return;
   const tokens = tokensSnap.docs.map(d => d.id);
   const res = await getMessaging().sendEachForMulticast({
     tokens,
-    data: { title, body }
+    data: { title, body, url: url || "publico.html" }
   });
   const invalidos = [];
   res.responses.forEach((r, i) => {
@@ -65,7 +65,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
     avisoAntesEnviado: false
   });
-  await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto);
+  await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
   return { ok: true };
 });
 
@@ -78,7 +78,7 @@ exports.avisoAntesFim = onSchedule("* * * * *", async () => {
   const limiar = a.avisoAntesMin || 5;
   const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
   if (restanteMin <= limiar && restanteMin > limiar - 1) {
-    await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`);
+    await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
     await ref.update({ avisoAntesEnviado: true });
   }
 });

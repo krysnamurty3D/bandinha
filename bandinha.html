@@ -2196,20 +2196,32 @@ const functionsApp = getFunctions(firebaseApp);
     });
   }
 
+  function irParaTab(tab){
+    currentTab = tab;
+    document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    render();
+  }
+
   document.querySelectorAll("nav.tabbar button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentTab = btn.dataset.tab;
-      document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      render();
-    });
+    btn.addEventListener("click", () => irParaTab(btn.dataset.tab));
   });
+
+  if(navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => {
+    if(e.data?.type === "goto" && e.data.url){
+      const tab = new URL(e.data.url, location.href).searchParams.get("tab");
+      if(tab) irParaTab(tab);
+    }
+  });
+
+  const tabDaUrl = new URLSearchParams(location.search).get("tab");
+  if(tabDaUrl) currentTab = tabDaUrl;
 
   document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
 
   initFontScale();
   initPush();
   loadAuth();
+  if(tabDaUrl) irParaTab(tabDaUrl);
 
   setInterval(() => {
     const focused = document.activeElement;
