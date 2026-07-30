@@ -333,6 +333,40 @@
     color:var(--green);
     border:1px solid rgba(127,168,94,0.4);
   }
+  .stepper-label{display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;}
+  .stepper-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .stepper-btn{
+    flex-shrink:0;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:10px;
+    padding:10px 14px;
+    font-weight:700;
+    font-size:calc(13px * var(--font-scale, 1));
+  }
+  .stepper-value{
+    flex:1;
+    text-align:center;
+    font-weight:800;
+    font-size:calc(20px * var(--font-scale, 1));
+    color:var(--gold);
+  }
+  .btn-urgente{
+    width:100%;
+    margin-top:10px;
+    background:rgba(214,64,42,0.15);
+    color:var(--rose);
+    border:1px solid rgba(214,64,42,0.5);
+    border-radius:12px;
+    padding:12px;
+    font-weight:700;
+    font-size:calc(14px * var(--font-scale, 1));
+  }
   .del-x{
     flex-shrink:0;
     background:transparent;
@@ -761,6 +795,11 @@ const functionsApp = getFunctions(firebaseApp);
   let selectedLocalAoVivo = null;
   let enviandoAviso = false;
   let enviandoIntervalo = false;
+  let enviandoUrgente = false;
+  let avisoMinutosValor = 5;
+  let intervaloMinutosValor = 30;
+  let selectedIntervaloBadge = null;
+  const INTERVALO_BADGES = ["ALMOÇO", "REUNIR NA SALA", "LIVRE"];
   let collapsedProgressoGroups = {};
   let editingBrand = false;
 
@@ -1399,7 +1438,7 @@ const functionsApp = getFunctions(firebaseApp);
   function renderAoVivo(){
     let html = `
       <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
-        Escolha o local, defina quantos minutos faltam e dispare — todo mundo que ativou notificação recebe na hora.
+        Escolha o local, ajuste os minutos com os botões e dispare — todo mundo que ativou notificação recebe na hora.
       </div>
       <form class="inline-add" id="form-local" style="flex-wrap:wrap;">
         <input type="text" id="input-local-nome" placeholder="Novo local (ex: Palco)" style="flex:1 1 200px;" required/>
@@ -1422,24 +1461,41 @@ const functionsApp = getFunctions(firebaseApp);
 
       html += `
         <div class="card" style="margin-top:18px;">
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Local selecionado</label>
+          <label class="stepper-label">Local selecionado</label>
           <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Nenhum local selecionado"}</div>
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Minutos restantes</label>
-          <input type="number" id="input-aviso-minutos" min="0" placeholder="Ex: 5" style="margin-bottom:14px;"/>
-          <button type="button" id="btn-disparar-aviso" class="btn-import" ${(!selectedLocalAoVivo || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
-        </div>
-
-        <div class="card" style="margin-top:14px;">
-          <div class="section-title" style="margin:0 0 14px 0;cursor:default;">Intervalo</div>
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Duração do intervalo (minutos)</label>
-          <input type="number" id="input-intervalo-minutos" min="1" placeholder="Ex: 40" style="margin-bottom:14px;"/>
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Próxima entrada</label>
-          <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Selecione um local acima"}</div>
-          <button type="button" id="btn-iniciar-intervalo" class="btn-import" ${(!selectedLocalAoVivo || enviandoIntervalo) ? "disabled" : ""}>${enviandoIntervalo ? "Iniciando..." : "Iniciar intervalo"}</button>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:10px;">Um aviso automático é enviado faltando 5 minutos para o fim.</div>
+          <label class="stepper-label">Minutos restantes</label>
+          <div class="stepper-row">
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="-10">-10</button>
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="-5">-5</button>
+            <div class="stepper-value">${avisoMinutosValor} min</div>
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="5">+5</button>
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="10">+10</button>
+          </div>
+          <button type="button" id="btn-disparar-aviso" class="btn-import" style="margin-top:14px;" ${(!selectedLocalAoVivo || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
+          <button type="button" id="btn-urgente" class="btn-urgente" ${(!selectedLocalAoVivo || enviandoUrgente) ? "disabled" : ""}>${enviandoUrgente ? "Enviando..." : "🚨 Urgente — corram agora"}</button>
         </div>
       `;
     }
+
+    html += `
+      <div class="card" style="margin-top:14px;">
+        <div class="section-title" style="margin:0 0 14px 0;cursor:default;">Intervalo</div>
+        <label class="stepper-label">Situação</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          ${INTERVALO_BADGES.map(b => `<button type="button" class="pay-toggle ${selectedIntervaloBadge === b ? "paid" : ""}" data-action="select-intervalo-badge" data-nome="${b}">${b}</button>`).join("")}
+        </div>
+        <label class="stepper-label">Duração (minutos)</label>
+        <div class="stepper-row">
+          <button type="button" class="stepper-btn" data-action="ajustar-intervalo-minutos" data-delta="-10">-10</button>
+          <button type="button" class="stepper-btn" data-action="ajustar-intervalo-minutos" data-delta="-5">-5</button>
+          <div class="stepper-value">${intervaloMinutosValor} min</div>
+          <button type="button" class="stepper-btn" data-action="ajustar-intervalo-minutos" data-delta="5">+5</button>
+          <button type="button" class="stepper-btn" data-action="ajustar-intervalo-minutos" data-delta="10">+10</button>
+        </div>
+        <button type="button" id="btn-iniciar-intervalo" class="btn-import" style="margin-top:14px;" ${(!selectedIntervaloBadge || enviandoIntervalo) ? "disabled" : ""}>${enviandoIntervalo ? "Iniciando..." : "Iniciar intervalo"}</button>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:10px;">Um aviso automático é enviado faltando 5 minutos para o fim.</div>
+      </div>
+    `;
     return html;
   }
 
@@ -1603,15 +1659,34 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
+    document.querySelectorAll('[data-action="ajustar-aviso-minutos"]').forEach(el => {
+      el.addEventListener("click", () => {
+        avisoMinutosValor = Math.max(0, avisoMinutosValor + parseInt(el.dataset.delta, 10));
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="ajustar-intervalo-minutos"]').forEach(el => {
+      el.addEventListener("click", () => {
+        intervaloMinutosValor = Math.max(5, intervaloMinutosValor + parseInt(el.dataset.delta, 10));
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="select-intervalo-badge"]').forEach(el => {
+      el.addEventListener("click", () => {
+        selectedIntervaloBadge = (selectedIntervaloBadge === el.dataset.nome) ? null : el.dataset.nome;
+        render();
+      });
+    });
+
     const btnDisparar = document.getElementById("btn-disparar-aviso");
     if(btnDisparar) btnDisparar.addEventListener("click", async () => {
-      const minutosInput = document.getElementById("input-aviso-minutos");
-      const minutos = parseInt(minutosInput.value, 10);
-      if(!selectedLocalAoVivo || isNaN(minutos) || minutos < 0){ showToast("Escolha o local e os minutos"); return; }
+      if(!selectedLocalAoVivo){ showToast("Escolha o local"); return; }
       enviandoAviso = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos: avisoMinutosValor });
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
@@ -1621,15 +1696,30 @@ const functionsApp = getFunctions(firebaseApp);
       render();
     });
 
+    const btnUrgente = document.getElementById("btn-urgente");
+    if(btnUrgente) btnUrgente.addEventListener("click", async () => {
+      if(!selectedLocalAoVivo){ showToast("Escolha o local"); return; }
+      if(!confirm(`Enviar aviso URGENTE para correr até "${selectedLocalAoVivo}"?`)) return;
+      enviandoUrgente = true;
+      render();
+      try{
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos: 0, urgente: true });
+        showToast("Aviso urgente enviado!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao enviar aviso urgente");
+      }
+      enviandoUrgente = false;
+      render();
+    });
+
     const btnIniciarIntervalo = document.getElementById("btn-iniciar-intervalo");
     if(btnIniciarIntervalo) btnIniciarIntervalo.addEventListener("click", async () => {
-      const minutosInput = document.getElementById("input-intervalo-minutos");
-      const minutos = parseInt(minutosInput.value, 10);
-      if(!selectedLocalAoVivo || isNaN(minutos) || minutos <= 0){ showToast("Escolha o local e a duração"); return; }
+      if(!selectedIntervaloBadge){ showToast("Escolha a situação do intervalo"); return; }
       enviandoIntervalo = true;
       render();
       try{
-        await httpsCallable(functionsApp, "iniciarIntervalo")({ local: selectedLocalAoVivo, minutos });
+        await httpsCallable(functionsApp, "iniciarIntervalo")({ local: selectedIntervaloBadge, minutos: intervaloMinutosValor });
         showToast("Intervalo iniciado!");
       }catch(err){
         console.error(err);

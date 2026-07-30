@@ -47,15 +47,17 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
-  const { local, minutos } = request.data || {};
+  const { local, minutos, urgente } = request.data || {};
   if (!local || typeof minutos !== "number" || minutos < 0) {
     throw new HttpsError("invalid-argument", "Informe o local e os minutos.");
   }
-  const texto = minutos === 0
-    ? `Posicionem-se agora em ${local}`
-    : `Faltam ${minutos} min — posicionem-se em ${local}`;
-  await db.collection("aoVivo").doc("atual").set({ tipo: "local", local, minutos, disparadoEm: Date.now() });
-  await sendToAll("Aviso ao vivo", texto);
+  const texto = urgente
+    ? `🚨 Urgente — corram para ${local} agora!`
+    : minutos === 0
+      ? `Posicionem-se agora em ${local}`
+      : `Faltam ${minutos} min — posicionem-se em ${local}`;
+  await db.collection("aoVivo").doc("atual").set({ tipo: "local", local, minutos, disparadoEm: Date.now(), urgente: !!urgente });
+  await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto);
   return { ok: true };
 });
 
