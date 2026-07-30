@@ -1,0 +1,20 @@
+{
+  "name": "Bandinha",
+  "short_name": "Bandinha",
+  "start_url": "publico.html",
+  "display": "standalone",
+  "background_color": "#17130F",
+  "theme_color": "#17130F",
+  "icons": [
+    {
+      "src": "header.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "header.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
