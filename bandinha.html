@@ -1262,7 +1262,7 @@ const functionsApp = getFunctions(firebaseApp);
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
-      const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
+      const labels = {ensaiando:"Ensaiando", pronta:"Pronta"};
       const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
@@ -1689,7 +1689,7 @@ const functionsApp = getFunctions(firebaseApp);
       const input = document.getElementById("input-musica-nome");
       const nome = input.value.trim();
       if(!nome) return;
-      const novaMus = { id: uid(), nome, status: "aprender", letra: "", ordem: computeOrdemAlfabetica(nome) };
+      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome) };
       await setDoc(doc(musicasCol, novaMus.id), novaMus); showToast("Música adicionada");
     });
 
@@ -2226,7 +2226,7 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", async () => {
         const item = data.musicas.find(m => m.id === el.dataset.id);
         if(!item) return;
-        const order = ["aprender","ensaiando","pronta"];
+        const order = ["ensaiando","pronta"];
         const novoStatus = order[(order.indexOf(item.status)+1) % order.length];
         await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
       });
