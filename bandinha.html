@@ -1187,6 +1187,8 @@ const functionsApp = getFunctions(firebaseApp);
       return;
     }
     document.getElementById("ensaio-overlay").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.querySelector("nav.tabbar").classList.remove("hidden");
 
     const scrollY = window.scrollY;
     if(currentTab === "integrantes") main.innerHTML = renderIntegrantes();
