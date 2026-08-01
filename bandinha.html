@@ -1506,7 +1506,7 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function getSetlist(){
-    return [...data.musicas].filter(m => m.noSetlist).sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    return [...data.musicas].filter(m => m.noSetlist && m.visivel !== false).sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
   }
 
   function renderModoEnsaio(){
@@ -1579,7 +1579,10 @@ const functionsApp = getFunctions(firebaseApp);
         </div>
       `;
       }).join("")}
-      <div class="section-title">Sessões registradas</div>
+      <div class="section-title" style="justify-content:space-between;cursor:default;">
+        <span>Sessões registradas</span>
+        ${sessoes.length > 0 ? `<button type="button" class="link-btn" style="padding:0;color:var(--rose);" data-action="limpar-historico">Limpar histórico</button>` : ""}
+      </div>
       ${sessoes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma sessão de ensaio registrada ainda.<br>Use o Modo Ensaio pra começar a registrar.</div>` : sessoes.map(s => `
         <div class="card">
           <div style="font-weight:700;margin-bottom:6px;">${formatDate(s.data)}</div>
@@ -1593,7 +1596,7 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function renderEditarSetlist(){
-    const todas = [...data.musicas].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+    const todas = [...data.musicas].filter(m => m.visivel !== false).sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
     return `
       <div class="ensaio-top">
         <span class="ensaio-progress">Editar setlist (${getSetlist().length})</span>
@@ -2192,6 +2195,16 @@ const functionsApp = getFunctions(firebaseApp);
     if(btnVerHistorico) btnVerHistorico.addEventListener("click", () => {
       historicoAtivo = true;
       render();
+    });
+
+    document.querySelectorAll('[data-action="limpar-historico"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Apagar todo o histórico de ensaios e as datas de \"último ensaio\" de cada música? Essa ação não pode ser desfeita.")) return;
+        await Promise.all(data.historico.map(s => deleteDoc(doc(historicoCol, s.data))));
+        await Promise.all(data.musicas.filter(m => m.ultimoEnsaio).map(m => updateDoc(doc(musicasCol, m.id), { ultimoEnsaio: null })));
+        showToast("Histórico apagado");
+        render();
+      });
     });
 
     document.querySelectorAll('[data-action="abrir-editar-setlist"]').forEach(el => {
