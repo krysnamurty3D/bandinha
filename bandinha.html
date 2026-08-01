@@ -924,6 +924,7 @@ const functionsApp = getFunctions(firebaseApp);
   let ensaioEditando = false;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
+  let mostrarOcultasMusicas = true;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
@@ -1367,13 +1368,17 @@ const functionsApp = getFunctions(firebaseApp);
           <button type="button" id="btn-iniciar-ensaio" class="btn-import" style="flex:2;">▶ Iniciar Ensaio</button>
           <button type="button" id="btn-ver-historico" class="btn-import" style="flex:1;background:var(--surface-2);color:var(--cream);">📅 Histórico</button>
         </div>
+        <label class="check-row">
+          <input type="checkbox" id="input-mostrar-ocultas" ${mostrarOcultasMusicas ? "checked" : ""} />
+          Mostrar músicas ocultas
+        </label>
       ` : ""}
     `;
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const labels = {ensaiando:"Ensaiando", pronta:"Pronta"};
-      const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+      const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0)).filter(m => mostrarOcultasMusicas || m.visivel !== false);
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
@@ -2194,6 +2199,12 @@ const functionsApp = getFunctions(firebaseApp);
     const btnVerHistorico = document.getElementById("btn-ver-historico");
     if(btnVerHistorico) btnVerHistorico.addEventListener("click", () => {
       historicoAtivo = true;
+      render();
+    });
+
+    const inputMostrarOcultas = document.getElementById("input-mostrar-ocultas");
+    if(inputMostrarOcultas) inputMostrarOcultas.addEventListener("change", () => {
+      mostrarOcultasMusicas = inputMostrarOcultas.checked;
       render();
     });
 
