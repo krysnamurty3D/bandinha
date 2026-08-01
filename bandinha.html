@@ -1352,8 +1352,10 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function renderMusicas(){
-    const total = data.musicas.length;
-    const prontas = data.musicas.filter(m => m.status === "pronta").length;
+    const totalReal = data.musicas.length;
+    const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
+    const total = musicasVisiveis.length;
+    const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
     let html = `
       <div class="stat-row">
         <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
@@ -1363,7 +1365,7 @@ const functionsApp = getFunctions(firebaseApp);
         <input type="text" id="input-musica-nome" placeholder="Nome da música" required />
         <button type="submit" class="btn-add">+</button>
       </form>
-      ${total > 0 ? `
+      ${totalReal > 0 ? `
         <div style="display:flex;gap:10px;margin-bottom:16px;">
           <button type="button" id="btn-iniciar-ensaio" class="btn-import" style="flex:2;">▶ Iniciar Ensaio</button>
           <button type="button" id="btn-ver-historico" class="btn-import" style="flex:1;background:var(--surface-2);color:var(--cream);">📅 Histórico</button>
@@ -1374,11 +1376,14 @@ const functionsApp = getFunctions(firebaseApp);
         </label>
       ` : ""}
     `;
-    if(total === 0){
+    if(totalReal === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const labels = {ensaiando:"Ensaiando", pronta:"Pronta"};
       const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0)).filter(m => mostrarOcultasMusicas || m.visivel !== false);
+      if(ordenadas.length === 0){
+        html += `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
+      }
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
