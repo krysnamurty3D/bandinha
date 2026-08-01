@@ -613,6 +613,19 @@
     width:100%; height:100%;
     border:none;
   }
+  .audio-frame{
+    width:100%;
+    height:80px;
+    border-radius:10px;
+    overflow:hidden;
+    background:var(--surface-2);
+    margin-bottom:12px;
+  }
+  .audio-frame iframe{
+    width:100%;
+    height:100%;
+    border:none;
+  }
 
   .roteiro-card{padding:0;overflow:hidden;}
   .roteiro-head{
@@ -1280,7 +1293,7 @@ const functionsApp = getFunctions(firebaseApp);
           </div>
           ${open ? `
             <div class="lyrics-box">
-              ${m.audioId ? `<audio controls style="width:100%;margin-bottom:12px;" src="https://drive.google.com/uc?export=download&id=${m.audioId}"></audio>` : ""}
+              ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
               ${editingLetra ? `
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
                 <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
