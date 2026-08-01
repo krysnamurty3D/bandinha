@@ -746,6 +746,55 @@
     white-space:nowrap;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #ensaio-overlay{
+    position:fixed;
+    inset:0;
+    z-index:30;
+    background:var(--bg);
+    overflow-y:auto;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom)) 18px;
+  }
+  .ensaio-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .ensaio-progress{color:var(--muted);font-size:calc(13px * var(--font-scale, 1));font-weight:600;}
+  .ensaio-title{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:calc(26px * var(--font-scale, 1));
+    line-height:1.2;
+    margin-bottom:2px;
+  }
+  .ensaio-artist{color:var(--gold);font-size:calc(15px * var(--font-scale, 1));font-weight:600;margin-bottom:18px;}
+  .ensaio-lyrics{
+    font-size:calc(17px * var(--font-scale, 1));
+    line-height:1.7;
+    white-space:pre-wrap;
+    margin-top:16px;
+  }
+  .ensaio-nav{
+    position:sticky;
+    bottom:0;
+    display:flex;
+    gap:10px;
+    margin-top:24px;
+    padding-top:14px;
+    background:var(--bg);
+  }
+  .ensaio-nav button{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:12px;
+    padding:14px;
+    font-weight:700;
+    font-size:calc(15px * var(--font-scale, 1));
+  }
+  .ensaio-nav button:disabled{opacity:0.35;}
   #print-report{display:none;}
   @media print{
     body *{visibility:hidden;}
@@ -780,6 +829,8 @@
 </div>
 
 <div id="print-report"></div>
+
+<div id="ensaio-overlay" class="hidden"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -867,6 +918,8 @@ const functionsApp = getFunctions(firebaseApp);
   let openMusicaId = null;
   let editingLetraId = null;
   let editingMusicaNomeId = null;
+  let ensaioAtivo = false;
+  let ensaioIndex = 0;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
@@ -974,7 +1027,7 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function safeRender(){
-    if(openCoreografiaId){ return; }
+    if(openCoreografiaId || ensaioAtivo){ return; }
     render();
   }
 
@@ -1115,6 +1168,16 @@ const functionsApp = getFunctions(firebaseApp);
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
+    if(ensaioAtivo){
+      document.getElementById("app").classList.add("hidden");
+      document.querySelector("nav.tabbar").classList.add("hidden");
+      document.getElementById("ensaio-overlay").classList.remove("hidden");
+      document.getElementById("ensaio-overlay").innerHTML = renderModoEnsaio();
+      attachHandlers();
+      return;
+    }
+    document.getElementById("ensaio-overlay").classList.add("hidden");
+
     const scrollY = window.scrollY;
     if(currentTab === "integrantes") main.innerHTML = renderIntegrantes();
     else if(currentTab === "musicas") main.innerHTML = renderMusicas();
@@ -1287,6 +1350,7 @@ const functionsApp = getFunctions(firebaseApp);
         <input type="text" id="input-musica-nome" placeholder="Nome da música" required />
         <button type="submit" class="btn-add">+</button>
       </form>
+      ${total > 0 ? `<button type="button" id="btn-iniciar-ensaio" class="btn-import" style="margin-bottom:16px;">▶ Iniciar Ensaio</button>` : ""}
     `;
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
@@ -1421,6 +1485,29 @@ const functionsApp = getFunctions(firebaseApp);
     if(dias > 0) return `Faltam ${dias}d ${horas}h`;
     if(horas > 0) return `Faltam ${horas}h ${minutos}min`;
     return `Faltam ${minutos}min`;
+  }
+
+  function renderModoEnsaio(){
+    const fila = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    if(fila.length === 0){ ensaioAtivo = false; return ""; }
+    if(ensaioIndex >= fila.length) ensaioIndex = fila.length - 1;
+    if(ensaioIndex < 0) ensaioIndex = 0;
+    const m = fila[ensaioIndex];
+    const { titulo, artista } = splitMusica(m.nome);
+    return `
+      <div class="ensaio-top">
+        <span class="ensaio-progress">${ensaioIndex + 1} / ${fila.length}</span>
+        <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+      </div>
+      <div class="ensaio-title">${escapeHtml(titulo)}</div>
+      ${artista ? `<div class="ensaio-artist">${escapeHtml(artista)}</div>` : ""}
+      ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
+      <div class="ensaio-lyrics">${m.letra ? formatLyrics(m.letra) : '<span style="color:var(--muted);">Sem letra cadastrada.</span>'}</div>
+      <div class="ensaio-nav">
+        <button type="button" data-action="ensaio-anterior" ${ensaioIndex === 0 ? "disabled" : ""}>◀ Anterior</button>
+        <button type="button" data-action="ensaio-proxima" ${ensaioIndex === fila.length - 1 ? "disabled" : ""}>Próxima ▶</button>
+      </div>
+    `;
   }
 
   function renderCoreografias(){
@@ -1984,6 +2071,34 @@ const functionsApp = getFunctions(firebaseApp);
         const item = data.coreografias.find(c => c.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.titulo}"` : "esta coreografia"}?`)) return;
         await deleteDoc(doc(coreografiasCol, el.dataset.id)); showToast("Coreografia removida");
+      });
+    });
+
+    const btnIniciarEnsaio = document.getElementById("btn-iniciar-ensaio");
+    if(btnIniciarEnsaio) btnIniciarEnsaio.addEventListener("click", () => {
+      ensaioAtivo = true;
+      ensaioIndex = 0;
+      render();
+    });
+
+    document.querySelectorAll('[data-action="sair-ensaio"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ensaioAtivo = false;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="ensaio-anterior"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ensaioIndex = Math.max(0, ensaioIndex - 1);
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="ensaio-proxima"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ensaioIndex = ensaioIndex + 1;
+        render();
       });
     });
 
