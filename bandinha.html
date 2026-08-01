@@ -1166,7 +1166,15 @@ const functionsApp = getFunctions(firebaseApp);
         await signInWithPopup(auth, googleProvider);
       }catch(err){
         console.error(err);
-        errEl.textContent = "Não foi possível entrar. Tente novamente.";
+        if(err.code === "auth/unauthorized-domain"){
+          errEl.textContent = `Domínio "${location.hostname}" não autorizado no Firebase. Peça pro coordenador adicioná-lo em Authentication > Settings > Domínios autorizados.`;
+        } else if(err.code === "auth/popup-blocked"){
+          errEl.textContent = "O navegador bloqueou a janela de login. Permita pop-ups e tente de novo.";
+        } else if(err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request"){
+          errEl.textContent = "";
+        } else {
+          errEl.textContent = `Não foi possível entrar (${err.code || "erro desconhecido"}). Tente novamente.`;
+        }
       }
     });
   }
