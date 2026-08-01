@@ -746,6 +746,26 @@
     white-space:nowrap;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #print-report{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #print-report, #print-report *{visibility:visible;}
+    #print-report{
+      display:block;
+      position:absolute;
+      top:0; left:0;
+      width:100%;
+      padding:20px;
+      color:#000;
+      background:#fff;
+      font-family:'Montserrat',sans-serif;
+    }
+    #print-report h1{font-size:20px;margin-bottom:4px;}
+    #print-report .print-meta{font-size:12px;color:#555;margin-bottom:16px;}
+    #print-report table{width:100%;border-collapse:collapse;font-size:12px;}
+    #print-report th, #print-report td{border:1px solid #ccc;padding:6px 8px;text-align:left;}
+    #print-report th{background:#eee;}
+  }
 </style>
 </head>
 <body>
@@ -758,6 +778,8 @@
 
   <main id="main"></main>
 </div>
+
+<div id="print-report"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -884,6 +906,11 @@ const functionsApp = getFunctions(firebaseApp);
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function formatLyrics(s){
+    return escapeHtml(s)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
   }
   function splitMusica(nome){
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
@@ -1150,6 +1177,7 @@ const functionsApp = getFunctions(firebaseApp);
         <span style="display:flex;align-items:center;gap:6px;"><span class="confirm-dot confirmed" style="cursor:default;"></span>Confirmado (${totalConfirmados})</span>
         <span style="display:flex;align-items:center;gap:6px;"><span class="confirm-dot" style="cursor:default;"></span>A convidar (${total - totalConfirmados})</span>
       </div>
+      <button type="button" id="btn-relatorio-pdf" class="link-btn">🖨 Gerar relatório em PDF</button>
       <form class="inline-add" id="form-integrante">
         <input type="text" id="input-integrante-nome" placeholder="Nome do integrante" required />
         <select id="input-integrante-genero" class="gender-select" required>
@@ -1298,9 +1326,10 @@ const functionsApp = getFunctions(firebaseApp);
               ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
               ${editingLetra ? `
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
+                <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:-4px 0 10px 0;">Use **texto** para negrito e *texto* para itálico</div>
                 <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
               ` : `
-                ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Sem letra cadastrada.</div>`}
+                ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Sem letra cadastrada.</div>`}
                 <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-letra" data-id="${m.id}">${m.letra ? "Editar letra" : "Adicionar letra"}</button>
               `}
             </div>
@@ -1956,6 +1985,31 @@ const functionsApp = getFunctions(firebaseApp);
         if(!confirm(`Remover ${item ? `"${item.titulo}"` : "esta coreografia"}?`)) return;
         await deleteDoc(doc(coreografiasCol, el.dataset.id)); showToast("Coreografia removida");
       });
+    });
+
+    const btnRelatorioPdf = document.getElementById("btn-relatorio-pdf");
+    if(btnRelatorioPdf) btnRelatorioPdf.addEventListener("click", () => {
+      const genLabel = { M: "Homem", F: "Mulher" };
+      const linhas = [...data.integrantes].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })).map(i => `
+        <tr>
+          <td>${escapeHtml(i.nome)}</td>
+          <td>${genLabel[i.genero] || "—"}</td>
+          <td>${i.instrumental ? "Sim" : "—"}</td>
+          <td>${i.camisa || "—"}</td>
+          <td>${i.inscricao ? "Pago" : "Em aberto"}</td>
+          <td>${i.pagamentoCamisa ? "Pago" : "Em aberto"}</td>
+          <td>${i.taxaEquipe ? "Pago" : "Em aberto"}</td>
+        </tr>
+      `).join("");
+      document.getElementById("print-report").innerHTML = `
+        <h1>Relatório de Integrantes — ${escapeHtml(data.config.titulo || "Bandinha")}</h1>
+        <div class="print-meta">Gerado em ${new Date().toLocaleDateString("pt-BR")} · ${data.integrantes.length} integrantes</div>
+        <table>
+          <thead><tr><th>Nome</th><th>Sexo</th><th>Instrumental</th><th>Camisa</th><th>Inscrição</th><th>Pag. Camisa</th><th>Taxa Equipe</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      `;
+      window.print();
     });
 
     const btnToggleImport = document.getElementById("btn-toggle-import");

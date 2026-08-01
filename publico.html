@@ -580,6 +580,11 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
+  function formatLyrics(s){
+    return escapeHtml(s)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+  }
   function splitMusica(nome){
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
     return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
@@ -802,7 +807,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           ${open ? `
             <div class="lyrics-box">
               ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
-              ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
+              ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
             </div>
           ` : ""}
         </div>
