@@ -13,9 +13,26 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
-  const { title, body } = payload.notification || {};
+  const { title, body, url } = payload.data || {};
   self.registration.showNotification(title || "Bandinha", {
     body: body || "",
-    icon: "header.png"
+    icon: "header.png",
+    data: { url: url || "publico.html" }
   });
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const url = event.notification.data?.url || "publico.html";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          client.postMessage({ type: "goto", url });
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
 });

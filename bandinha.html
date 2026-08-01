@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Bandinha</title>
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -333,6 +334,70 @@
     color:var(--green);
     border:1px solid rgba(127,168,94,0.4);
   }
+  .stepper-label{display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;}
+  .stepper-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .stepper-btn{
+    flex-shrink:0;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:10px;
+    padding:10px 14px;
+    font-weight:700;
+    font-size:calc(13px * var(--font-scale, 1));
+  }
+  .stepper-value{
+    flex:1;
+    text-align:center;
+    font-weight:800;
+    font-size:calc(20px * var(--font-scale, 1));
+    color:var(--gold);
+  }
+  .btn-urgente{
+    width:100%;
+    margin-top:10px;
+    background:rgba(214,64,42,0.15);
+    color:var(--rose);
+    border:1px solid rgba(214,64,42,0.5);
+    border-radius:12px;
+    padding:12px;
+    font-weight:700;
+    font-size:calc(14px * var(--font-scale, 1));
+  }
+  .ring-timer{
+    position:relative;
+    width:min(180px, 55vw);
+    height:min(180px, 55vw);
+    margin:8px auto;
+  }
+  .ring-timer svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:rgba(244,238,225,0.1);stroke-width:8;}
+  .ring-progress{
+    fill:none;
+    stroke:var(--rose);
+    stroke-width:8;
+    stroke-linecap:round;
+    transition:stroke-dashoffset 1s linear;
+  }
+  .ring-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring-time{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:calc(30px * var(--font-scale, 1));
+    color:var(--cream);
+  }
+  .aovivo-timer{font-family:'Montserrat',sans-serif;font-weight:800;font-size:calc(30px * var(--font-scale, 1));}
+  .aovivo-timer.esgotado{color:var(--rose);}
   .del-x{
     flex-shrink:0;
     background:transparent;
@@ -745,14 +810,15 @@ const progressoCol = collection(db, "progresso");
 const agendaCol = collection(db, "agenda");
 const pushTokensCol = collection(db, "pushTokens");
 const locaisCol = collection(db, "locais");
+const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -764,14 +830,18 @@ const functionsApp = getFunctions(firebaseApp);
   let expandedMemberId = null;
   let openMusicaId = null;
   let editingLetraId = null;
+  let editingMusicaNomeId = null;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
-  let selectedLocalAoVivo = null;
+  let selectedProximaEtapa = null;
   let enviandoAviso = false;
-  let enviandoIntervalo = false;
+  let enviandoUrgente = false;
+  let avisoMinutosValor = 5;
+  let avisoAntesMin = 5;
+  let gerenciarLocais = false;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
 
@@ -917,6 +987,16 @@ const functionsApp = getFunctions(firebaseApp);
     }, e => {
       console.error("Erro ao sincronizar locais:", e);
       markLoaded("locais");
+      safeRender();
+    });
+
+    onSnapshot(aoVivoDocRef, snap => {
+      data.aoVivo = snap.exists() ? snap.data() : null;
+      markLoaded("aoVivo");
+      safeRender();
+    }, e => {
+      console.error("Erro ao sincronizar ao vivo:", e);
+      markLoaded("aoVivo");
       safeRender();
     });
   }
@@ -1174,6 +1254,7 @@ const functionsApp = getFunctions(firebaseApp);
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
+        const editingNome = editingMusicaNomeId === m.id;
         const { titulo, artista } = splitMusica(m.nome);
         const oculta = m.visivel === false;
         return `
@@ -1183,13 +1264,19 @@ const functionsApp = getFunctions(firebaseApp);
               <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="up" ${idx===0 ? "disabled" : ""}>▲</button>
               <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="down" ${idx===ordenadas.length-1 ? "disabled" : ""}>▼</button>
             </div>
-            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-              <div class="song-title">${escapeHtml(titulo)}</div>
-              ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
-            </div>
-            <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
-            <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
-            <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
+            ${editingNome ? `
+              <input type="text" class="edit-nome-input" id="input-edit-musica-nome" data-id="${m.id}" value="${escapeHtml(m.nome)}" placeholder="Nome da música" />
+              <button class="btn-save-nome" data-action="save-musica-nome" data-id="${m.id}">✓</button>
+            ` : `
+              <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
+                <div class="song-title">${escapeHtml(titulo)}</div>
+                ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
+              </div>
+              <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
+              <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
+              <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
+              <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
+            `}
           </div>
           ${open ? `
             <div class="lyrics-box">
@@ -1425,47 +1512,92 @@ const functionsApp = getFunctions(firebaseApp);
     return `há ${Math.abs(dias)} dias`;
   }
 
+  function renderRingTimer(restanteSeg, totalSeg){
+    const r = 54;
+    const c = 2 * Math.PI * r;
+    const fracao = totalSeg > 0 ? Math.min(1, restanteSeg / totalSeg) : 0;
+    const offset = c * (1 - fracao);
+    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
+    const ss = String(restanteSeg % 60).padStart(2, "0");
+    return `
+      <div class="ring-timer">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="${r}"></circle>
+          <circle class="ring-progress" cx="60" cy="60" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${offset}"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-time">${mm}:${ss}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAoVivoStatus(){
+    const a = data.aoVivo;
+    if(!a) return "";
+    const restanteSeg = Math.max(0, Math.round((a.disparadoEm + a.minutos * 60000 - Date.now()) / 1000));
+    const esgotado = restanteSeg <= 0;
+    return `
+      <div class="card" style="border-left:3px solid ${a.urgente ? "var(--rose)" : "var(--gold)"};margin-bottom:16px;text-align:center;">
+        <div style="font-weight:700;margin-bottom:10px;">${a.urgente ? "🚨 URGENTE — corram para " + escapeHtml(a.proximaEtapa) : "📍 " + escapeHtml(a.proximaEtapa)}</div>
+        ${a.urgente ? "" : esgotado ? `<div class="aovivo-timer esgotado">Tempo esgotado</div>` : renderRingTimer(restanteSeg, a.minutos * 60)}
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
+          ${!a.urgente && a.minutos > 0 ? `<button type="button" id="btn-reiniciar-aovivo" class="link-btn" style="white-space:nowrap;">Reiniciar</button>` : ""}
+          <button type="button" id="btn-parar-aovivo" class="del-x" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">Parar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBadgeChips(action, selected){
+    return data.locais.map(l => `
+      <button type="button" class="pay-toggle ${selected === l.nome ? "paid" : ""}" data-action="${action}" data-nome="${escapeHtml(l.nome)}">
+        📍 ${escapeHtml(l.nome)}
+      </button>
+    `).join("");
+  }
+
   function renderAoVivo(){
-    let html = `
+    let html = renderAoVivoStatus() + `
       <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
-        Escolha o local, defina quantos minutos faltam e dispare — todo mundo que ativou notificação recebe na hora.
+        Escolha a próxima etapa, ajuste os minutos e dispare — todo mundo que ativou notificação recebe na hora.
       </div>
       <form class="inline-add" id="form-local" style="flex-wrap:wrap;">
-        <input type="text" id="input-local-nome" placeholder="Novo local (ex: Palco)" style="flex:1 1 200px;" required/>
+        <input type="text" id="input-local-nome" placeholder="Novo badge (ex: Palco, Almoço, Livre)" style="flex:1 1 200px;" required/>
         <button type="submit" class="btn-add">+</button>
       </form>
     `;
     if(data.locais.length === 0){
-      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum local cadastrado ainda.</div>`;
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum badge cadastrado ainda.</div>`;
     } else {
-      html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;">`;
-      html += data.locais.map(l => `
-        <button type="button" class="pay-toggle ${selectedLocalAoVivo === l.nome ? "paid" : ""}" data-action="select-local" data-nome="${escapeHtml(l.nome)}">
-          📍 ${escapeHtml(l.nome)}
-        </button>
-      `).join("");
-      html += `</div>`;
-      html += `<div style="display:flex;flex-wrap:wrap;gap:8px;">`;
-      html += data.locais.map(l => `<button class="del-x" data-action="del-local" data-id="${l.id}" title="Remover ${escapeHtml(l.nome)}" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">✕ ${escapeHtml(l.nome)}</button>`).join("");
-      html += `</div>`;
+      html += `<button type="button" id="btn-toggle-gerenciar-locais" class="link-btn" style="margin-bottom:10px;">${gerenciarLocais ? "Concluir" : "Gerenciar badges"}</button>`;
+      if(gerenciarLocais){
+        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">`;
+        html += data.locais.map(l => `<button class="del-x" data-action="del-local" data-id="${l.id}" title="Remover ${escapeHtml(l.nome)}" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">✕ ${escapeHtml(l.nome)}</button>`).join("");
+        html += `</div>`;
+      }
 
       html += `
-        <div class="card" style="margin-top:18px;">
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Local selecionado</label>
-          <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Nenhum local selecionado"}</div>
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Minutos restantes</label>
-          <input type="number" id="input-aviso-minutos" min="0" placeholder="Ex: 5" style="margin-bottom:14px;"/>
-          <button type="button" id="btn-disparar-aviso" class="btn-import" ${(!selectedLocalAoVivo || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
-        </div>
+        <div class="card" style="margin-top:4px;">
+          <label class="stepper-label">Próxima etapa</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">${renderBadgeChips("select-proxima-etapa", selectedProximaEtapa)}</div>
 
-        <div class="card" style="margin-top:14px;">
-          <div class="section-title" style="margin:0 0 14px 0;cursor:default;">Intervalo</div>
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Duração do intervalo (minutos)</label>
-          <input type="number" id="input-intervalo-minutos" min="1" placeholder="Ex: 40" style="margin-bottom:14px;"/>
-          <label style="display:block;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Próxima entrada</label>
-          <div style="font-weight:700;margin-bottom:14px;">${selectedLocalAoVivo ? "📍 " + escapeHtml(selectedLocalAoVivo) : "Selecione um local acima"}</div>
-          <button type="button" id="btn-iniciar-intervalo" class="btn-import" ${(!selectedLocalAoVivo || enviandoIntervalo) ? "disabled" : ""}>${enviandoIntervalo ? "Iniciando..." : "Iniciar intervalo"}</button>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:10px;">Um aviso automático é enviado faltando 5 minutos para o fim.</div>
+          <label class="stepper-label">Minutos</label>
+          <div class="stepper-row">
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="-10">-10</button>
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="-5">-5</button>
+            <div class="stepper-value">${avisoMinutosValor} min</div>
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="5">+5</button>
+            <button type="button" class="stepper-btn" data-action="ajustar-aviso-minutos" data-delta="10">+10</button>
+          </div>
+
+          <label class="stepper-label" style="margin-top:16px;">Avisar antes de terminar</label>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="pay-toggle ${avisoAntesMin === 10 ? "paid" : ""}" data-action="select-aviso-antes" data-min="10">Avisar 10 min antes</button>
+            <button type="button" class="pay-toggle ${avisoAntesMin === 5 ? "paid" : ""}" data-action="select-aviso-antes" data-min="5">Avisar 5 min antes</button>
+          </div>
+          <button type="button" id="btn-disparar-aviso" class="btn-import" style="margin-top:14px;" ${(!selectedProximaEtapa || enviandoAviso) ? "disabled" : ""}>${enviandoAviso ? "Enviando..." : "Disparar aviso"}</button>
+          <button type="button" id="btn-urgente" class="btn-urgente" ${(!selectedProximaEtapa || enviandoUrgente) ? "disabled" : ""}>${enviandoUrgente ? "Enviando..." : "🚨 Urgente — corram agora"}</button>
         </div>
       `;
     }
@@ -1625,9 +1757,9 @@ const functionsApp = getFunctions(firebaseApp);
       }
     });
 
-    document.querySelectorAll('[data-action="select-local"]').forEach(el => {
+    document.querySelectorAll('[data-action="select-proxima-etapa"]').forEach(el => {
       el.addEventListener("click", () => {
-        selectedLocalAoVivo = (selectedLocalAoVivo === el.dataset.nome) ? null : el.dataset.nome;
+        selectedProximaEtapa = (selectedProximaEtapa === el.dataset.nome) ? null : el.dataset.nome;
         render();
       });
     });
@@ -1636,7 +1768,7 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", async () => {
         const item = data.locais.find(l => l.id === el.dataset.id);
         if(!confirm(`Remover ${item ? `"${item.nome}"` : "este local"}?`)) return;
-        if(item && selectedLocalAoVivo === item.nome) selectedLocalAoVivo = null;
+        if(item && selectedProximaEtapa === item.nome) selectedProximaEtapa = null;
         try{
           await deleteDoc(doc(locaisCol, el.dataset.id));
           showToast("Local removido");
@@ -1647,15 +1779,33 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
+    document.querySelectorAll('[data-action="ajustar-aviso-minutos"]').forEach(el => {
+      el.addEventListener("click", () => {
+        avisoMinutosValor = Math.max(0, avisoMinutosValor + parseInt(el.dataset.delta, 10));
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="select-aviso-antes"]').forEach(el => {
+      el.addEventListener("click", () => {
+        avisoAntesMin = parseInt(el.dataset.min, 10);
+        render();
+      });
+    });
+
+    const btnToggleGerenciarLocais = document.getElementById("btn-toggle-gerenciar-locais");
+    if(btnToggleGerenciarLocais) btnToggleGerenciarLocais.addEventListener("click", () => {
+      gerenciarLocais = !gerenciarLocais;
+      render();
+    });
+
     const btnDisparar = document.getElementById("btn-disparar-aviso");
     if(btnDisparar) btnDisparar.addEventListener("click", async () => {
-      const minutosInput = document.getElementById("input-aviso-minutos");
-      const minutos = parseInt(minutosInput.value, 10);
-      if(!selectedLocalAoVivo || isNaN(minutos) || minutos < 0){ showToast("Escolha o local e os minutos"); return; }
+      if(!selectedProximaEtapa){ showToast("Escolha a próxima etapa"); return; }
       enviandoAviso = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ local: selectedLocalAoVivo, minutos });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ proximaEtapa: selectedProximaEtapa, minutos: avisoMinutosValor, avisoAntesMin });
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
@@ -1665,22 +1815,43 @@ const functionsApp = getFunctions(firebaseApp);
       render();
     });
 
-    const btnIniciarIntervalo = document.getElementById("btn-iniciar-intervalo");
-    if(btnIniciarIntervalo) btnIniciarIntervalo.addEventListener("click", async () => {
-      const minutosInput = document.getElementById("input-intervalo-minutos");
-      const minutos = parseInt(minutosInput.value, 10);
-      if(!selectedLocalAoVivo || isNaN(minutos) || minutos <= 0){ showToast("Escolha o local e a duração"); return; }
-      enviandoIntervalo = true;
+    const btnUrgente = document.getElementById("btn-urgente");
+    if(btnUrgente) btnUrgente.addEventListener("click", async () => {
+      if(!selectedProximaEtapa){ showToast("Escolha a próxima etapa"); return; }
+      enviandoUrgente = true;
       render();
       try{
-        await httpsCallable(functionsApp, "iniciarIntervalo")({ local: selectedLocalAoVivo, minutos });
-        showToast("Intervalo iniciado!");
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ proximaEtapa: selectedProximaEtapa, minutos: 0, urgente: true });
+        showToast("Aviso urgente enviado!");
       }catch(err){
         console.error(err);
-        showToast("Erro ao iniciar intervalo");
+        showToast("Erro ao enviar aviso urgente");
       }
-      enviandoIntervalo = false;
+      enviandoUrgente = false;
       render();
+    });
+
+    const btnPararAoVivo = document.getElementById("btn-parar-aovivo");
+    if(btnPararAoVivo) btnPararAoVivo.addEventListener("click", async () => {
+      if(!confirm("Parar o aviso ao vivo atual?")) return;
+      try{
+        await deleteDoc(aoVivoDocRef);
+        showToast("Aviso ao vivo parado");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao parar aviso");
+      }
+    });
+
+    const btnReiniciarAoVivo = document.getElementById("btn-reiniciar-aovivo");
+    if(btnReiniciarAoVivo) btnReiniciarAoVivo.addEventListener("click", async () => {
+      try{
+        await updateDoc(aoVivoDocRef, { disparadoEm: Date.now(), avisoAntesEnviado: false });
+        showToast("Timer reiniciado");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao reiniciar");
+      }
     });
 
     const formAgenda = document.getElementById("form-agenda");
@@ -2004,6 +2175,40 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
+    document.querySelectorAll('[data-action="edit-musica-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingMusicaNomeId = el.dataset.id;
+        render();
+        const input = document.getElementById("input-edit-musica-nome");
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+
+    async function salvarMusicaNome(id, input){
+      const novoNome = input.value.trim();
+      if(novoNome){ await updateDoc(doc(musicasCol, id), { nome: novoNome }); }
+      editingMusicaNomeId = null;
+      render();
+    }
+
+    document.querySelectorAll('[data-action="save-musica-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const input = document.getElementById("input-edit-musica-nome");
+        if(input) salvarMusicaNome(el.dataset.id, input);
+      });
+    });
+
+    const inputEditMusicaNome = document.getElementById("input-edit-musica-nome");
+    if(inputEditMusicaNome){
+      inputEditMusicaNome.addEventListener("keydown", e => {
+        if(e.key === "Enter"){ e.preventDefault(); salvarMusicaNome(inputEditMusicaNome.dataset.id, inputEditMusicaNome); }
+        else if(e.key === "Escape"){ editingMusicaNomeId = null; render(); }
+      });
+      inputEditMusicaNome.addEventListener("blur", () => {
+        if(editingMusicaNomeId === inputEditMusicaNome.dataset.id) salvarMusicaNome(inputEditMusicaNome.dataset.id, inputEditMusicaNome);
+      });
+    }
+
     document.querySelectorAll('[data-action="cycle-status"]').forEach(el => {
       el.addEventListener("click", async () => {
         const item = data.musicas.find(m => m.id === el.dataset.id);
@@ -2077,26 +2282,44 @@ const functionsApp = getFunctions(firebaseApp);
     });
   }
 
+  function irParaTab(tab){
+    currentTab = tab;
+    document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    render();
+  }
+
   document.querySelectorAll("nav.tabbar button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentTab = btn.dataset.tab;
-      document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      render();
-    });
+    btn.addEventListener("click", () => irParaTab(btn.dataset.tab));
   });
+
+  if(navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => {
+    if(e.data?.type === "goto" && e.data.url){
+      const tab = new URL(e.data.url, location.href).searchParams.get("tab");
+      if(tab) irParaTab(tab);
+    }
+  });
+
+  const tabDaUrl = new URLSearchParams(location.search).get("tab");
+  if(tabDaUrl) currentTab = tabDaUrl;
 
   document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
 
   initFontScale();
   initPush();
   loadAuth();
+  if(tabDaUrl) irParaTab(tabDaUrl);
 
   setInterval(() => {
     const focused = document.activeElement;
     const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
     if(currentTab === "roteiros" && loaded && !isTyping) render();
   }, 30000);
+
+  setInterval(() => {
+    const focused = document.activeElement;
+    const isTyping = focused && (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA");
+    if(currentTab === "aovivo" && loaded && !isTyping) render();
+  }, 1000);
 })();
 </script>
 </body>

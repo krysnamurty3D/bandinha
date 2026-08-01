@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Bandinha</title>
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -210,6 +211,34 @@
     color:var(--cream);
   }
   .aovivo-timer.esgotado{color:var(--rose);}
+  .ring-timer{
+    position:relative;
+    width:min(220px, 60vw);
+    height:min(220px, 60vw);
+    margin:8px auto;
+  }
+  .ring-timer svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:rgba(244,238,225,0.1);stroke-width:8;}
+  .ring-progress{
+    fill:none;
+    stroke:var(--rose);
+    stroke-width:8;
+    stroke-linecap:round;
+    transition:stroke-dashoffset 1s linear;
+  }
+  .ring-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring-time{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:calc(38px * var(--font-scale, 1));
+    color:var(--cream);
+  }
   .aovivo-label{
     color:var(--muted);
     font-size:calc(13px * var(--font-scale, 1));
@@ -413,6 +442,43 @@
     white-space:nowrap;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .urgente-overlay{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    background:rgba(31,10,8,0.97);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:24px;
+    animation:urgente-pulse 1s infinite;
+  }
+  @keyframes urgente-pulse{
+    0%, 100%{background:rgba(31,10,8,0.97);}
+    50%{background:rgba(60,15,12,0.97);}
+  }
+  .urgente-badge{
+    font-size:calc(24px * var(--font-scale, 1));
+    font-weight:800;
+    color:var(--rose);
+    letter-spacing:1px;
+    margin-bottom:18px;
+  }
+  .urgente-local{
+    font-size:calc(30px * var(--font-scale, 1));
+    font-weight:800;
+    color:var(--cream);
+    margin-bottom:32px;
+  }
+  .urgente-ok{
+    width:auto;
+    padding:14px 40px;
+    background:var(--rose);
+    color:var(--cream);
+  }
 </style>
 </head>
 <body>
@@ -425,6 +491,11 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="urgente-overlay" class="urgente-overlay hidden">
+  <div class="urgente-badge">🚨 URGENTE</div>
+  <div class="urgente-local" id="urgente-overlay-local"></div>
+  <button type="button" id="btn-urgente-ok" class="btn-import urgente-ok">Entendi</button>
+</div>
 <button type="button" id="btn-font-size" class="font-ctrl" title="Tamanho da fonte">Aa</button>
 <button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações">🔔</button>
 
@@ -479,6 +550,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 (function(){
   let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
   let currentTab = "musicas";
+  let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
   let openMusicaId = null;
   let openCoreografiaId = null;
@@ -613,12 +685,24 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     onSnapshot(aoVivoDocRef, snap => {
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
+      checarUrgente();
       safeRender();
     }, e => {
       console.error("Erro ao sincronizar ao vivo:", e);
       markLoaded("aoVivo");
       safeRender();
     });
+  }
+
+  function checarUrgente(){
+    const a = data.aoVivo;
+    if(!a || !a.urgente) return;
+    const recente = (Date.now() - a.disparadoEm) < 3 * 60000;
+    if(!recente || a.disparadoEm === ultimoUrgenteVisto) return;
+    ultimoUrgenteVisto = a.disparadoEm;
+    document.getElementById("urgente-overlay-local").textContent = "📍 " + a.proximaEtapa;
+    document.getElementById("urgente-overlay").classList.remove("hidden");
+    if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
   }
 
   // ---------- RENDER ----------
@@ -855,31 +939,50 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }).join("");
   }
 
+  function renderRingTimer(restanteSeg, totalSeg){
+    const r = 54;
+    const c = 2 * Math.PI * r;
+    const fracao = totalSeg > 0 ? Math.min(1, restanteSeg / totalSeg) : 0;
+    const offset = c * (1 - fracao);
+    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
+    const ss = String(restanteSeg % 60).padStart(2, "0");
+    return `
+      <div class="ring-timer">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="${r}"></circle>
+          <circle class="ring-progress" cx="60" cy="60" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${offset}"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-time">${mm}:${ss}</div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderAoVivo(){
     if(!data.aoVivo){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
     }
-    const { tipo, local, minutos, disparadoEm } = data.aoVivo;
+    const { proximaEtapa, minutos, disparadoEm, urgente } = data.aoVivo;
+    const totalSeg = minutos * 60;
     const fimMs = disparadoEm + minutos * 60000;
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
-    const mm = String(Math.floor(restanteSeg / 60)).padStart(2, "0");
-    const ss = String(restanteSeg % 60).padStart(2, "0");
-    if(tipo === "intervalo"){
+    if(urgente){
       return `
-        <div class="card aovivo-card">
-          <div class="aovivo-badge">⏸ Intervalo</div>
-          <div class="aovivo-timer ${esgotado ? "esgotado" : ""}">${esgotado ? "Acabou!" : `${mm}:${ss}`}</div>
-          <div class="aovivo-label">${esgotado ? "voltem para" : "próxima entrada"}</div>
-          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(local)}</div>
+        <div class="card aovivo-card" style="border-color:var(--rose);">
+          <div class="aovivo-badge" style="background:rgba(214,64,42,0.2);color:var(--rose);">🚨 URGENTE</div>
+          <div class="aovivo-timer esgotado">Agora!</div>
+          <div class="aovivo-label">corram para</div>
+          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(proximaEtapa)}</div>
         </div>
       `;
     }
     return `
       <div class="card aovivo-card">
-        <div class="aovivo-badge">📍 ${escapeHtml(local)}</div>
-        <div class="aovivo-timer ${esgotado ? "esgotado" : ""}">${esgotado ? "Já!" : `${mm}:${ss}`}</div>
-        <div class="aovivo-label">${esgotado ? "Posicionem-se agora" : "para se posicionarem"}</div>
+        ${esgotado ? `<div class="aovivo-timer esgotado">Já!</div>` : renderRingTimer(restanteSeg, totalSeg)}
+        <div class="aovivo-label" style="margin-top:14px;">Próxima etapa</div>
+        <div class="aovivo-badge" style="margin-top:6px;">📍 ${escapeHtml(proximaEtapa)}</div>
       </div>
     `;
   }
@@ -952,19 +1055,36 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     });
   }
 
+  function irParaTab(tab){
+    currentTab = tab;
+    document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    render();
+  }
+
   document.querySelectorAll("nav.tabbar button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentTab = btn.dataset.tab;
-      document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      render();
-    });
+    btn.addEventListener("click", () => irParaTab(btn.dataset.tab));
   });
+
+  document.getElementById("btn-urgente-ok").addEventListener("click", () => {
+    document.getElementById("urgente-overlay").classList.add("hidden");
+    irParaTab("aovivo");
+  });
+
+  if(navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => {
+    if(e.data?.type === "goto" && e.data.url){
+      const tab = new URL(e.data.url, location.href).searchParams.get("tab");
+      if(tab) irParaTab(tab);
+    }
+  });
+
+  const tabDaUrl = new URLSearchParams(location.search).get("tab");
+  if(tabDaUrl) currentTab = tabDaUrl;
 
   initFontScale();
   initPush();
   load();
   if(meuNome) loadMeuProgresso();
+  if(tabDaUrl) irParaTab(tabDaUrl);
 
   setInterval(() => {
     const focused = document.activeElement;

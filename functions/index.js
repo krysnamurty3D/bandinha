@@ -1,3 +1,4 @@
+// Cloud Functions for Bandinha push notifications (auto-deploy, retry 6)
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -10,13 +11,13 @@ const COORDENADOR_EMAIL = "krysnamurty@gmail.com";
 initializeApp();
 const db = getFirestore();
 
-async function sendToAll(title, body) {
+async function sendToAll(title, body, url) {
   const tokensSnap = await db.collection("pushTokens").get();
   if (tokensSnap.empty) return;
   const tokens = tokensSnap.docs.map(d => d.id);
   const res = await getMessaging().sendEachForMulticast({
     tokens,
-    notification: { title, body }
+    data: { title, body, url: url || "publico.html" }
   });
   const invalidos = [];
   res.responses.forEach((r, i) => {
@@ -47,47 +48,38 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
-  const { local, minutos } = request.data || {};
-  if (!local || typeof minutos !== "number" || minutos < 0) {
-    throw new HttpsError("invalid-argument", "Informe o local e os minutos.");
+  const { proximaEtapa, minutos, urgente, avisoAntesMin } = request.data || {};
+  if (!proximaEtapa || typeof minutos !== "number" || minutos < 0) {
+    throw new HttpsError("invalid-argument", "Informe a próxima etapa e os minutos.");
   }
-  const texto = minutos === 0
-    ? `Posicionem-se agora em ${local}`
-    : `Faltam ${minutos} min — posicionem-se em ${local}`;
-  await db.collection("aoVivo").doc("atual").set({ tipo: "local", local, minutos, disparadoEm: Date.now() });
-  await sendToAll("Aviso ao vivo", texto);
-  return { ok: true };
-});
-
-exports.iniciarIntervalo = onCall(async request => {
-  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
-    throw new HttpsError("permission-denied", "Apenas o coordenador pode iniciar o intervalo.");
-  }
-  const { local, minutos } = request.data || {};
-  if (!local || typeof minutos !== "number" || minutos <= 0) {
-    throw new HttpsError("invalid-argument", "Informe o local e a duração em minutos.");
-  }
+  const texto = urgente
+    ? `🚨 Urgente — corram para ${proximaEtapa} agora!`
+    : minutos === 0
+      ? `Posicionem-se agora em ${proximaEtapa}`
+      : `Em ${minutos} min: ${proximaEtapa}`;
   await db.collection("aoVivo").doc("atual").set({
-    tipo: "intervalo",
-    local,
+    proximaEtapa,
     minutos,
     disparadoEm: Date.now(),
-    avisoCincoEnviado: false
+    urgente: !!urgente,
+    avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
+    avisoAntesEnviado: false
   });
-  await sendToAll("Intervalo iniciado", `${minutos} min de intervalo — próxima entrada: ${local}`);
+  await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
   return { ok: true };
 });
 
-exports.avisoIntervalo = onSchedule("* * * * *", async () => {
+exports.avisoAntesFim = onSchedule("* * * * *", async () => {
   const ref = db.collection("aoVivo").doc("atual");
   const snap = await ref.get();
   if (!snap.exists) return;
   const a = snap.data();
-  if (a.tipo !== "intervalo" || a.avisoCincoEnviado) return;
+  if (a.urgente || !a.minutos || a.avisoAntesEnviado) return;
+  const limiar = a.avisoAntesMin || 5;
   const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
-  if (restanteMin <= 5 && restanteMin > 4) {
-    await sendToAll("Intervalo acabando", `Faltam 5 minutos — preparem-se para ${a.local}`);
-    await ref.update({ avisoCincoEnviado: true });
+  if (restanteMin <= limiar && restanteMin > limiar - 1) {
+    await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
+    await ref.update({ avisoAntesEnviado: true });
   }
 });
 
