@@ -317,6 +317,7 @@
   }
   .song-name{flex:1;min-width:0;cursor:pointer;}
   .song-title{font-weight:600;font-size:calc(15px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .song-num{flex-shrink:0;color:var(--muted);font-weight:600;font-size:calc(13px * var(--font-scale, 1));width:20px;text-align:right;}
   .song-artist{font-weight:400;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
   .status-pill{
     flex-shrink:0;
@@ -777,20 +778,19 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
     } else {
-      const labels = {ensaiando:"Ensaiando", pronta:"Pronta"};
       const ordenadas = [...musicasVisiveis].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-      html += ordenadas.map(m => {
+      html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const meuStatus = meuProgresso[m.id];
         const { titulo, artista } = splitMusica(m.nome);
         return `
         <div class="card">
           <div class="song-row">
+            <div class="song-num">${idx + 1}</div>
             <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
               <div class="song-title">${escapeHtml(titulo)}</div>
               ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
             </div>
-            <span class="status-pill status-${m.status}">${labels[m.status] || m.status}</span>
           </div>
           ${meuNome ? `
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
