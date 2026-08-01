@@ -909,8 +909,8 @@ const functionsApp = getFunctions(firebaseApp);
   }
   function formatLyrics(s){
     return escapeHtml(s)
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+      .replace(/\*\*([\s\S]+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(?<!\*)\*(?!\*)([\s\S]+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
   }
   function splitMusica(nome){
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
