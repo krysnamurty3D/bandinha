@@ -920,6 +920,7 @@ const functionsApp = getFunctions(firebaseApp);
   let editingMusicaNomeId = null;
   let ensaioAtivo = false;
   let ensaioIndex = 0;
+  let ensaioEditando = false;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
@@ -1380,6 +1381,7 @@ const functionsApp = getFunctions(firebaseApp);
                 ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
               </div>
               <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
+              <button class="eye-x ${m.noSetlist ? "" : "hidden-item"}" data-action="toggle-setlist-musica" data-id="${m.id}" title="${m.noSetlist ? "No setlist de ensaio — toque para remover" : "Fora do setlist — toque para adicionar"}">${m.noSetlist ? "🎯" : "⭘"}</button>
               <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
               <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
               <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
@@ -1487,9 +1489,23 @@ const functionsApp = getFunctions(firebaseApp);
     return `Faltam ${minutos}min`;
   }
 
+  function getSetlist(){
+    return [...data.musicas].filter(m => m.noSetlist).sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  }
+
   function renderModoEnsaio(){
-    const fila = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-    if(fila.length === 0){ ensaioAtivo = false; return ""; }
+    if(ensaioEditando) return renderEditarSetlist();
+    const fila = getSetlist();
+    if(fila.length === 0){
+      return `
+        <div class="ensaio-top">
+          <span class="ensaio-progress">Setlist vazio</span>
+          <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+        </div>
+        <div class="empty"><div class="note-dot"></div><br>Nenhuma música no setlist ainda.</div>
+        <button type="button" class="btn-import" style="margin-top:16px;" data-action="abrir-editar-setlist">+ Montar setlist</button>
+      `;
+    }
     if(ensaioIndex >= fila.length) ensaioIndex = fila.length - 1;
     if(ensaioIndex < 0) ensaioIndex = 0;
     const m = fila[ensaioIndex];
@@ -1497,7 +1513,10 @@ const functionsApp = getFunctions(firebaseApp);
     return `
       <div class="ensaio-top">
         <span class="ensaio-progress">${ensaioIndex + 1} / ${fila.length}</span>
-        <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button type="button" class="link-btn" style="padding:0;" data-action="abrir-editar-setlist">Editar setlist</button>
+          <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+        </div>
       </div>
       <div class="ensaio-title">${escapeHtml(titulo)}</div>
       ${artista ? `<div class="ensaio-artist">${escapeHtml(artista)}</div>` : ""}
@@ -1505,8 +1524,32 @@ const functionsApp = getFunctions(firebaseApp);
       <div class="ensaio-lyrics">${m.letra ? formatLyrics(m.letra) : '<span style="color:var(--muted);">Sem letra cadastrada.</span>'}</div>
       <div class="ensaio-nav">
         <button type="button" data-action="ensaio-anterior" ${ensaioIndex === 0 ? "disabled" : ""}>◀ Anterior</button>
+        <button type="button" data-action="ensaio-remover" data-id="${m.id}">Remover do setlist</button>
         <button type="button" data-action="ensaio-proxima" ${ensaioIndex === fila.length - 1 ? "disabled" : ""}>Próxima ▶</button>
       </div>
+    `;
+  }
+
+  function renderEditarSetlist(){
+    const todas = [...data.musicas].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+    return `
+      <div class="ensaio-top">
+        <span class="ensaio-progress">Editar setlist (${getSetlist().length})</span>
+        <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+      </div>
+      <button type="button" class="btn-import" style="margin-bottom:16px;" data-action="fechar-editar-setlist">◀ Voltar ao ensaio</button>
+      ${todas.map(m => {
+        const { titulo, artista } = splitMusica(m.nome);
+        return `
+        <label class="check-row" style="justify-content:space-between;">
+          <span style="display:flex;flex-direction:column;">
+            <span>${escapeHtml(titulo)}</span>
+            ${artista ? `<span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${escapeHtml(artista)}</span>` : ""}
+          </span>
+          <input type="checkbox" data-action="toggle-setlist-ensaio" data-id="${m.id}" ${m.noSetlist ? "checked" : ""} />
+        </label>
+      `;
+      }).join("")}
     `;
   }
 
@@ -2077,13 +2120,50 @@ const functionsApp = getFunctions(firebaseApp);
     const btnIniciarEnsaio = document.getElementById("btn-iniciar-ensaio");
     if(btnIniciarEnsaio) btnIniciarEnsaio.addEventListener("click", () => {
       ensaioAtivo = true;
+      ensaioEditando = false;
       ensaioIndex = 0;
       render();
+    });
+
+    document.querySelectorAll('[data-action="abrir-editar-setlist"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ensaioEditando = true;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="fechar-editar-setlist"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ensaioEditando = false;
+        ensaioIndex = 0;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-setlist-ensaio"]').forEach(el => {
+      el.addEventListener("change", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        item.noSetlist = el.checked;
+        render();
+        await updateDoc(doc(musicasCol, item.id), { noSetlist: el.checked });
+      });
+    });
+
+    document.querySelectorAll('[data-action="ensaio-remover"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        item.noSetlist = false;
+        render();
+        await updateDoc(doc(musicasCol, item.id), { noSetlist: false });
+      });
     });
 
     document.querySelectorAll('[data-action="sair-ensaio"]').forEach(el => {
       el.addEventListener("click", () => {
         ensaioAtivo = false;
+        ensaioEditando = false;
         render();
       });
     });
@@ -2400,6 +2480,16 @@ const functionsApp = getFunctions(firebaseApp);
         const order = ["ensaiando","pronta"];
         const novoStatus = order[(order.indexOf(item.status)+1) % order.length];
         await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-setlist-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        const noSetlist = !item.noSetlist;
+        await updateDoc(doc(musicasCol, item.id), { noSetlist });
+        showToast(noSetlist ? "Adicionada ao setlist" : "Removida do setlist");
       });
     });
 
