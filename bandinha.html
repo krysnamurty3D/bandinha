@@ -358,6 +358,17 @@
     line-height:1;
   }
   .eye-x.hidden-item{color:var(--rose);}
+  .reorder-btn{
+    flex-shrink:0;
+    background:transparent;
+    color:var(--muted);
+    font-size:calc(10px * var(--font-scale, 1));
+    width:18px;
+    line-height:1.2;
+    padding:2px 0;
+  }
+  .reorder-btn:disabled{opacity:0.25;cursor:default;}
+  .reorder-btn:not(:disabled):hover{color:var(--gold);}
   .card.item-hidden{opacity:0.5;}
   .member-sub{
     display:flex;
@@ -773,6 +784,18 @@ const functionsApp = getFunctions(firebaseApp);
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   }
+  function computeOrdemAlfabetica(nome){
+    const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const n = norm(nome);
+    const lista = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    let insertIdx = lista.findIndex(m => norm(m.nome) > n);
+    if(insertIdx === -1) insertIdx = lista.length;
+    const prev = lista[insertIdx - 1];
+    const next = lista[insertIdx];
+    const prevOrdem = prev ? (prev.ordem ?? 0) : (next ? (next.ordem ?? 1) - 1 : 0);
+    const nextOrdem = next ? (next.ordem ?? prevOrdem + 1) : prevOrdem + 1;
+    return (prevOrdem + nextOrdem) / 2;
+  }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
@@ -1147,7 +1170,8 @@ const functionsApp = getFunctions(firebaseApp);
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
-      html += data.musicas.map(m => {
+      const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+      html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
         const { titulo, artista } = splitMusica(m.nome);
@@ -1155,6 +1179,10 @@ const functionsApp = getFunctions(firebaseApp);
         return `
         <div class="card ${oculta ? "item-hidden" : ""}" data-id="${m.id}">
           <div class="song-row">
+            <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+              <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="up" ${idx===0 ? "disabled" : ""}>▲</button>
+              <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="down" ${idx===ordenadas.length-1 ? "disabled" : ""}>▼</button>
+            </div>
             <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
               <div class="song-title">${escapeHtml(titulo)}</div>
               ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
@@ -1165,6 +1193,7 @@ const functionsApp = getFunctions(firebaseApp);
           </div>
           ${open ? `
             <div class="lyrics-box">
+              ${m.audioId ? `<audio controls style="width:100%;margin-bottom:12px;" src="https://drive.google.com/uc?export=download&id=${m.audioId}"></audio>` : ""}
               ${editingLetra ? `
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
                 <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
@@ -1515,8 +1544,23 @@ const functionsApp = getFunctions(firebaseApp);
       const input = document.getElementById("input-musica-nome");
       const nome = input.value.trim();
       if(!nome) return;
-      const novaMus = { id: uid(), nome, status: "aprender", letra: "" };
+      const novaMus = { id: uid(), nome, status: "aprender", letra: "", ordem: computeOrdemAlfabetica(nome) };
       await setDoc(doc(musicasCol, novaMus.id), novaMus); showToast("Música adicionada");
+    });
+
+    document.querySelectorAll('[data-action="move-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+        const idx = ordenadas.findIndex(m => m.id === el.dataset.id);
+        const dir = el.dataset.dir === "up" ? -1 : 1;
+        const alvo = ordenadas[idx + dir];
+        if(!alvo) return;
+        const atual = ordenadas[idx];
+        await Promise.all([
+          updateDoc(doc(musicasCol, atual.id), { ordem: alvo.ordem ?? 0 }),
+          updateDoc(doc(musicasCol, alvo.id), { ordem: atual.ordem ?? 0 })
+        ]);
+      });
     });
 
     const formRot = document.getElementById("form-roteiro");

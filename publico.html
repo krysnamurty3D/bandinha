@@ -681,7 +681,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
     } else {
       const labels = {aprender:"A aprender", ensaiando:"Ensaiando", pronta:"Pronta"};
-      html += musicasVisiveis.map(m => {
+      const ordenadas = [...musicasVisiveis].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+      html += ordenadas.map(m => {
         const open = openMusicaId === m.id;
         const meuStatus = meuProgresso[m.id];
         const { titulo, artista } = splitMusica(m.nome);
@@ -703,6 +704,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           ` : ""}
           ${open ? `
             <div class="lyrics-box">
+              ${m.audioId ? `<audio controls style="width:100%;margin-bottom:12px;" src="https://drive.google.com/uc?export=download&id=${m.audioId}"></audio>` : ""}
               ${m.letra ? `<div class="lyrics-text">${escapeHtml(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
             </div>
           ` : ""}
