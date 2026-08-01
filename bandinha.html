@@ -819,6 +819,7 @@ const functionsApp = getFunctions(firebaseApp);
   let expandedMemberId = null;
   let openMusicaId = null;
   let editingLetraId = null;
+  let editingMusicaNomeId = null;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
@@ -1229,18 +1230,25 @@ const functionsApp = getFunctions(firebaseApp);
       html += data.musicas.map(m => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
+        const editingNome = editingMusicaNomeId === m.id;
         const { titulo, artista } = splitMusica(m.nome);
         const oculta = m.visivel === false;
         return `
         <div class="card ${oculta ? "item-hidden" : ""}" data-id="${m.id}">
           <div class="song-row">
-            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-              <div class="song-title">${escapeHtml(titulo)}</div>
-              ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
-            </div>
-            <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
-            <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
-            <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
+            ${editingNome ? `
+              <input type="text" class="edit-nome-input" id="input-edit-musica-nome" data-id="${m.id}" value="${escapeHtml(m.nome)}" placeholder="Nome da música" />
+              <button class="btn-save-nome" data-action="save-musica-nome" data-id="${m.id}">✓</button>
+            ` : `
+              <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
+                <div class="song-title">${escapeHtml(titulo)}</div>
+                ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
+              </div>
+              <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
+              <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
+              <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
+              <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
+            `}
           </div>
           ${open ? `
             <div class="lyrics-box">
@@ -2122,6 +2130,40 @@ const functionsApp = getFunctions(firebaseApp);
         render();
       });
     });
+
+    document.querySelectorAll('[data-action="edit-musica-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingMusicaNomeId = el.dataset.id;
+        render();
+        const input = document.getElementById("input-edit-musica-nome");
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+
+    async function salvarMusicaNome(id, input){
+      const novoNome = input.value.trim();
+      if(novoNome){ await updateDoc(doc(musicasCol, id), { nome: novoNome }); }
+      editingMusicaNomeId = null;
+      render();
+    }
+
+    document.querySelectorAll('[data-action="save-musica-nome"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const input = document.getElementById("input-edit-musica-nome");
+        if(input) salvarMusicaNome(el.dataset.id, input);
+      });
+    });
+
+    const inputEditMusicaNome = document.getElementById("input-edit-musica-nome");
+    if(inputEditMusicaNome){
+      inputEditMusicaNome.addEventListener("keydown", e => {
+        if(e.key === "Enter"){ e.preventDefault(); salvarMusicaNome(inputEditMusicaNome.dataset.id, inputEditMusicaNome); }
+        else if(e.key === "Escape"){ editingMusicaNomeId = null; render(); }
+      });
+      inputEditMusicaNome.addEventListener("blur", () => {
+        if(editingMusicaNomeId === inputEditMusicaNome.dataset.id) salvarMusicaNome(inputEditMusicaNome.dataset.id, inputEditMusicaNome);
+      });
+    }
 
     document.querySelectorAll('[data-action="cycle-status"]').forEach(el => {
       el.addEventListener("click", async () => {
