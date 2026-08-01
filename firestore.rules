@@ -32,6 +32,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isCoordenador();
     }
+    match /historicoEnsaios/{docId} {
+      allow read: if true;
+      allow write: if isCoordenador();
+    }
     match /bandinha/{docId} {
       allow read, write: if isCoordenador();
     }

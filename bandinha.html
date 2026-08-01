@@ -895,6 +895,7 @@ const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const progressoCol = collection(db, "progresso");
 const agendaCol = collection(db, "agenda");
+const historicoCol = collection(db, "historicoEnsaios");
 const pushTokensCol = collection(db, "pushTokens");
 const locaisCol = collection(db, "locais");
 const aoVivoDocRef = doc(db, "aoVivo", "atual");
@@ -904,8 +905,8 @@ const functionsApp = getFunctions(firebaseApp);
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -921,6 +922,8 @@ const functionsApp = getFunctions(firebaseApp);
   let ensaioAtivo = false;
   let ensaioIndex = 0;
   let ensaioEditando = false;
+  let ensaioSessaoIds = new Set();
+  let historicoAtivo = false;
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
@@ -1028,7 +1031,7 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function safeRender(){
-    if(openCoreografiaId || ensaioAtivo){ return; }
+    if(openCoreografiaId || ensaioAtivo || historicoAtivo){ return; }
     render();
   }
 
@@ -1074,6 +1077,12 @@ const functionsApp = getFunctions(firebaseApp);
       markLoaded("agenda");
       safeRender();
     }, e => { console.error("Erro ao sincronizar agenda:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(historicoCol, snap => {
+      data.historico = snap.docs.map(d => d.data());
+      markLoaded("historico");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar histórico:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(locaisCol, snap => {
       data.locais = snap.docs.map(d => d.data());
@@ -1169,11 +1178,11 @@ const functionsApp = getFunctions(firebaseApp);
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
-    if(ensaioAtivo){
+    if(ensaioAtivo || historicoAtivo){
       document.getElementById("app").classList.add("hidden");
       document.querySelector("nav.tabbar").classList.add("hidden");
       document.getElementById("ensaio-overlay").classList.remove("hidden");
-      document.getElementById("ensaio-overlay").innerHTML = renderModoEnsaio();
+      document.getElementById("ensaio-overlay").innerHTML = historicoAtivo ? renderHistorico() : renderModoEnsaio();
       attachHandlers();
       return;
     }
@@ -1351,7 +1360,12 @@ const functionsApp = getFunctions(firebaseApp);
         <input type="text" id="input-musica-nome" placeholder="Nome da música" required />
         <button type="submit" class="btn-add">+</button>
       </form>
-      ${total > 0 ? `<button type="button" id="btn-iniciar-ensaio" class="btn-import" style="margin-bottom:16px;">▶ Iniciar Ensaio</button>` : ""}
+      ${total > 0 ? `
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <button type="button" id="btn-iniciar-ensaio" class="btn-import" style="flex:2;">▶ Iniciar Ensaio</button>
+          <button type="button" id="btn-ver-historico" class="btn-import" style="flex:1;background:var(--surface-2);color:var(--cream);">📅 Histórico</button>
+        </div>
+      ` : ""}
     `;
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
@@ -1509,6 +1523,7 @@ const functionsApp = getFunctions(firebaseApp);
     if(ensaioIndex >= fila.length) ensaioIndex = fila.length - 1;
     if(ensaioIndex < 0) ensaioIndex = 0;
     const m = fila[ensaioIndex];
+    ensaioSessaoIds.add(m.id);
     const { titulo, artista } = splitMusica(m.nome);
     return `
       <div class="ensaio-top">
@@ -1527,6 +1542,51 @@ const functionsApp = getFunctions(firebaseApp);
         <button type="button" data-action="ensaio-remover" data-id="${m.id}">Remover do setlist</button>
         <button type="button" data-action="ensaio-proxima" ${ensaioIndex === fila.length - 1 ? "disabled" : ""}>Próxima ▶</button>
       </div>
+    `;
+  }
+
+  function diasDesde(dataIso){
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const d = new Date(dataIso + "T00:00:00");
+    return Math.round((hoje - d) / 86400000);
+  }
+
+  function renderHistorico(){
+    const musicas = [...data.musicas].sort((a,b) => {
+      if(!a.ultimoEnsaio && !b.ultimoEnsaio) return a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+      if(!a.ultimoEnsaio) return -1;
+      if(!b.ultimoEnsaio) return 1;
+      return a.ultimoEnsaio.localeCompare(b.ultimoEnsaio);
+    });
+    const sessoes = [...data.historico].sort((a,b) => b.data.localeCompare(a.data));
+    return `
+      <div class="ensaio-top">
+        <span class="ensaio-progress">Histórico de ensaios</span>
+        <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+      </div>
+      <div class="section-title" style="margin-top:0;">Há mais tempo sem ensaiar</div>
+      ${musicas.map(m => {
+        const { titulo, artista } = splitMusica(m.nome);
+        const status = m.ultimoEnsaio
+          ? `Ensaiada há ${diasDesde(m.ultimoEnsaio)}d (${formatDate(m.ultimoEnsaio)})`
+          : "Nunca ensaiada";
+        return `
+        <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(titulo)}${artista ? ` <span style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));">${escapeHtml(artista)}</span>` : ""}</span>
+          <span style="flex-shrink:0;color:${m.ultimoEnsaio ? "var(--muted)" : "var(--rose)"};font-size:calc(12px * var(--font-scale, 1));font-weight:600;">${status}</span>
+        </div>
+      `;
+      }).join("")}
+      <div class="section-title">Sessões registradas</div>
+      ${sessoes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma sessão de ensaio registrada ainda.<br>Use o Modo Ensaio pra começar a registrar.</div>` : sessoes.map(s => `
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px;">${formatDate(s.data)}</div>
+          <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">${s.musicaIds.map(id => {
+            const m = data.musicas.find(x => x.id === id);
+            return m ? escapeHtml(splitMusica(m.nome).titulo) : null;
+          }).filter(Boolean).join(" · ")}</div>
+        </div>
+      `).join("")}
     `;
   }
 
@@ -2122,6 +2182,13 @@ const functionsApp = getFunctions(firebaseApp);
       ensaioAtivo = true;
       ensaioEditando = false;
       ensaioIndex = 0;
+      ensaioSessaoIds = new Set();
+      render();
+    });
+
+    const btnVerHistorico = document.getElementById("btn-ver-historico");
+    if(btnVerHistorico) btnVerHistorico.addEventListener("click", () => {
+      historicoAtivo = true;
       render();
     });
 
@@ -2161,9 +2228,20 @@ const functionsApp = getFunctions(firebaseApp);
     });
 
     document.querySelectorAll('[data-action="sair-ensaio"]').forEach(el => {
-      el.addEventListener("click", () => {
+      el.addEventListener("click", async () => {
+        if(historicoAtivo){ historicoAtivo = false; render(); return; }
         ensaioAtivo = false;
         ensaioEditando = false;
+        if(ensaioSessaoIds.size > 0){
+          const hoje = new Date().toISOString().slice(0,10);
+          const idsVisitados = [...ensaioSessaoIds];
+          const existente = data.historico.find(h => h.data === hoje);
+          const musicaIds = [...new Set([...(existente?.musicaIds || []), ...idsVisitados])];
+          await setDoc(doc(historicoCol, hoje), { data: hoje, musicaIds });
+          await Promise.all(idsVisitados.map(id => updateDoc(doc(musicasCol, id), { ultimoEnsaio: hoje })));
+          showToast("Ensaio registrado no histórico");
+        }
+        ensaioSessaoIds = new Set();
         render();
       });
     });
