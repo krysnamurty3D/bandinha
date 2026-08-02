@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Bandinha</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest-editor.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -1151,10 +1151,19 @@ const functionsApp = getFunctions(firebaseApp);
     fontBtn.classList.add("hidden");
     pushBtn.classList.add("hidden");
     gate.classList.remove("hidden");
+    const ua = navigator.userAgent || "";
+    const emAppEmbutido = /FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(ua);
     gate.innerHTML = `
       <div class="login-box" style="text-align:center;">
         <div class="brand" style="padding:0 0 18px 0;justify-content:center;">Bandinha <small>Equipe de Canto</small></div>
         <p style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));margin:0 0 18px 0;">Área restrita ao coordenador</p>
+        ${emAppEmbutido ? `
+          <div style="background:rgba(214,64,42,0.15);border:1px solid rgba(214,64,42,0.4);border-radius:10px;padding:12px;margin-bottom:16px;color:var(--rose);font-size:calc(12.5px * var(--font-scale, 1));text-align:left;line-height:1.5;">
+            O login com Google não funciona dentro do navegador do WhatsApp/Instagram.<br><br>
+            <strong>Android:</strong> toque em ⋮ e escolha "Abrir no Chrome".<br>
+            <strong>iPhone:</strong> toque em compartilhar (↑) e escolha "Abrir no Safari".
+          </div>
+        ` : ""}
         <button type="button" id="btn-google-login" class="btn-import">Entrar com Google</button>
         <div id="login-error" style="color:var(--rose);font-size:calc(13px * var(--font-scale, 1));margin-top:10px;"></div>
       </div>
@@ -1166,7 +1175,15 @@ const functionsApp = getFunctions(firebaseApp);
         await signInWithPopup(auth, googleProvider);
       }catch(err){
         console.error(err);
-        errEl.textContent = "Não foi possível entrar. Tente novamente.";
+        if(err.code === "auth/unauthorized-domain"){
+          errEl.textContent = `Domínio "${location.hostname}" não autorizado no Firebase. Peça pro coordenador adicioná-lo em Authentication > Settings > Domínios autorizados.`;
+        } else if(err.code === "auth/popup-blocked"){
+          errEl.textContent = "O navegador bloqueou a janela de login. Permita pop-ups e tente de novo.";
+        } else if(err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request"){
+          errEl.textContent = "";
+        } else {
+          errEl.textContent = `Não foi possível entrar (${err.code || "erro desconhecido"}). Tente novamente.`;
+        }
       }
     });
   }
