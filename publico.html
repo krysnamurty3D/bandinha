@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Bandinha</title>
-<meta name="description" content="Músicas, coreografias, agenda e roteiro da Bandinha - Equipe de Canto.">
+<meta name="description" content="Músicas, coreografias, agenda e roteiro da Bandinha - 2ª Igreja Congregacional.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://bandinha.k3d.app.br/publico.html">
-<meta property="og:title" content="Bandinha - Equipe de Canto">
-<meta property="og:description" content="Músicas, coreografias, agenda e roteiro da Bandinha - Equipe de Canto.">
+<meta property="og:title" content="Bandinha - 2ª Igreja Congregacional">
+<meta property="og:description" content="Músicas, coreografias, agenda e roteiro da Bandinha - 2ª Igreja Congregacional.">
 <meta property="og:image" content="https://bandinha.k3d.app.br/header.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Bandinha - Equipe de Canto">
-<meta name="twitter:description" content="Músicas, coreografias, agenda e roteiro da Bandinha - Equipe de Canto.">
+<meta name="twitter:title" content="Bandinha - 2ª Igreja Congregacional">
+<meta name="twitter:description" content="Músicas, coreografias, agenda e roteiro da Bandinha - 2ª Igreja Congregacional.">
 <meta name="twitter:image" content="https://bandinha.k3d.app.br/header.png">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -508,7 +508,7 @@
 <body>
 <div id="app">
   <header class="top">
-    <div class="brand" id="brand">Bandinha <small>Equipe de Canto</small></div>
+    <div class="brand" id="brand">Bandinha <small>2ª Igreja Congregacional</small></div>
   </header>
 
   <main id="main"></main>
@@ -572,7 +572,7 @@ const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 
 (function(){
-  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let currentTab = "musicas";
   let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
@@ -700,7 +700,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }, e => { console.error("Erro ao sincronizar coreografias:", e); });
 
     onSnapshot(configDocRef, snap => {
-      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); });
@@ -751,7 +751,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   function renderBrand(){
     const brand = document.getElementById("brand");
     if(!brand) return;
-    const cfg = data.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+    const cfg = data.config || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
     brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
   }
 

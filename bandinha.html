@@ -905,7 +905,7 @@ const functionsApp = getFunctions(firebaseApp);
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], config: { titulo: "Bandinha", subtitulo: "Equipe de Canto" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, config: false };
   let currentUser = null;
   let authReady = false;
@@ -1062,7 +1062,7 @@ const functionsApp = getFunctions(firebaseApp);
     }, e => { console.error("Erro ao sincronizar coreografias:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(configDocRef, snap => {
-      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); showToast("Erro ao sincronizar"); });
@@ -1155,7 +1155,7 @@ const functionsApp = getFunctions(firebaseApp);
     const emAppEmbutido = /FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(ua);
     gate.innerHTML = `
       <div class="login-box" style="text-align:center;">
-        <div class="brand" style="padding:0 0 18px 0;justify-content:center;">Bandinha <small>Equipe de Canto</small></div>
+        <div class="brand" style="padding:0 0 18px 0;justify-content:center;">Bandinha <small>2ª Igreja Congregacional</small></div>
         <p style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));margin:0 0 18px 0;">Área restrita ao coordenador</p>
         ${emAppEmbutido ? `
           <div style="background:rgba(214,64,42,0.15);border:1px solid rgba(214,64,42,0.4);border-radius:10px;padding:12px;margin-bottom:16px;color:var(--rose);font-size:calc(12.5px * var(--font-scale, 1));text-align:left;line-height:1.5;">
@@ -1224,7 +1224,7 @@ const functionsApp = getFunctions(firebaseApp);
   function renderBrand(){
     const brand = document.getElementById("brand");
     if(!brand) return;
-    const cfg = data.config || { titulo: "Bandinha", subtitulo: "Equipe de Canto" };
+    const cfg = data.config || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
     if(editingBrand){
       brand.onclick = null;
       brand.innerHTML = `
