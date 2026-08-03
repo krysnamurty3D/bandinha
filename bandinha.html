@@ -894,6 +894,7 @@ const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const progressoCol = collection(db, "progresso");
+const visualizacoesCol = collection(db, "visualizacoes");
 const agendaCol = collection(db, "agenda");
 const historicoCol = collection(db, "historicoEnsaios");
 const pushTokensCol = collection(db, "pushTokens");
@@ -905,8 +906,8 @@ const functionsApp = getFunctions(firebaseApp);
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
-  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, config: false };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let currentUser = null;
   let authReady = false;
   let currentTab = "integrantes";
@@ -1072,6 +1073,12 @@ const functionsApp = getFunctions(firebaseApp);
       markLoaded("progresso");
       safeRender();
     }, e => { console.error("Erro ao sincronizar progresso:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(visualizacoesCol, snap => {
+      data.visualizacoes = snap.docs.map(d => d.data());
+      markLoaded("visualizacoes");
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar visualizações:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(agendaCol, snap => {
       data.agenda = snap.docs.map(d => d.data());
@@ -1432,6 +1439,7 @@ const functionsApp = getFunctions(firebaseApp);
           </div>
           ${open ? `
             <div class="lyrics-box">
+              ${renderVisualizacoesBadge("musica", m.id)}
               ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
               ${editingLetra ? `
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
@@ -1530,6 +1538,15 @@ const functionsApp = getFunctions(firebaseApp);
     if(dias > 0) return `Faltam ${dias}d ${horas}h`;
     if(horas > 0) return `Faltam ${horas}h ${minutos}min`;
     return `Faltam ${minutos}min`;
+  }
+
+  function renderVisualizacoesBadge(tipo, itemId){
+    const vistos = data.visualizacoes.filter(v => v.tipo === tipo && v.itemId === itemId);
+    if(vistos.length === 0){
+      return `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">👁 Ninguém visualizou ainda</div>`;
+    }
+    const nomes = vistos.map(v => escapeHtml(v.nome)).join(", ");
+    return `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">👁 ${vistos.length} visualiza${vistos.length===1?"ção":"ções"}: ${nomes}</div>`;
   }
 
   function getSetlist(){
@@ -1700,6 +1717,7 @@ const functionsApp = getFunctions(firebaseApp);
           </div>
         ` : open ? `
           <div class="lyrics-box">
+            ${renderVisualizacoesBadge("coreografia", c.id)}
             <div class="video-frame"><iframe src="https://drive.google.com/file/d/${c.driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>
             <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-coreografia" data-id="${c.id}">Editar</button>
           </div>

@@ -569,6 +569,7 @@ const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const agendaCol = collection(db, "agenda");
 const progressoCol = collection(db, "progresso");
+const visualizacoesCol = collection(db, "visualizacoes");
 const pushTokensCol = collection(db, "pushTokens");
 const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
@@ -604,6 +605,12 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function registrarVisualizacao(tipo, itemId){
+    if(!meuNome) return;
+    const docId = `${tipo}_${itemId}_${slugify(meuNome)}`;
+    setDoc(doc(visualizacoesCol, docId), { tipo, itemId, nome: meuNome, visualizadoEm: Date.now() }).catch(e => console.error("Erro ao registrar visualização:", e));
   }
 
   let progressoUnsub = null;
@@ -1056,6 +1063,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       el.addEventListener("click", () => {
         const id = el.dataset.id;
         openMusicaId = (openMusicaId === id) ? null : id;
+        if(openMusicaId) registrarVisualizacao("musica", id);
         render();
       });
     });
@@ -1072,6 +1080,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       el.addEventListener("click", () => {
         const id = el.dataset.id;
         openCoreografiaId = (openCoreografiaId === id) ? null : id;
+        if(openCoreografiaId) registrarVisualizacao("coreografia", id);
         render();
       });
     });
