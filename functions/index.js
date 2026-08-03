@@ -95,7 +95,7 @@ exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
   for (const docSnap of snap.docs) {
     const a = docSnap.data();
     if (!a.data || !a.hora) continue;
-    const evento = new Date(`${a.data}T${a.hora}:00`).getTime();
+    const evento = new Date(`${a.data}T${a.hora}:00-03:00`).getTime();
     const diffMin = (evento - agora) / 60000;
     const enviados = a.lembretesEnviados || [];
     for (const limiar of LIMIARES) {
