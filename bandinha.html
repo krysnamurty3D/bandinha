@@ -954,6 +954,7 @@ const functionsApp = getFunctions(firebaseApp);
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
   let enviandoUrgente = false;
+  let enviandoCustom = false;
   let avisoMinutosValor = 5;
   let avisoAntesMin = 5;
   let gerenciarLocais = false;
@@ -1844,8 +1845,8 @@ const functionsApp = getFunctions(firebaseApp);
     const esgotado = restanteSeg <= 0;
     return `
       <div class="card" style="border-left:3px solid ${a.urgente ? "var(--rose)" : "var(--gold)"};margin-bottom:16px;text-align:center;">
-        <div style="font-weight:700;margin-bottom:10px;">${a.urgente ? "🚨 URGENTE — corram para " + escapeHtml(a.proximaEtapa) : "📍 " + escapeHtml(a.proximaEtapa)}</div>
-        ${a.urgente ? "" : esgotado ? `<div class="aovivo-timer esgotado">Tempo esgotado</div>` : renderRingTimer(restanteSeg, a.minutos * 60)}
+        <div style="font-weight:700;margin-bottom:10px;">${a.urgente ? "🚨 URGENTE — corram para " + escapeHtml(a.proximaEtapa) : a.custom ? "📢 " + escapeHtml(a.proximaEtapa) : "📍 " + escapeHtml(a.proximaEtapa)}</div>
+        ${a.urgente || a.custom ? "" : esgotado ? `<div class="aovivo-timer esgotado">Tempo esgotado</div>` : renderRingTimer(restanteSeg, a.minutos * 60)}
         <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
           ${!a.urgente && a.minutos > 0 ? `<button type="button" id="btn-reiniciar-aovivo" class="link-btn" style="white-space:nowrap;">Reiniciar</button>` : ""}
           <button type="button" id="btn-parar-aovivo" class="del-x" style="width:auto;padding:4px 10px;border:1px solid var(--line);border-radius:20px;">Parar</button>
@@ -1906,6 +1907,13 @@ const functionsApp = getFunctions(firebaseApp);
         </div>
       `;
     }
+    html += `
+      <div class="card" style="margin-top:16px;">
+        <label class="stepper-label">Aviso personalizado</label>
+        <textarea id="input-aviso-custom" placeholder="Escreva um texto livre para enviar a todos..." style="width:100%;min-height:70px;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:inherit;font-family:inherit;font-size:calc(14px * var(--font-scale, 1));resize:vertical;"></textarea>
+        <button type="button" id="btn-disparar-custom" class="btn-import" style="margin-top:10px;" ${enviandoCustom ? "disabled" : ""}>${enviandoCustom ? "Enviando..." : "📢 Disparar aviso personalizado"}</button>
+      </div>
+    `;
     return html;
   }
 
@@ -2133,6 +2141,24 @@ const functionsApp = getFunctions(firebaseApp);
         showToast("Erro ao enviar aviso urgente");
       }
       enviandoUrgente = false;
+      render();
+    });
+
+    const btnDispararCustom = document.getElementById("btn-disparar-custom");
+    if(btnDispararCustom) btnDispararCustom.addEventListener("click", async () => {
+      const input = document.getElementById("input-aviso-custom");
+      const texto = (input?.value || "").trim();
+      if(!texto){ showToast("Escreva o texto do aviso"); return; }
+      enviandoCustom = true;
+      render();
+      try{
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ mensagemCustom: texto });
+        showToast("Aviso enviado!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao enviar aviso");
+      }
+      enviandoCustom = false;
       render();
     });
 

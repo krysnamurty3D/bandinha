@@ -1032,11 +1032,19 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(!data.aoVivo){
       return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
     }
-    const { proximaEtapa, minutos, disparadoEm, urgente } = data.aoVivo;
+    const { proximaEtapa, minutos, disparadoEm, urgente, custom } = data.aoVivo;
     const totalSeg = minutos * 60;
     const fimMs = disparadoEm + minutos * 60000;
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
+    if(custom){
+      return `
+        <div class="card aovivo-card" style="border-color:var(--gold);">
+          <div class="aovivo-badge" style="background:rgba(240,169,60,0.2);color:var(--gold);">📢 AVISO</div>
+          <div style="font-weight:700;margin-top:14px;">${escapeHtml(proximaEtapa)}</div>
+        </div>
+      `;
+    }
     if(urgente){
       return `
         <div class="card aovivo-card" style="border-color:var(--rose);">

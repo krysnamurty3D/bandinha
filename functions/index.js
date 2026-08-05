@@ -48,7 +48,24 @@ exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
-  const { proximaEtapa, minutos, urgente, avisoAntesMin } = request.data || {};
+  const { proximaEtapa, minutos, urgente, avisoAntesMin, mensagemCustom } = request.data || {};
+  if (mensagemCustom) {
+    const textoLimpo = String(mensagemCustom).trim();
+    if (!textoLimpo) {
+      throw new HttpsError("invalid-argument", "Escreva o texto do aviso.");
+    }
+    await db.collection("aoVivo").doc("atual").set({
+      proximaEtapa: textoLimpo,
+      minutos: 0,
+      disparadoEm: Date.now(),
+      urgente: false,
+      custom: true,
+      avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
+      avisoAntesEnviado: true
+    });
+    await sendToAll("Aviso", textoLimpo, "publico.html?tab=aovivo");
+    return { ok: true };
+  }
   if (!proximaEtapa || typeof minutos !== "number" || minutos < 0) {
     throw new HttpsError("invalid-argument", "Informe a próxima etapa e os minutos.");
   }
