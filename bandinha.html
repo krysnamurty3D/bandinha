@@ -2469,7 +2469,7 @@ const functionsApp = getFunctions(firebaseApp);
           const idsVisitados = [...ensaioSessaoIds];
           const existente = data.historico.find(h => h.data === hoje);
           const musicaIds = [...new Set([...(existente?.musicaIds || []), ...idsVisitados])];
-          await setDoc(doc(historicoCol, hoje), { data: hoje, musicaIds });
+          await setDoc(doc(historicoCol, hoje), { data: hoje, musicaIds }, { merge: true });
           await Promise.all(idsVisitados.map(id => updateDoc(doc(musicasCol, id), { ultimoEnsaio: hoje })));
           showToast("Ensaio registrado no histórico");
         }

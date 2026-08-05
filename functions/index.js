@@ -120,10 +120,15 @@ const LIMIARES = [
 const NOVA_EXPIRACAO_DIAS = 14;
 
 exports.expirarMusicasNovas = onSchedule("every 24 hours", async () => {
-  const limite = Date.now() - NOVA_EXPIRACAO_DIAS * 24 * 60 * 60 * 1000;
+  const agora = Date.now();
+  const limite = agora - NOVA_EXPIRACAO_DIAS * 24 * 60 * 60 * 1000;
   const snap = await db.collection("musicas").where("nova", "==", true).get();
-  const expiradas = snap.docs.filter(d => (d.data().novaDesde || 0) <= limite);
-  await Promise.all(expiradas.map(d => d.ref.update({ nova: false, novaDesde: FieldValue.delete() })));
+  const semData = snap.docs.filter(d => !d.data().novaDesde);
+  const expiradas = snap.docs.filter(d => d.data().novaDesde && d.data().novaDesde <= limite);
+  await Promise.all([
+    ...semData.map(d => d.ref.update({ novaDesde: agora })),
+    ...expiradas.map(d => d.ref.update({ nova: false, novaDesde: FieldValue.delete() }))
+  ]);
 });
 
 exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
