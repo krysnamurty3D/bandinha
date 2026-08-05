@@ -5,6 +5,7 @@ const { getMessaging } = require("firebase-admin/messaging");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { FieldValue } = require("firebase-admin/firestore");
 
 const COORDENADOR_EMAIL = "krysnamurty@gmail.com";
 
@@ -26,6 +27,14 @@ async function sendToAll(title, body, url) {
     }
   });
   await Promise.all(invalidos.map(t => db.collection("pushTokens").doc(t).delete()));
+}
+
+const HISTORICO_LIMITE = 15;
+
+async function registrarHistorico(tipo, texto) {
+  await db.collection("avisosHistorico").add({ tipo, texto, disparadoEm: Date.now() });
+  const snap = await db.collection("avisosHistorico").orderBy("disparadoEm", "desc").offset(HISTORICO_LIMITE).get();
+  await Promise.all(snap.docs.map(d => d.ref.delete()));
 }
 
 exports.onNovaAgenda = onDocumentCreated("agenda/{id}", async event => {
@@ -64,6 +73,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
       avisoAntesEnviado: true
     });
     await sendToAll("Aviso", textoLimpo, "publico.html?tab=aovivo");
+    await registrarHistorico("custom", textoLimpo);
     return { ok: true };
   }
   if (!proximaEtapa || typeof minutos !== "number" || minutos < 0) {
@@ -83,6 +93,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     avisoAntesEnviado: false
   });
   await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
+  await registrarHistorico(urgente ? "urgente" : "normal", texto);
   return { ok: true };
 });
 
@@ -105,6 +116,15 @@ const LIMIARES = [
   { chave: "3h", minutos: 3 * 60 },
   { chave: "30min", minutos: 30 }
 ];
+
+const NOVA_EXPIRACAO_DIAS = 14;
+
+exports.expirarMusicasNovas = onSchedule("every 24 hours", async () => {
+  const limite = Date.now() - NOVA_EXPIRACAO_DIAS * 24 * 60 * 60 * 1000;
+  const snap = await db.collection("musicas").where("nova", "==", true).get();
+  const expiradas = snap.docs.filter(d => (d.data().novaDesde || 0) <= limite);
+  await Promise.all(expiradas.map(d => d.ref.update({ nova: false, novaDesde: FieldValue.delete() })));
+});
 
 exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
   const agora = Date.now();

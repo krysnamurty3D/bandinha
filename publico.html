@@ -570,7 +570,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, onSnapshot, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -582,7 +582,15 @@ const firebaseConfig = {
   appId: "1:808882413270:web:91dbb55bc2256847ae3377"
 };
 const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
+let db;
+try{
+  db = initializeFirestore(firebaseApp, {
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+  });
+}catch(e){
+  console.warn("Cache offline indisponível, usando Firestore padrão:", e);
+  db = getFirestore(firebaseApp);
+}
 const musicasCol = collection(db, "musicas");
 const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
@@ -592,10 +600,12 @@ const progressoCol = collection(db, "progresso");
 const visualizacoesCol = collection(db, "visualizacoes");
 const pushTokensCol = collection(db, "pushTokens");
 const aoVivoDocRef = doc(db, "aoVivo", "atual");
+const avisosHistoricoCol = collection(db, "avisosHistorico");
+const avisoVistosCol = collection(db, "avisoVistos");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 
 (function(){
-  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, avisosHistorico: [], progressoTodos: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let currentTab = "musicas";
   let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
@@ -607,6 +617,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   let meuNome = localStorage.getItem("bandinha-nome") || "";
   let meuProgresso = {};
   let filtroProgresso = null;
+  let vistosAvisoAtual = [];
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
@@ -745,12 +756,43 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
       checarUrgente();
+      loadVistosAvisoAtual();
       safeRender();
     }, e => {
       console.error("Erro ao sincronizar ao vivo:", e);
       markLoaded("aoVivo");
       safeRender();
     });
+
+    onSnapshot(query(avisosHistoricoCol, orderBy("disparadoEm", "desc"), limit(10)), snap => {
+      data.avisosHistorico = snap.docs.map(d => d.data());
+      safeRender();
+    }, e => console.error("Erro ao sincronizar histórico de avisos:", e));
+
+    onSnapshot(progressoCol, snap => {
+      data.progressoTodos = snap.docs.map(d => d.data());
+      safeRender();
+    }, e => console.error("Erro ao sincronizar progresso da equipe:", e));
+  }
+
+  let vistosUnsub = null;
+  let vistosDisparadoEm = null;
+  function loadVistosAvisoAtual(){
+    const a = data.aoVivo;
+    if(!a || !a.custom){
+      if(vistosUnsub){ vistosUnsub(); vistosUnsub = null; }
+      vistosAvisoAtual = [];
+      vistosDisparadoEm = null;
+      return;
+    }
+    if(vistosDisparadoEm === a.disparadoEm) return;
+    vistosDisparadoEm = a.disparadoEm;
+    if(vistosUnsub) vistosUnsub();
+    const q = query(avisoVistosCol, where("disparadoEm", "==", a.disparadoEm));
+    vistosUnsub = onSnapshot(q, snap => {
+      vistosAvisoAtual = snap.docs.map(d => d.data());
+      render();
+    }, e => console.error("Erro ao sincronizar confirmações:", e));
   }
 
   function checarUrgente(){
@@ -1028,9 +1070,47 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     `;
   }
 
+  function renderSetlistHoje(){
+    const setlist = data.musicas.filter(m => m.noSetlist && m.visivel !== false).sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    if(setlist.length === 0) return "";
+    return `
+      <div class="section-title" style="margin-top:20px;">Setlist de hoje</div>
+      ${setlist.map(m => {
+        const { titulo } = splitMusica(m.nome);
+        const entradas = data.progressoTodos.filter(p => p.musicaId === m.id && p.status);
+        const counts = { precisa_treinar: 0, aprendi: 0, ensaiei: 0 };
+        entradas.forEach(p => { if(counts[p.status] !== undefined) counts[p.status]++; });
+        return `
+        <div class="card" style="padding:10px 14px;">
+          <div style="font-weight:600;margin-bottom:8px;">${escapeHtml(titulo)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span class="status-pill status-aprender" style="padding:3px 9px;font-size:calc(11px * var(--font-scale, 1));">${counts.precisa_treinar} treinar</span>
+            <span class="status-pill status-ensaiando" style="padding:3px 9px;font-size:calc(11px * var(--font-scale, 1));">${counts.aprendi} aprendeu</span>
+            <span class="status-pill status-pronta" style="padding:3px 9px;font-size:calc(11px * var(--font-scale, 1));">${counts.ensaiei} ensaiou</span>
+          </div>
+        </div>`;
+      }).join("")}
+    `;
+  }
+
+  const TIPO_ICONE = { urgente: "🚨", custom: "📢", normal: "📍" };
+  function renderHistoricoAvisos(){
+    if(data.avisosHistorico.length === 0) return "";
+    return `
+      <div class="section-title" style="margin-top:20px;">Histórico de avisos</div>
+      ${data.avisosHistorico.map(h => `
+        <div class="card" style="padding:10px 14px;display:flex;gap:10px;align-items:baseline;">
+          <span>${TIPO_ICONE[h.tipo] || "📍"}</span>
+          <span style="flex:1;min-width:0;">${escapeHtml(h.texto)}</span>
+          <span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));flex-shrink:0;">${new Date(h.disparadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+      `).join("")}
+    `;
+  }
+
   function renderAoVivo(){
     if(!data.aoVivo){
-      return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>`;
+      return `<div class="empty"><div class="note-dot"></div><br>Nenhum aviso ao vivo no momento.</div>` + renderSetlistHoje() + renderHistoricoAvisos();
     }
     const { proximaEtapa, minutos, disparadoEm, urgente, custom } = data.aoVivo;
     const totalSeg = minutos * 60;
@@ -1038,12 +1118,17 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const restanteSeg = Math.max(0, Math.round((fimMs - Date.now()) / 1000));
     const esgotado = restanteSeg <= 0;
     if(custom){
+      const jaConfirmei = meuNome ? vistosAvisoAtual.some(v => v.nome === meuNome) : false;
       return `
         <div class="card aovivo-card" style="border-color:var(--gold);">
           <div class="aovivo-badge" style="background:rgba(240,169,60,0.2);color:var(--gold);">📢 AVISO</div>
           <div style="font-weight:700;margin-top:14px;">${escapeHtml(proximaEtapa)}</div>
+          ${meuNome ? `
+            <button type="button" class="pay-toggle ${jaConfirmei ? "paid" : ""}" style="margin-top:14px;" data-action="confirmar-vi-aviso" ${jaConfirmei ? "disabled" : ""}>${jaConfirmei ? "✓ Você confirmou" : "✓ Marcar que eu vi"}</button>
+          ` : ""}
+          ${vistosAvisoAtual.length > 0 ? `<div style="margin-top:10px;color:var(--muted);font-size:calc(12px * var(--font-scale, 1));">${vistosAvisoAtual.length} confirma${vistosAvisoAtual.length===1?"ção":"ções"}: ${vistosAvisoAtual.map(v => escapeHtml(v.nome)).join(", ")}</div>` : ""}
         </div>
-      `;
+      ` + renderSetlistHoje() + renderHistoricoAvisos();
     }
     if(urgente){
       return `
@@ -1053,7 +1138,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           <div class="aovivo-label">corram para</div>
           <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(proximaEtapa)}</div>
         </div>
-      `;
+      ` + renderSetlistHoje() + renderHistoricoAvisos();
     }
     return `
       <div class="card aovivo-card">
@@ -1061,7 +1146,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         <div class="aovivo-label" style="margin-top:14px;">Próxima etapa</div>
         <div class="aovivo-badge" style="margin-top:6px;">📍 ${escapeHtml(proximaEtapa)}</div>
       </div>
-    `;
+    ` + renderSetlistHoje() + renderHistoricoAvisos();
   }
 
   // ---------- HANDLERS ----------
@@ -1088,6 +1173,19 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       el.addEventListener("click", () => {
         filtroProgresso = el.dataset.status || null;
         render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="confirmar-vi-aviso"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!meuNome || !data.aoVivo) return;
+        const docId = `${data.aoVivo.disparadoEm}_${slugify(meuNome)}`;
+        try{
+          await setDoc(doc(avisoVistosCol, docId), { nome: meuNome, disparadoEm: data.aoVivo.disparadoEm, vistoEm: Date.now() });
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao confirmar");
+        }
       });
     });
 
@@ -1162,6 +1260,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       if(tab) irParaTab(tab);
     }
   });
+
+  if(navigator.serviceWorker) navigator.serviceWorker.register("firebase-messaging-sw.js").catch(e => console.warn("SW não registrado:", e));
 
   const tabDaUrl = new URLSearchParams(location.search).get("tab");
   if(tabDaUrl) currentTab = tabDaUrl;

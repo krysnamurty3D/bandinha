@@ -54,5 +54,14 @@ service cloud.firestore {
       allow create, update: if request.resource.data.keys().hasOnly(['token','criadoEm','plataforma']) && request.resource.data.token == docId;
       allow delete: if isCoordenador();
     }
+    match /avisosHistorico/{docId} {
+      allow read: if true;
+      allow write: if isCoordenador();
+    }
+    match /avisoVistos/{docId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['nome','disparadoEm','vistoEm']);
+      allow update, delete: if false;
+    }
   }
 }
