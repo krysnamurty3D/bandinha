@@ -922,6 +922,7 @@ const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
 const integrantesCol = collection(db, "integrantes");
+const financeiroCol = collection(db, "financeiro");
 const musicasCol = collection(db, "musicas");
 const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
@@ -939,9 +940,18 @@ const functionsApp = getFunctions(firebaseApp);
 
 (function(){
   const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
+  const FIN_CATEGORIAS = {
+    receita: ["Taxa da Equipe", "Oferta", "Outro"],
+    despesa: ["Lembrancinhas", "Refrigerantes", "Salgados", "Geral"]
+  };
+  function formatMoeda(v){
+    return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
+  let finTipoForm = "receita";
+  let finSubTab = "caixa";
   let currentUser = null;
   let authReady = false;
   let currentTab = "home";
@@ -1079,6 +1089,11 @@ const functionsApp = getFunctions(firebaseApp);
       markLoaded("integrantes");
       safeRender();
     }, e => { console.error("Erro ao sincronizar integrantes:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(financeiroCol, snap => {
+      data.financeiro = snap.docs.map(d => d.data());
+      safeRender();
+    }, e => console.error("Erro ao sincronizar financeiro:", e));
 
     onSnapshot(musicasCol, snap => {
       data.musicas = snap.docs.map(d => d.data());
@@ -1278,9 +1293,7 @@ const functionsApp = getFunctions(firebaseApp);
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
     const totalConfirmados = data.integrantes.filter(i => i.confirmado).length;
-    const totalFin = data.integrantes.length * 3;
-    const pagosFin = data.integrantes.reduce((acc,i) => acc + (i.inscricao?1:0) + (i.pagamentoCamisa?1:0) + (i.taxaEquipe?1:0), 0);
-    const pctFin = totalFin > 0 ? Math.round(pagosFin/totalFin*100) : 0;
+    const saldoFin = data.financeiro.reduce((acc,t) => acc + (t.tipo === "receita" ? (t.valor||0) : -(t.valor||0)), 0);
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const hojeIso = hoje.toISOString().slice(0,10);
     const proximaAgenda = [...data.agenda].filter(a => a.data >= hojeIso).sort((a,b) => a.data.localeCompare(b.data))[0];
@@ -1288,7 +1301,7 @@ const functionsApp = getFunctions(firebaseApp);
 
     const cards = [
       { key: "integrantes", icon: "👥", label: "Integrantes", stat: `${totalConfirmados}/${data.integrantes.length} confirmados` },
-      { key: "financeiro", icon: "💳", label: "Financeiro", stat: data.integrantes.length > 0 ? `${pctFin}% em dia` : "Sem integrantes ainda" },
+      { key: "financeiro", icon: "💳", label: "Financeiro", stat: `Saldo: ${formatMoeda(saldoFin)}` },
       { key: "musicas", icon: "🎵", label: "Músicas", stat: `${prontas}/${musicasVisiveis.length} prontas` },
       { key: "coreografias", icon: "🕺", label: "Coreografias", stat: `${data.coreografias.length} cadastradas` },
       { key: "agenda", icon: "📅", label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
@@ -1345,6 +1358,68 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function renderFinanceiro(){
+    let html = `
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button type="button" class="pay-toggle ${finSubTab === "caixa" ? "paid" : ""}" data-action="fin-subtab" data-sub="caixa">Caixa</button>
+        <button type="button" class="pay-toggle ${finSubTab === "pagamentos" ? "paid" : ""}" data-action="fin-subtab" data-sub="pagamentos">Pagamentos</button>
+      </div>
+    `;
+    return html + (finSubTab === "caixa" ? renderFinanceiroCaixa() : renderFinanceiroPagamentos());
+  }
+
+  function renderFinanceiroCaixa(){
+    const receitas = data.financeiro.filter(t => t.tipo === "receita");
+    const despesas = data.financeiro.filter(t => t.tipo === "despesa");
+    const totalReceitas = receitas.reduce((acc,t) => acc + (t.valor || 0), 0);
+    const totalDespesas = despesas.reduce((acc,t) => acc + (t.valor || 0), 0);
+    const saldo = totalReceitas - totalDespesas;
+    const transacoes = [...data.financeiro].sort((a,b) => b.data.localeCompare(a.data) || (b.criadoEm||0) - (a.criadoEm||0));
+    const categorias = FIN_CATEGORIAS[finTipoForm];
+
+    let html = `
+      <div class="stat-row">
+        <div class="stat"><div class="num" style="color:var(--green);">${formatMoeda(totalReceitas)}</div><div class="lbl">Receitas</div></div>
+        <div class="stat"><div class="num" style="color:var(--rose);">${formatMoeda(totalDespesas)}</div><div class="lbl">Despesas</div></div>
+      </div>
+      <div class="card" style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Saldo atual</div>
+        <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
+      </div>
+      <form class="inline-add" id="form-financeiro" style="flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;width:100%;">
+          <button type="button" class="pay-toggle ${finTipoForm === "receita" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="receita" style="flex:1;">Receita</button>
+          <button type="button" class="pay-toggle ${finTipoForm === "despesa" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="despesa" style="flex:1;">Despesa</button>
+        </div>
+        <select id="input-fin-categoria" required style="flex:1 1 140px;">
+          ${categorias.map(c => `<option value="${c}">${c}</option>`).join("")}
+        </select>
+        <input type="text" id="input-fin-descricao" placeholder="Descrição (ex: Refrigerante do ensaio)" style="flex:2 1 200px;" />
+        <input type="number" id="input-fin-valor" placeholder="Valor (R$)" step="0.01" min="0" required style="flex:1 1 100px;" />
+        <input type="date" id="input-fin-data" required value="${new Date().toISOString().slice(0,10)}" style="flex:1 1 140px;" />
+        <button type="submit" class="btn-add">+</button>
+      </form>
+    `;
+
+    if(transacoes.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma movimentação registrada ainda.</div>`;
+    } else {
+      html += transacoes.map(t => `
+        <div class="card" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.descricao || t.categoria)}</div>
+            <div style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${escapeHtml(t.categoria)} · ${formatDate(t.data)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            <span style="font-weight:700;color:${t.tipo === "receita" ? "var(--green)" : "var(--rose)"};">${t.tipo === "receita" ? "+" : "-"}${formatMoeda(t.valor)}</span>
+            <button class="del-x" data-action="del-financeiro" data-id="${t.id}">✕</button>
+          </div>
+        </div>
+      `).join("");
+    }
+    return html;
+  }
+
+  function renderFinanceiroPagamentos(){
     const total = data.integrantes.length;
     if(total === 0){
       return `<div class="empty"><div class="note-dot"></div><br>Cadastre integrantes primeiro pra acompanhar os pagamentos aqui.</div>`;
@@ -2179,6 +2254,40 @@ const functionsApp = getFunctions(firebaseApp);
       const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false, confirmado: false };
       instrumentalCheck.checked = false;
       await setDoc(doc(integrantesCol, novoInt.id), novoInt); showToast("Integrante adicionado");
+    });
+
+    document.querySelectorAll('[data-action="fin-subtab"]').forEach(el => {
+      el.addEventListener("click", () => {
+        finSubTab = el.dataset.sub;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="fin-tipo-form"]').forEach(el => {
+      el.addEventListener("click", () => {
+        finTipoForm = el.dataset.tipo;
+        render();
+      });
+    });
+
+    const formFinanceiro = document.getElementById("form-financeiro");
+    if(formFinanceiro) formFinanceiro.addEventListener("submit", async e => {
+      e.preventDefault();
+      const categoria = document.getElementById("input-fin-categoria").value;
+      const descricao = document.getElementById("input-fin-descricao").value.trim();
+      const valor = parseFloat(document.getElementById("input-fin-valor").value);
+      const data_ = document.getElementById("input-fin-data").value;
+      if(!valor || valor <= 0 || !data_){ showToast("Preencha valor e data"); return; }
+      const novaTransacao = { id: uid(), tipo: finTipoForm, categoria, descricao, valor, data: data_, criadoEm: Date.now() };
+      await setDoc(doc(financeiroCol, novaTransacao.id), novaTransacao);
+      showToast(finTipoForm === "receita" ? "Receita registrada" : "Despesa registrada");
+    });
+
+    document.querySelectorAll('[data-action="del-financeiro"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Remover esta movimentação?")) return;
+        await deleteDoc(doc(financeiroCol, el.dataset.id));
+      });
     });
 
     const formMus = document.getElementById("form-musica");
