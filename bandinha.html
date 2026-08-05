@@ -943,6 +943,14 @@ const functionsApp = getFunctions(firebaseApp);
   function formatMoeda(v){
     return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
+  function avaliarExpressao(str){
+    const limpo = String(str).replace(",", ".").trim();
+    if(!limpo || !/^[0-9+\-*/().\s]+$/.test(limpo)) return null;
+    try{
+      const resultado = Function('"use strict"; return (' + limpo + ')')();
+      return typeof resultado === "number" && isFinite(resultado) ? resultado : null;
+    }catch(e){ return null; }
+  }
 
   let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
@@ -1386,7 +1394,7 @@ const functionsApp = getFunctions(firebaseApp);
           <button type="button" class="pay-toggle ${finTipoForm === "despesa" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="despesa" style="flex:1;">Despesa</button>
         </div>
         <input type="text" id="input-fin-descricao" placeholder="Nome da ${finTipoForm === "receita" ? "receita" : "despesa"} (ex: Refrigerante do ensaio)" required style="flex:2 1 200px;" />
-        <input type="number" id="input-fin-valor" placeholder="Valor (R$)" step="0.01" min="0" required style="flex:1 1 100px;font-size:calc(18px * var(--font-scale, 1));font-weight:700;" />
+        <input type="text" inputmode="decimal" id="input-fin-valor" placeholder="Valor (ex: 5*32)" required style="flex:1 1 100px;font-size:calc(18px * var(--font-scale, 1));font-weight:700;" />
         <input type="date" id="input-fin-data" required value="${new Date().toISOString().slice(0,10)}" style="flex:1 1 140px;" />
         <button type="submit" class="btn-add">+</button>
       </form>
@@ -2266,11 +2274,17 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
+    const inputFinValor = document.getElementById("input-fin-valor");
+    if(inputFinValor) inputFinValor.addEventListener("blur", () => {
+      const resultado = avaliarExpressao(inputFinValor.value);
+      if(resultado !== null && /[+\-*/]/.test(inputFinValor.value)) inputFinValor.value = resultado.toFixed(2);
+    });
+
     const formFinanceiro = document.getElementById("form-financeiro");
     if(formFinanceiro) formFinanceiro.addEventListener("submit", async e => {
       e.preventDefault();
       const descricao = document.getElementById("input-fin-descricao").value.trim();
-      const valor = parseFloat(document.getElementById("input-fin-valor").value);
+      const valor = avaliarExpressao(document.getElementById("input-fin-valor").value);
       const data_ = document.getElementById("input-fin-data").value;
       if(!descricao || !valor || valor <= 0 || !data_){ showToast("Preencha o nome e o valor"); return; }
       const novaTransacao = { id: uid(), tipo: finTipoForm, descricao, valor, data: data_, criadoEm: Date.now() };
