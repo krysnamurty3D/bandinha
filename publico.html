@@ -329,6 +329,18 @@
   }
   .song-name{flex:1;min-width:0;cursor:pointer;}
   .song-title{font-weight:600;font-size:calc(15px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .badge-nova{
+    display:inline-block;
+    background:linear-gradient(135deg, var(--gold), var(--rose));
+    color:#1a1208;
+    font-size:calc(9.5px * var(--font-scale, 1));
+    font-weight:800;
+    letter-spacing:0.5px;
+    border-radius:6px;
+    padding:2px 6px;
+    vertical-align:middle;
+    margin-right:2px;
+  }
   .song-num{flex-shrink:0;color:var(--muted);font-weight:600;font-size:calc(13px * var(--font-scale, 1));width:20px;text-align:right;}
   .song-artist{font-weight:400;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
   .status-pill{
@@ -586,6 +598,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   let loadedFlags = { musicas: false, roteiros: false, coreografias: false, agenda: false, aoVivo: false, config: false };
   let meuNome = localStorage.getItem("bandinha-nome") || "";
   let meuProgresso = {};
+  let filtroProgresso = null;
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
@@ -802,7 +815,18 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
     } else {
-      const ordenadas = [...musicasVisiveis].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+      if(meuNome){
+        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          <button type="button" class="pay-toggle ${!filtroProgresso ? "paid" : ""}" data-action="set-filtro-progresso" data-status="">Todas</button>
+          ${MEU_PROGRESSO_OPTS.map(o => `<button type="button" class="pay-toggle ${filtroProgresso===o.key ? "paid" : ""}" data-action="set-filtro-progresso" data-status="${o.key}">${o.label}</button>`).join("")}
+        </div>`;
+      }
+      const ordenadas = [...musicasVisiveis]
+        .filter(m => !filtroProgresso || meuProgresso[m.id] === filtroProgresso)
+        .sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0));
+      if(ordenadas.length === 0){
+        html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música com esse status ainda.</div>`;
+      }
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const meuStatus = meuProgresso[m.id];
@@ -812,7 +836,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           <div class="song-row">
             <div class="song-num">${idx + 1}</div>
             <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-              <div class="song-title">${escapeHtml(titulo)}</div>
+              <div class="song-title">${m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
               ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
             </div>
           </div>
@@ -1041,6 +1065,13 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         meuNome = "";
         localStorage.removeItem("bandinha-nome");
         loadMeuProgresso();
+      });
+    });
+
+    document.querySelectorAll('[data-action="set-filtro-progresso"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroProgresso = el.dataset.status || null;
+        render();
       });
     });
 

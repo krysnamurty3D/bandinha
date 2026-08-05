@@ -559,6 +559,18 @@
   }
   .song-name{flex:1;min-width:0;cursor:pointer;}
   .song-title{font-weight:600;font-size:calc(15px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .badge-nova{
+    display:inline-block;
+    background:linear-gradient(135deg, var(--gold), var(--rose));
+    color:#1a1208;
+    font-size:calc(9.5px * var(--font-scale, 1));
+    font-weight:800;
+    letter-spacing:0.5px;
+    border-radius:6px;
+    padding:2px 6px;
+    vertical-align:middle;
+    margin-right:2px;
+  }
   .song-num{flex-shrink:0;color:var(--muted);font-weight:600;font-size:calc(13px * var(--font-scale, 1));width:20px;text-align:right;}
   .song-artist{font-weight:400;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
   .status-pill{
@@ -1404,7 +1416,7 @@ const functionsApp = getFunctions(firebaseApp);
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const labels = {ensaiando:"Ensaiando", pronta:"Pronta"};
-      const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0)).filter(m => mostrarOcultasMusicas || m.visivel !== false);
+      const ordenadas = [...data.musicas].sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0)).filter(m => mostrarOcultasMusicas || m.visivel !== false);
       if(ordenadas.length === 0){
         html += `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
       }
@@ -1427,10 +1439,11 @@ const functionsApp = getFunctions(firebaseApp);
             ` : `
               <div class="song-num">${idx + 1}</div>
               <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-                <div class="song-title">${escapeHtml(titulo)}</div>
+                <div class="song-title">${m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
                 ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
               </div>
               <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
+              <button class="eye-x ${m.nova ? "" : "hidden-item"}" data-action="toggle-nova-musica" data-id="${m.id}" title="${m.nova ? "Marcada como nova — toque para desmarcar" : "Marcar como música nova"}">${m.nova ? "🆕" : "🔘"}</button>
               <button class="eye-x ${m.noSetlist ? "" : "hidden-item"}" data-action="toggle-setlist-musica" data-id="${m.id}" title="${m.noSetlist ? "No setlist de ensaio — toque para remover" : "Fora do setlist — toque para adicionar"}">${m.noSetlist ? "🎯" : "⭘"}</button>
               <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
               <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
@@ -2624,6 +2637,16 @@ const functionsApp = getFunctions(firebaseApp);
         const order = ["ensaiando","pronta"];
         const novoStatus = order[(order.indexOf(item.status)+1) % order.length];
         await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-nova-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        const nova = !item.nova;
+        await updateDoc(doc(musicasCol, item.id), { nova });
+        showToast(nova ? "Marcada como nova" : "Desmarcada como nova");
       });
     });
 
