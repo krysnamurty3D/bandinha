@@ -825,8 +825,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     } else {
       if(meuNome){
         html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-          <button type="button" class="pay-toggle ${!filtroProgresso ? "paid" : ""}" data-action="set-filtro-progresso" data-status="">Todas</button>
-          ${MEU_PROGRESSO_OPTS.map(o => `<button type="button" class="pay-toggle ${filtroProgresso===o.key ? "paid" : ""}" data-action="set-filtro-progresso" data-status="${o.key}">${o.label}</button>`).join("")}
+          <button type="button" class="status-pill" style="${!filtroProgresso ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-filtro-progresso" data-status="">Todas</button>
+          ${MEU_PROGRESSO_OPTS.map(o => `<button type="button" class="status-pill ${filtroProgresso===o.key ? o.cls : ''}" style="${filtroProgresso===o.key ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-filtro-progresso" data-status="${o.key}">${o.label}</button>`).join("")}
         </div>`;
       }
       const ordenadas = [...musicasVisiveis]
