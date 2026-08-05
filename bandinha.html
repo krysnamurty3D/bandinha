@@ -1774,7 +1774,7 @@ const functionsApp = getFunctions(firebaseApp);
     html += nomes.map(nome => {
       const entradas = data.progresso.filter(p => p.nome === nome && p.status);
       const key = "prog-" + nome;
-      const collapsed = !!collapsedProgressoGroups[key];
+      const collapsed = key in collapsedProgressoGroups ? !!collapsedProgressoGroups[key] : true;
       const editing = editingProgressoNome === nome;
       return `
       <div class="card" style="padding:0;overflow:hidden;">
