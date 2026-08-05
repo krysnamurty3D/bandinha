@@ -101,6 +101,10 @@
     padding:16px;
     margin-bottom:12px;
   }
+  .card-nova{
+    background:rgba(255,122,26,0.08);
+    border-color:#ff7a1a;
+  }
   .empty{
     text-align:center;
     padding:36px 16px;
@@ -345,11 +349,15 @@
   .song-artist{font-weight:400;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
   .status-pill{
     flex-shrink:0;
+    border:1px solid transparent;
     border-radius:20px;
     padding:7px 13px;
     font-size:calc(12px * var(--font-scale, 1));
     font-weight:600;
     white-space:nowrap;
+  }
+  .card-nova .status-pill{
+    border-color:rgba(255,122,26,0.55);
   }
   .status-aprender{background:rgba(214,64,42,0.15);color:var(--rose);}
   .status-ensaiando{background:rgba(240,169,60,0.15);color:var(--gold);}
@@ -832,7 +840,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         const meuStatus = meuProgresso[m.id];
         const { titulo, artista } = splitMusica(m.nome);
         return `
-        <div class="card">
+        <div class="card ${m.nova ? "card-nova" : ""}">
           <div class="song-row">
             <div class="song-num">${idx + 1}</div>
             <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
