@@ -1395,18 +1395,22 @@ const functionsApp = getFunctions(firebaseApp);
     if(transacoes.length === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma movimentação registrada ainda.</div>`;
     } else {
-      html += transacoes.map(t => `
+      const totalIntegrantes = data.integrantes.length;
+      html += transacoes.map(t => {
+        const unitario = t.tipo === "despesa" && totalIntegrantes > 0 ? t.valor / totalIntegrantes : null;
+        return `
         <div class="card" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div style="min-width:0;">
             <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.descricao)}</div>
-            <div style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${formatDate(t.data)}</div>
+            <div style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${formatDate(t.data)}${unitario !== null ? ` · ${formatMoeda(unitario)}/pessoa` : ""}</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
             <span style="font-weight:700;color:${t.tipo === "receita" ? "var(--green)" : "var(--rose)"};">${t.tipo === "receita" ? "+" : "-"}${formatMoeda(t.valor)}</span>
             <button class="del-x" data-action="del-financeiro" data-id="${t.id}">✕</button>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
     return html;
   }
