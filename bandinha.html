@@ -1674,13 +1674,27 @@ const functionsApp = getFunctions(firebaseApp);
             const m = data.musicas.find(x => x.id === id);
             return m ? escapeHtml(splitMusica(m.nome).titulo) : null;
           }).filter(Boolean).join(" · ") || "Sem músicas registradas"}</div>
-          ${aberto ? `
-            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;">
-              ${data.integrantes.length === 0 ? `<span style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhum integrante cadastrado.</span>` : [...data.integrantes].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })).map(i => `
-                <button type="button" class="pay-toggle ${presentes.includes(i.nome) ? "paid" : ""}" data-action="toggle-presenca-nome" data-data="${s.data}" data-nome="${escapeHtml(i.nome)}">${escapeHtml(i.nome)}</button>
-              `).join("")}
-            </div>
-          ` : ""}
+          ${aberto ? (() => {
+            if(data.integrantes.length === 0) return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);"><span style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhum integrante cadastrado.</span></div>`;
+            const porNome = (a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+            const grupos = [
+              { label: "Homens", lista: data.integrantes.filter(i => i.genero === "M").sort(porNome) },
+              { label: "Mulheres", lista: data.integrantes.filter(i => i.genero === "F").sort(porNome) },
+              { label: "Outros", lista: data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F").sort(porNome) }
+            ].filter(g => g.lista.length > 0);
+            return `
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+                ${grupos.map(g => `
+                  <div style="font-size:calc(11px * var(--font-scale, 1));font-weight:700;letter-spacing:0.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">${g.label}</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+                    ${g.lista.map(i => `
+                      <button type="button" class="pay-toggle ${presentes.includes(i.nome) ? "paid" : ""}" data-action="toggle-presenca-nome" data-data="${s.data}" data-nome="${escapeHtml(i.nome)}">${escapeHtml(i.nome)}</button>
+                    `).join("")}
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          })() : ""}
         </div>
       `;
       }).join("")}
@@ -2401,8 +2415,12 @@ const functionsApp = getFunctions(firebaseApp);
         const dataId = el.dataset.data;
         const nome = el.dataset.nome;
         const sessao = data.historico.find(s => s.data === dataId);
-        const presentes = sessao?.presentes || [];
-        await updateDoc(doc(historicoCol, dataId), { presentes: presentes.includes(nome) ? arrayRemove(nome) : arrayUnion(nome) });
+        if(!sessao) return;
+        const presentes = sessao.presentes || [];
+        const presente = presentes.includes(nome);
+        sessao.presentes = presente ? presentes.filter(n => n !== nome) : [...presentes, nome];
+        render();
+        await updateDoc(doc(historicoCol, dataId), { presentes: presente ? arrayRemove(nome) : arrayUnion(nome) });
       });
     });
 
