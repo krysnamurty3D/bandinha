@@ -890,7 +890,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -961,6 +961,7 @@ const functionsApp = getFunctions(firebaseApp);
   let gerenciarLocais = false;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
+  let presencaAbertaData = null;
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
@@ -1655,15 +1656,33 @@ const functionsApp = getFunctions(firebaseApp);
         <span>Sessões registradas</span>
         ${sessoes.length > 0 ? `<button type="button" class="link-btn" style="padding:0;color:var(--rose);" data-action="limpar-historico">Limpar histórico</button>` : ""}
       </div>
-      ${sessoes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma sessão de ensaio registrada ainda.<br>Use o Modo Ensaio pra começar a registrar.</div>` : sessoes.map(s => `
+      <form class="inline-add" id="form-registrar-presenca" style="flex-wrap:wrap;margin-bottom:12px;">
+        <input type="date" id="input-presenca-data" required style="flex:0 0 150px;"/>
+        <button type="submit" class="btn-add">+ Registrar chamada</button>
+      </form>
+      ${sessoes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma sessão de ensaio registrada ainda.<br>Use o Modo Ensaio ou registre uma chamada acima.</div>` : sessoes.map(s => {
+        const presentes = s.presentes || [];
+        const aberto = presencaAbertaData === s.data;
+        return `
         <div class="card">
-          <div style="font-weight:700;margin-bottom:6px;">${formatDate(s.data)}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="font-weight:700;">${formatDate(s.data)}</div>
+            <button type="button" class="link-btn" style="padding:0;white-space:nowrap;" data-action="toggle-presenca" data-data="${s.data}">📋 ${presentes.length} presente${presentes.length === 1 ? "" : "s"}</button>
+          </div>
           <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">${s.musicaIds.map(id => {
             const m = data.musicas.find(x => x.id === id);
             return m ? escapeHtml(splitMusica(m.nome).titulo) : null;
-          }).filter(Boolean).join(" · ")}</div>
+          }).filter(Boolean).join(" · ") || "Sem músicas registradas"}</div>
+          ${aberto ? `
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;">
+              ${data.integrantes.length === 0 ? `<span style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhum integrante cadastrado.</span>` : [...data.integrantes].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })).map(i => `
+                <button type="button" class="pay-toggle ${presentes.includes(i.nome) ? "paid" : ""}" data-action="toggle-presenca-nome" data-data="${s.data}" data-nome="${escapeHtml(i.nome)}">${escapeHtml(i.nome)}</button>
+              `).join("")}
+            </div>
+          ` : ""}
         </div>
-      `).join("")}
+      `;
+      }).join("")}
     `;
   }
 
@@ -2347,6 +2366,40 @@ const functionsApp = getFunctions(firebaseApp);
         await Promise.all(data.musicas.filter(m => m.ultimoEnsaio).map(m => updateDoc(doc(musicasCol, m.id), { ultimoEnsaio: null })));
         showToast("Histórico apagado");
         render();
+      });
+    });
+
+    const formRegistrarPresenca = document.getElementById("form-registrar-presenca");
+    if(formRegistrarPresenca) formRegistrarPresenca.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-presenca-data");
+      const dataIso = input.value;
+      if(!dataIso) return;
+      const existente = data.historico.find(s => s.data === dataIso);
+      if(!existente){
+        await setDoc(doc(historicoCol, dataIso), { data: dataIso, musicaIds: [], presentes: [] });
+      }
+      presencaAbertaData = dataIso;
+      input.value = "";
+      showToast("Chamada pronta — marque quem esteve presente");
+      render();
+    });
+
+    document.querySelectorAll('[data-action="toggle-presenca"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const d = el.dataset.data;
+        presencaAbertaData = presencaAbertaData === d ? null : d;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-presenca-nome"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const dataId = el.dataset.data;
+        const nome = el.dataset.nome;
+        const sessao = data.historico.find(s => s.data === dataId);
+        const presentes = sessao?.presentes || [];
+        await updateDoc(doc(historicoCol, dataId), { presentes: presentes.includes(nome) ? arrayRemove(nome) : arrayUnion(nome) });
       });
     });
 
