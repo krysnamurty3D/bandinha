@@ -890,7 +890,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -1459,7 +1459,6 @@ const functionsApp = getFunctions(firebaseApp);
                 ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
               </div>
               <button class="status-pill status-${m.status}" data-action="cycle-status" data-id="${m.id}">${labels[m.status]}</button>
-              <button class="eye-x ${m.nova ? "" : "hidden-item"}" data-action="toggle-nova-musica" data-id="${m.id}" title="${m.nova ? "Marcada como nova — toque para desmarcar" : "Marcar como música nova"}">${m.nova ? "🆕" : "🔘"}</button>
               <button class="eye-x ${m.noSetlist ? "" : "hidden-item"}" data-action="toggle-setlist-musica" data-id="${m.id}" title="${m.noSetlist ? "No setlist de ensaio — toque para remover" : "Fora do setlist — toque para adicionar"}">${m.noSetlist ? "🎯" : "⭘"}</button>
               <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
               <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? "🙈" : "👁"}</button>
@@ -2769,16 +2768,6 @@ const functionsApp = getFunctions(firebaseApp);
         const order = ["ensaiando","pronta"];
         const novoStatus = order[(order.indexOf(item.status)+1) % order.length];
         await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
-      });
-    });
-
-    document.querySelectorAll('[data-action="toggle-nova-musica"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const item = data.musicas.find(m => m.id === el.dataset.id);
-        if(!item) return;
-        const nova = !item.nova;
-        await updateDoc(doc(musicasCol, item.id), { nova, novaDesde: nova ? Date.now() : deleteField() });
-        showToast(nova ? "Marcada como nova" : "Desmarcada como nova");
       });
     });
 
