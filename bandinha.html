@@ -1413,8 +1413,12 @@ const functionsApp = getFunctions(firebaseApp);
         <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
         <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
       </div>
-      <form class="inline-add" id="form-musica">
-        <input type="text" id="input-musica-nome" placeholder="Nome da música" required />
+      <form class="inline-add" id="form-musica" style="flex-wrap:wrap;">
+        <input type="text" id="input-musica-nome" placeholder="Nome da música" required style="flex:1 1 180px;" />
+        <label class="check-row" style="flex:0 0 auto;gap:6px;">
+          <input type="checkbox" id="input-musica-nova" />
+          Nova
+        </label>
         <button type="submit" class="btn-add">+</button>
       </form>
       ${totalReal > 0 ? `
@@ -2048,9 +2052,11 @@ const functionsApp = getFunctions(firebaseApp);
     if(formMus) formMus.addEventListener("submit", async e => {
       e.preventDefault();
       const input = document.getElementById("input-musica-nome");
+      const inputNova = document.getElementById("input-musica-nova");
       const nome = input.value.trim();
       if(!nome) return;
-      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome) };
+      const marcarNova = !!inputNova?.checked;
+      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, ...(marcarNova ? { novaDesde: Date.now() } : {}) };
       await setDoc(doc(musicasCol, novaMus.id), novaMus); showToast("Música adicionada");
     });
 
