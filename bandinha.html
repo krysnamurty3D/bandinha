@@ -1665,9 +1665,11 @@ const functionsApp = getFunctions(firebaseApp);
         <span class="chevron ${collapsed?"":"open"}">▶</span>
       </div>
       <div class="${collapsed?"hidden":""}">`;
-    const totalSessoes = data.historico.length;
+    const hojeIso = new Date().toISOString().slice(0,10);
+    const sessoesRealizadas = data.historico.filter(s => s.data <= hojeIso);
+    const totalSessoes = sessoesRealizadas.length;
     html += lista.map(i => {
-      const presencas = data.historico.filter(s => (s.presentes || []).includes(i.nome)).length;
+      const presencas = sessoesRealizadas.filter(s => (s.presentes || []).includes(i.nome)).length;
       const faltas = totalSessoes - presencas;
       return `
       <div class="card" data-id="${i.id}" style="border-left:3px solid ${color};">
