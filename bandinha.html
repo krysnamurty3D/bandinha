@@ -928,6 +928,7 @@ const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const configFinanceiroDocRef = doc(db, "config", "financeiro");
+const setlistEquipeDocRef = doc(db, "config", "setlistEquipe");
 const progressoCol = collection(db, "progresso");
 const visualizacoesCol = collection(db, "visualizacoes");
 const agendaCol = collection(db, "agenda");
@@ -974,6 +975,7 @@ const functionsApp = getFunctions(firebaseApp);
   let ensaioAtivo = false;
   let ensaioIndex = 0;
   let ensaioEditando = false;
+  let enviandoSetlist = false;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
   let mostrarOcultasMusicas = true;
@@ -1969,7 +1971,8 @@ const functionsApp = getFunctions(firebaseApp);
         <span class="ensaio-progress">Editar setlist (${getSetlist().length})</span>
         <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
       </div>
-      <button type="button" class="btn-import" style="margin-bottom:16px;" data-action="fechar-editar-setlist">◀ Voltar ao ensaio</button>
+      <button type="button" class="btn-import" style="margin-bottom:10px;" data-action="fechar-editar-setlist">◀ Voltar ao ensaio</button>
+      <button type="button" id="btn-enviar-setlist" class="btn-import" style="margin-bottom:16px;background:var(--gold);color:#241200;" ${(getSetlist().length === 0 || enviandoSetlist) ? "disabled" : ""}>${enviandoSetlist ? "Enviando..." : "📤 Enviar setlist para a Equipe"}</button>
       <div class="section-title" style="margin-top:0;">Ordenadas por há mais tempo sem ensaiar</div>
       ${todas.map(m => {
         const { titulo, artista } = splitMusica(m.nome);
@@ -2772,6 +2775,23 @@ const functionsApp = getFunctions(firebaseApp);
         ensaioIndex = 0;
         render();
       });
+    });
+
+    const btnEnviarSetlist = document.getElementById("btn-enviar-setlist");
+    if(btnEnviarSetlist) btnEnviarSetlist.addEventListener("click", async () => {
+      const musicaIds = getSetlist().map(m => m.id);
+      if(musicaIds.length === 0) return;
+      enviandoSetlist = true;
+      render();
+      try{
+        await setDoc(setlistEquipeDocRef, { musicaIds, enviadoEm: Date.now() });
+        showToast("Setlist enviado para a equipe!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao enviar setlist");
+      }
+      enviandoSetlist = false;
+      render();
     });
 
     document.querySelectorAll('[data-action="toggle-setlist-ensaio"]').forEach(el => {
