@@ -1004,6 +1004,7 @@ const functionsApp = getFunctions(firebaseApp);
   let collapsedProgressoGroups = {};
   let editingBrand = false;
   let presencaAbertaData = null;
+  let editingSessaoData = null;
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
@@ -1962,12 +1963,25 @@ const functionsApp = getFunctions(firebaseApp);
       ${sessoes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma sessão de ensaio registrada ainda.<br>Use o Modo Ensaio ou registre uma chamada acima.</div>` : sessoes.map(s => {
         const presentes = s.presentes || [];
         const aberto = presencaAbertaData === s.data;
+        const editando = editingSessaoData === s.data;
         return `
         <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
-            <div style="font-weight:700;">${formatDate(s.data)}</div>
-            <button type="button" class="link-btn" style="padding:0;white-space:nowrap;" data-action="toggle-presenca" data-data="${s.data}">📋 ${presentes.length} presente${presentes.length === 1 ? "" : "s"}</button>
-          </div>
+          ${editando ? `
+            <div style="display:flex;gap:8px;margin-bottom:6px;">
+              <input type="date" class="edit-nome-input" id="input-edit-sessao-data" data-data="${s.data}" value="${s.data}" style="flex:1;" />
+              <button class="btn-save-nome" data-action="save-sessao-data" data-data="${s.data}">✓</button>
+              <button class="del-x" style="width:auto;padding:0 12px;border:1px solid var(--line);border-radius:10px;" data-action="cancel-edit-sessao">✕</button>
+            </div>
+          ` : `
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
+              <div style="font-weight:700;">${formatDate(s.data)}</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <button type="button" class="link-btn" style="padding:0;white-space:nowrap;" data-action="toggle-presenca" data-data="${s.data}">📋 ${presentes.length} presente${presentes.length === 1 ? "" : "s"}</button>
+                <button class="edit-x" data-action="edit-sessao-data" data-data="${s.data}" title="Editar data">✎</button>
+                <button class="del-x" data-action="del-sessao" data-data="${s.data}" title="Apagar sessão">✕</button>
+              </div>
+            </div>
+          `}
           <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">${s.musicaIds.map(id => {
             const m = data.musicas.find(x => x.id === id);
             return m ? escapeHtml(splitMusica(m.nome).titulo) : null;
@@ -2813,6 +2827,46 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", () => {
         const d = el.dataset.data;
         presencaAbertaData = presencaAbertaData === d ? null : d;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-sessao"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Apagar esta sessão de ensaio? A presença registrada nela também será perdida.")) return;
+        await deleteDoc(doc(historicoCol, el.dataset.data));
+        showToast("Sessão apagada");
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-sessao-data"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingSessaoData = el.dataset.data;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="cancel-edit-sessao"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingSessaoData = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-sessao-data"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const dataAntiga = el.dataset.data;
+        const input = document.getElementById("input-edit-sessao-data");
+        const novaData = input?.value;
+        if(!novaData){ showToast("Escolha uma data"); return; }
+        if(novaData === dataAntiga){ editingSessaoData = null; render(); return; }
+        if(data.historico.some(s => s.data === novaData)){ showToast("Já existe uma sessão nessa data"); return; }
+        const sessao = data.historico.find(s => s.data === dataAntiga);
+        if(!sessao) return;
+        await setDoc(doc(historicoCol, novaData), { ...sessao, data: novaData });
+        await deleteDoc(doc(historicoCol, dataAntiga));
+        editingSessaoData = null;
+        showToast("Data atualizada");
         render();
       });
     });
