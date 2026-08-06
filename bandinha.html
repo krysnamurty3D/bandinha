@@ -903,7 +903,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -969,6 +969,7 @@ const functionsApp = getFunctions(firebaseApp);
   let expandedMemberId = null;
   let openMusicaId = null;
   let editingLetraId = null;
+  let editingAudioId = null;
   let editingMusicaNomeId = null;
   let ensaioAtivo = false;
   let ensaioIndex = 0;
@@ -1026,6 +1027,13 @@ const functionsApp = getFunctions(firebaseApp);
   function splitMusica(nome){
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
     return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
+  }
+  function extrairDriveId(texto){
+    const limpo = String(texto).trim();
+    const match = limpo.match(/\/d\/([a-zA-Z0-9_-]+)/) || limpo.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if(match) return match[1];
+    if(/^[a-zA-Z0-9_-]{10,}$/.test(limpo)) return limpo;
+    return null;
   }
   function showToast(msg){
     const t = document.getElementById("toast");
@@ -1702,6 +1710,7 @@ const functionsApp = getFunctions(firebaseApp);
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
         const editingLetra = editingLetraId === m.id;
+        const editingAudio = editingAudioId === m.id;
         const editingNome = editingMusicaNomeId === m.id;
         const { titulo, artista } = splitMusica(m.nome);
         const oculta = m.visivel === false;
@@ -1730,7 +1739,13 @@ const functionsApp = getFunctions(firebaseApp);
           ${open ? `
             <div class="lyrics-box">
               ${renderVisualizacoesBadge("musica", m.id)}
-              ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
+              ${editingAudio ? `
+                <input type="text" class="edit-nome-input" id="input-edit-audio" data-id="${m.id}" value="${escapeHtml(m.audioId || "")}" placeholder="Cole o link ou ID do Google Drive" style="margin-bottom:8px;" />
+                <button class="btn-import" data-action="save-audio" data-id="${m.id}" style="margin-bottom:14px;">Salvar áudio</button>
+              ` : `
+                ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
+                <button type="button" class="link-btn" style="padding-bottom:10px;" data-action="edit-audio" data-id="${m.id}">${m.audioId ? "Editar áudio" : "Adicionar áudio"}</button>
+              `}
               ${editingLetra ? `
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
                 <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:-4px 0 10px 0;">Use **texto** para negrito e *texto* para itálico</div>
@@ -3048,6 +3063,7 @@ const functionsApp = getFunctions(firebaseApp);
         const id = el.dataset.id;
         openMusicaId = (openMusicaId === id) ? null : id;
         editingLetraId = null;
+        editingAudioId = null;
         render();
       });
     });
@@ -3055,6 +3071,31 @@ const functionsApp = getFunctions(firebaseApp);
     document.querySelectorAll('[data-action="edit-letra"]').forEach(el => {
       el.addEventListener("click", () => {
         editingLetraId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-audio"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingAudioId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-audio"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const input = document.getElementById("input-edit-audio");
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item || !input) return;
+        const valor = input.value.trim();
+        if(!valor){
+          await updateDoc(doc(musicasCol, item.id), { audioId: deleteField() });
+        } else {
+          const id = extrairDriveId(valor);
+          if(!id){ showToast("Link do Google Drive inválido"); return; }
+          await updateDoc(doc(musicasCol, item.id), { audioId: id });
+        }
+        editingAudioId = null;
         render();
       });
     });
