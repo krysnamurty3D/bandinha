@@ -927,6 +927,7 @@ const musicasCol = collection(db, "musicas");
 const roteirosCol = collection(db, "roteiros");
 const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
+const configFinanceiroDocRef = doc(db, "config", "financeiro");
 const progressoCol = collection(db, "progresso");
 const visualizacoesCol = collection(db, "visualizacoes");
 const agendaCol = collection(db, "agenda");
@@ -952,10 +953,11 @@ const functionsApp = getFunctions(firebaseApp);
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let finSubTab = "caixa";
+  let editandoValoresFinanceiro = false;
   let currentUser = null;
   let authReady = false;
   let currentTab = "home";
@@ -1122,6 +1124,11 @@ const functionsApp = getFunctions(firebaseApp);
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); showToast("Erro ao sincronizar"); });
+
+    onSnapshot(configFinanceiroDocRef, snap => {
+      data.configFinanceiro = snap.data() || { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 };
+      safeRender();
+    }, e => console.error("Erro ao sincronizar valores financeiros:", e));
 
     onSnapshot(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -1430,20 +1437,62 @@ const functionsApp = getFunctions(firebaseApp);
 
   function renderFinanceiroPagamentos(){
     const total = data.integrantes.length;
+    const cf = data.configFinanceiro || { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 };
+
+    let valoresHtml = "";
+    if(editandoValoresFinanceiro){
+      valoresHtml = `
+        <div class="card" style="margin-bottom:16px;">
+          <label class="stepper-label">Valores desta rodada</label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(13px * var(--font-scale, 1));">Inscrição
+              <input type="number" id="input-valor-inscricao" step="0.01" min="0" value="${cf.valorInscricao || 0}" style="width:110px;" />
+            </label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(13px * var(--font-scale, 1));">Camisa
+              <input type="number" id="input-valor-camisa" step="0.01" min="0" value="${cf.valorCamisa || 0}" style="width:110px;" />
+            </label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(13px * var(--font-scale, 1));">Taxa da Equipe
+              <input type="number" id="input-valor-taxa" step="0.01" min="0" value="${cf.valorTaxa || 0}" style="width:110px;" />
+            </label>
+          </div>
+          <button type="button" id="btn-salvar-valores-financeiro" class="btn-import" style="margin-top:12px;">Salvar valores</button>
+        </div>
+      `;
+    } else {
+      valoresHtml = `
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);">
+            Inscrição <strong style="color:var(--cream);">${formatMoeda(cf.valorInscricao)}</strong> ·
+            Camisa <strong style="color:var(--cream);">${formatMoeda(cf.valorCamisa)}</strong> ·
+            Taxa <strong style="color:var(--cream);">${formatMoeda(cf.valorTaxa)}</strong>
+          </div>
+          <button type="button" class="link-btn" style="padding:0;" data-action="editar-valores-financeiro">Editar valores</button>
+        </div>
+      `;
+    }
+
     if(total === 0){
-      return `<div class="empty"><div class="note-dot"></div><br>Cadastre integrantes primeiro pra acompanhar os pagamentos aqui.</div>`;
+      return valoresHtml + `<div class="empty"><div class="note-dot"></div><br>Cadastre integrantes primeiro pra acompanhar os pagamentos aqui.</div>`;
     }
     const totalInscricao = data.integrantes.filter(i => i.inscricao).length;
     const totalCamisa = data.integrantes.filter(i => i.pagamentoCamisa).length;
     const totalTaxa = data.integrantes.filter(i => i.taxaEquipe).length;
     const pago = totalInscricao + totalCamisa + totalTaxa;
     const pct = Math.round(pago / (total * 3) * 100);
+    const arrecadado = totalInscricao * (cf.valorInscricao||0) + totalCamisa * (cf.valorCamisa||0) + totalTaxa * (cf.valorTaxa||0);
+    const esperado = total * ((cf.valorInscricao||0) + (cf.valorCamisa||0) + (cf.valorTaxa||0));
     const pendentes = data.integrantes.filter(i => !i.inscricao || !i.pagamentoCamisa || !i.taxaEquipe)
       .sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
     const emDia = data.integrantes.filter(i => i.inscricao && i.pagamentoCamisa && i.taxaEquipe)
       .sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
 
-    let html = `
+    let html = valoresHtml + `
+      ${esperado > 0 ? `
+        <div class="stat-row">
+          <div class="stat"><div class="num" style="color:var(--green);">${formatMoeda(arrecadado)}</div><div class="lbl">Arrecadado</div></div>
+          <div class="stat"><div class="num">${formatMoeda(esperado)}</div><div class="lbl">Esperado</div></div>
+        </div>
+      ` : ""}
       <div style="display:flex;justify-content:space-between;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);margin-bottom:6px;">
         <span>Pagamentos em dia</span><span style="color:var(--cream);font-weight:700;">${pct}%</span>
       </div>
@@ -2277,6 +2326,24 @@ const functionsApp = getFunctions(firebaseApp);
         finTipoForm = el.dataset.tipo;
         render();
       });
+    });
+
+    document.querySelectorAll('[data-action="editar-valores-financeiro"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editandoValoresFinanceiro = true;
+        render();
+      });
+    });
+
+    const btnSalvarValoresFinanceiro = document.getElementById("btn-salvar-valores-financeiro");
+    if(btnSalvarValoresFinanceiro) btnSalvarValoresFinanceiro.addEventListener("click", async () => {
+      const valorInscricao = parseFloat(document.getElementById("input-valor-inscricao").value) || 0;
+      const valorCamisa = parseFloat(document.getElementById("input-valor-camisa").value) || 0;
+      const valorTaxa = parseFloat(document.getElementById("input-valor-taxa").value) || 0;
+      await setDoc(configFinanceiroDocRef, { valorInscricao, valorCamisa, valorTaxa });
+      editandoValoresFinanceiro = false;
+      showToast("Valores salvos");
+      render();
     });
 
     const inputFinValor = document.getElementById("input-fin-valor");
