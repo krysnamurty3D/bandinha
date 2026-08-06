@@ -1665,7 +1665,10 @@ const functionsApp = getFunctions(firebaseApp);
         <span class="chevron ${collapsed?"":"open"}">▶</span>
       </div>
       <div class="${collapsed?"hidden":""}">`;
+    const totalSessoes = data.historico.length;
     html += lista.map(i => {
+      const presencas = data.historico.filter(s => (s.presentes || []).includes(i.nome)).length;
+      const faltas = totalSessoes - presencas;
       return `
       <div class="card" data-id="${i.id}" style="border-left:3px solid ${color};">
         <div class="member-row">
@@ -1674,7 +1677,10 @@ const functionsApp = getFunctions(firebaseApp);
             <input type="text" class="edit-nome-input" data-id="${i.id}" value="${escapeHtml(i.nome)}" />
             <button class="btn-save-nome" data-action="save-nome" data-id="${i.id}">✓</button>
           ` : `
-            <div class="member-name" data-action="toggle-membro" data-id="${i.id}" title="Toque para ver detalhes">${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}</div>
+            <div class="member-name" data-action="toggle-membro" data-id="${i.id}" title="Toque para ver detalhes">
+              ${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}
+              ${totalSessoes > 0 ? `<span style="color:var(--muted);font-size:calc(10.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;"><span style="color:var(--green);">✓${presencas}</span> · <span style="color:var(--rose);">✕${faltas}</span></span>` : ""}
+            </div>
           `}
           <select class="shirt-select" data-action="shirt" data-id="${i.id}">
             <option value="">Cam.</option>
@@ -1685,6 +1691,7 @@ const functionsApp = getFunctions(firebaseApp);
         </div>
         <div class="member-sub ${expandedMemberId === i.id ? "" : "hidden"}" style="flex-direction:column;align-items:stretch;gap:8px;">
           <span>Camisa: ${i.camisa ? i.camisa : "não definida"}</span>
+          ${totalSessoes > 0 ? `<span>Presença: ${presencas} de ${totalSessoes} ensaio${totalSessoes === 1 ? "" : "s"} (${Math.round(presencas / totalSessoes * 100)}%)</span>` : `<span style="color:var(--muted);">Nenhum ensaio com chamada registrada ainda.</span>`}
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
             <button class="pay-toggle ${i.pagamentoCamisa?"paid":""}" data-action="toggle-camisa-pag" data-id="${i.id}">Camisa ${i.pagamentoCamisa ? "✓" : ""}</button>
