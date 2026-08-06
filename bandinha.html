@@ -979,6 +979,7 @@ const functionsApp = getFunctions(firebaseApp);
   let ensaioIndex = 0;
   let ensaioEditando = false;
   let enviandoSetlist = false;
+  let migrandoAudios = false;
   let editingFinanceiroId = null;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
@@ -1705,11 +1706,15 @@ const functionsApp = getFunctions(firebaseApp);
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const total = musicasVisiveis.length;
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
+    const pendentesDrive = data.musicas.filter(m => m.audioId && !m.audioUrl).length;
     let html = `
       <div class="stat-row">
         <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
         <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
       </div>
+      ${pendentesDrive > 0 ? `
+        <button type="button" id="btn-migrar-audios" class="btn-import" style="margin-bottom:16px;background:var(--gold);color:#241200;" ${migrandoAudios ? "disabled" : ""}>${migrandoAudios ? "Migrando..." : `☁️ Migrar ${pendentesDrive} áudio${pendentesDrive === 1 ? "" : "s"} do Drive para o Storage`}</button>
+      ` : ""}
       <form class="inline-add" id="form-musica" style="flex-wrap:wrap;">
         <input type="text" id="input-musica-nome" placeholder="Nome da música" required style="flex:1 1 180px;" />
         <label class="check-row" style="flex:0 0 auto;gap:6px;">
@@ -2850,6 +2855,28 @@ const functionsApp = getFunctions(firebaseApp);
         showToast("Erro ao enviar setlist");
       }
       enviandoSetlist = false;
+      render();
+    });
+
+    const btnMigrarAudios = document.getElementById("btn-migrar-audios");
+    if(btnMigrarAudios) btnMigrarAudios.addEventListener("click", async () => {
+      if(!confirm("Baixar todos os áudios do Google Drive e reenviar pro Firebase Storage? Isso pode levar alguns minutos.")) return;
+      migrandoAudios = true;
+      render();
+      try{
+        const res = await httpsCallable(functionsApp, "migrarAudiosDrive")();
+        const { total, migradas, falhas } = res.data;
+        if(falhas.length > 0){
+          console.error("Falhas na migração:", falhas);
+          showToast(`${migradas}/${total} migrados. ${falhas.length} falharam (veja o console).`);
+        } else {
+          showToast(`${migradas} áudio${migradas === 1 ? "" : "s"} migrado${migradas === 1 ? "" : "s"} com sucesso!`);
+        }
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao migrar áudios");
+      }
+      migrandoAudios = false;
       render();
     });
 

@@ -1,6 +1,7 @@
 // Cloud Functions for Bandinha push notifications (auto-deploy, retry 6)
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
 const { getMessaging } = require("firebase-admin/messaging");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -129,6 +130,55 @@ exports.expirarMusicasNovas = onSchedule("every 24 hours", async () => {
     ...semData.map(d => d.ref.update({ novaDesde: agora })),
     ...expiradas.map(d => d.ref.update({ nova: false, novaDesde: FieldValue.delete() }))
   ]);
+});
+
+const EXT_POR_TIPO = {
+  "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a",
+  "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/aac": "aac"
+};
+
+async function baixarDoDrive(fileId) {
+  let url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+  let res = await fetch(url);
+  let contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("text/html")) {
+    const html = await res.text();
+    const match = html.match(/confirm=([0-9A-Za-z_]+)/);
+    if (!match) throw new Error("Arquivo não acessível publicamente no Drive");
+    url = `https://drive.google.com/uc?export=download&confirm=${match[1]}&id=${fileId}`;
+    res = await fetch(url);
+    contentType = res.headers.get("content-type") || "";
+  }
+  if (!res.ok) throw new Error(`Drive respondeu ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  return { buffer, contentType: EXT_POR_TIPO[contentType] ? contentType : "audio/mpeg" };
+}
+
+exports.migrarAudiosDrive = onCall({ timeoutSeconds: 300 }, async request => {
+  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
+    throw new HttpsError("permission-denied", "Apenas o coordenador pode migrar áudios.");
+  }
+  const snap = await db.collection("musicas").get();
+  const alvos = snap.docs.filter(d => d.data().audioId && !d.data().audioUrl);
+  const bucket = getStorage().bucket();
+  let migradas = 0;
+  const falhas = [];
+  for (const docSnap of alvos) {
+    const m = docSnap.data();
+    try {
+      const { buffer, contentType } = await baixarDoDrive(m.audioId);
+      const ext = EXT_POR_TIPO[contentType] || "mp3";
+      const path = `audio/${docSnap.id}-${Date.now()}.${ext}`;
+      const file = bucket.file(path);
+      await file.save(buffer, { metadata: { contentType } });
+      const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media`;
+      await docSnap.ref.update({ audioUrl: url, audioId: FieldValue.delete() });
+      migradas++;
+    } catch (err) {
+      falhas.push({ nome: m.nome || docSnap.id, erro: err.message });
+    }
+  }
+  return { total: alvos.length, migradas, falhas };
 });
 
 exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
