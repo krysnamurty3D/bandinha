@@ -1284,6 +1284,7 @@ const functionsApp = getFunctions(firebaseApp);
     else if(currentTab === "roteiros") main.innerHTML = renderSectionHeader("📋", "Roteiro") + renderRoteiros();
     else if(currentTab === "coreografias") main.innerHTML = renderSectionHeader("🕺", "Coreografias") + renderCoreografias();
     else if(currentTab === "progresso") main.innerHTML = renderSectionHeader("📈", "Progresso") + renderProgresso();
+    else if(currentTab === "ensaio-menu") main.innerHTML = renderSectionHeader("🎤", "Ensaio") + renderEnsaioMenu();
     else if(currentTab === "agenda") main.innerHTML = renderSectionHeader("📅", "Agenda") + renderAgenda();
     else main.innerHTML = renderSectionHeader("🔴", "Ao Vivo") + renderAoVivo();
 
@@ -1315,9 +1316,9 @@ const functionsApp = getFunctions(firebaseApp);
       { key: "financeiro", icon: "💳", label: "Financeiro", stat: `Saldo: ${formatMoeda(saldoFin)}` },
       { key: "musicas", icon: "🎵", label: "Músicas", stat: `${prontas}/${musicasVisiveis.length} prontas` },
       { key: "coreografias", icon: "🕺", label: "Coreografias", stat: `${data.coreografias.length} cadastradas` },
+      { key: "ensaio-menu", icon: "🎤", label: "Ensaio", stat: `${getSetlist().length} no setlist` },
       { key: "agenda", icon: "📅", label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
       { key: "roteiros", icon: "📋", label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
-      { key: "progresso", icon: "📈", label: "Progresso", stat: `${data.progresso.filter(p => p.status).length} marcações` },
       { key: "aovivo", icon: "🔴", label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo }
     ];
 
@@ -1326,6 +1327,25 @@ const functionsApp = getFunctions(firebaseApp);
         ${cards.map(c => `
           <button type="button" class="sec-card" data-action="ir-tab" data-tab="${c.key}">
             ${c.live ? `<span class="live-dot"></span>` : ""}
+            <div class="sec-card-icon">${c.icon}</div>
+            <div class="sec-card-label">${c.label}</div>
+            <div class="sec-card-stat">${c.stat}</div>
+          </button>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function renderEnsaioMenu(){
+    const subcards = [
+      { icon: "🎯", label: "Setlist", stat: `${getSetlist().length} músicas`, action: "abrir-modo-ensaio" },
+      { icon: "📋", label: "Lista de Presença", stat: `${data.historico.length} sessões`, action: "abrir-historico" },
+      { icon: "📈", label: "Progresso", stat: `${data.progresso.filter(p => p.status).length} marcações`, action: "ir-tab", tab: "progresso" }
+    ];
+    return `
+      <div class="home-grid">
+        ${subcards.map(c => `
+          <button type="button" class="sec-card" data-action="${c.action}" ${c.tab ? `data-tab="${c.tab}"` : ""}>
             <div class="sec-card-icon">${c.icon}</div>
             <div class="sec-card-label">${c.label}</div>
             <div class="sec-card-stat">${c.stat}</div>
@@ -1666,10 +1686,6 @@ const functionsApp = getFunctions(firebaseApp);
         <button type="submit" class="btn-add">+</button>
       </form>
       ${totalReal > 0 ? `
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-          <button type="button" id="btn-iniciar-ensaio" class="btn-import" style="flex:2;">▶ Iniciar Ensaio</button>
-          <button type="button" id="btn-ver-historico" class="btn-import" style="flex:1;background:var(--surface-2);color:var(--cream);">📅 Histórico</button>
-        </div>
         <label class="check-row">
           <input type="checkbox" id="input-mostrar-ocultas" ${mostrarOcultasMusicas ? "checked" : ""} />
           Mostrar músicas ocultas
@@ -2664,19 +2680,23 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
-    const btnIniciarEnsaio = document.getElementById("btn-iniciar-ensaio");
-    if(btnIniciarEnsaio) btnIniciarEnsaio.addEventListener("click", () => {
-      ensaioAtivo = true;
-      ensaioEditando = false;
-      ensaioIndex = 0;
-      ensaioSessaoIds = new Set();
-      render();
+    document.querySelectorAll('[data-action="abrir-modo-ensaio"]').forEach(el => {
+      el.addEventListener("click", () => {
+        currentTab = "ensaio-menu";
+        ensaioAtivo = true;
+        ensaioEditando = false;
+        ensaioIndex = 0;
+        ensaioSessaoIds = new Set();
+        render();
+      });
     });
 
-    const btnVerHistorico = document.getElementById("btn-ver-historico");
-    if(btnVerHistorico) btnVerHistorico.addEventListener("click", () => {
-      historicoAtivo = true;
-      render();
+    document.querySelectorAll('[data-action="abrir-historico"]').forEach(el => {
+      el.addEventListener("click", () => {
+        currentTab = "ensaio-menu";
+        historicoAtivo = true;
+        render();
+      });
     });
 
     const inputMostrarOcultas = document.getElementById("input-mostrar-ocultas");
