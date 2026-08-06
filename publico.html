@@ -640,6 +640,11 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
     return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
   }
+  function renderAudioPlayer(m){
+    if(m.audioUrl) return `<audio controls preload="none" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
+    if(m.audioId) return `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>`;
+    return "";
+  }
 
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -886,7 +891,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           </div>
           ${open ? `
             <div class="lyrics-box">
-              ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:10px;">Sem áudio cadastrado.</div>`}
+              ${(m.audioUrl || m.audioId) ? renderAudioPlayer(m) : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:10px;">Sem áudio cadastrado.</div>`}
               ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Sem letra cadastrada.</div>`}
             </div>
           ` : ""}
@@ -944,7 +949,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           ` : ""}
           ${open ? `
             <div class="lyrics-box">
-              ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
+              ${renderAudioPlayer(m)}
               ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
             </div>
           ` : ""}

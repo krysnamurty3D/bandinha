@@ -907,6 +907,7 @@ import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteFiel
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -918,6 +919,7 @@ const firebaseConfig = {
 };
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
@@ -971,6 +973,7 @@ const functionsApp = getFunctions(firebaseApp);
   let openMusicaId = null;
   let editingLetraId = null;
   let editingAudioId = null;
+  let enviandoAudioId = null;
   let editingMusicaNomeId = null;
   let ensaioAtivo = false;
   let ensaioIndex = 0;
@@ -998,9 +1001,17 @@ const functionsApp = getFunctions(firebaseApp);
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
-  function extrairDriveId(url){
-    const m = String(url).match(/\/d\/([a-zA-Z0-9_-]{10,})/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
-    return m ? m[1] : null;
+  function extrairDriveId(texto){
+    const limpo = String(texto).trim();
+    const match = limpo.match(/\/d\/([a-zA-Z0-9_-]+)/) || limpo.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if(match) return match[1];
+    if(/^[a-zA-Z0-9_-]{10,}$/.test(limpo)) return limpo;
+    return null;
+  }
+  function renderAudioPlayer(m){
+    if(m.audioUrl) return `<audio controls preload="none" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
+    if(m.audioId) return `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>`;
+    return "";
   }
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -1030,13 +1041,6 @@ const functionsApp = getFunctions(firebaseApp);
   function splitMusica(nome){
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
     return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
-  }
-  function extrairDriveId(texto){
-    const limpo = String(texto).trim();
-    const match = limpo.match(/\/d\/([a-zA-Z0-9_-]+)/) || limpo.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if(match) return match[1];
-    if(/^[a-zA-Z0-9_-]{10,}$/.test(limpo)) return limpo;
-    return null;
   }
   function showToast(msg){
     const t = document.getElementById("toast");
@@ -1761,11 +1765,18 @@ const functionsApp = getFunctions(firebaseApp);
             <div class="lyrics-box">
               ${renderVisualizacoesBadge("musica", m.id)}
               ${editingAudio ? `
-                <input type="text" class="edit-nome-input" id="input-edit-audio" data-id="${m.id}" value="${escapeHtml(m.audioId || "")}" placeholder="Cole o link ou ID do Google Drive" style="margin-bottom:8px;" />
-                <button class="btn-import" data-action="save-audio" data-id="${m.id}" style="margin-bottom:14px;">Salvar áudio</button>
+                ${enviandoAudioId === m.id ? `
+                  <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">Enviando áudio...</div>
+                ` : `
+                  <input type="file" accept="audio/*" id="input-audio-file" data-id="${m.id}" style="margin-bottom:8px;width:100%;" />
+                  <div style="display:flex;gap:10px;margin-bottom:14px;">
+                    ${(m.audioUrl || m.audioId) ? `<button type="button" class="link-btn" style="padding:0;color:var(--rose);" data-action="remover-audio" data-id="${m.id}">Remover áudio</button>` : ""}
+                    <button type="button" class="link-btn" style="padding:0;margin-left:auto;" data-action="cancelar-edit-audio">Cancelar</button>
+                  </div>
+                `}
               ` : `
-                ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
-                <button type="button" class="link-btn" style="padding-bottom:10px;" data-action="edit-audio" data-id="${m.id}">${m.audioId ? "Editar áudio" : "Adicionar áudio"}</button>
+                ${renderAudioPlayer(m)}
+                <button type="button" class="link-btn" style="padding-bottom:10px;" data-action="edit-audio" data-id="${m.id}">${(m.audioUrl || m.audioId) ? "Trocar áudio" : "Adicionar áudio"}</button>
               `}
               ${editingLetra ? `
                 <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
@@ -1907,7 +1918,7 @@ const functionsApp = getFunctions(firebaseApp);
       </div>
       <div class="ensaio-title">${escapeHtml(titulo)}</div>
       ${artista ? `<div class="ensaio-artist">${escapeHtml(artista)}</div>` : ""}
-      ${m.audioId ? `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>` : ""}
+      ${renderAudioPlayer(m)}
       <div class="ensaio-lyrics">${m.letra ? formatLyrics(m.letra) : '<span style="color:var(--muted);">Sem letra cadastrada.</span>'}</div>
       <div class="ensaio-nav">
         <button type="button" data-action="ensaio-anterior" ${ensaioIndex === 0 ? "disabled" : ""}>◀ Anterior</button>
@@ -3150,22 +3161,45 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
-    document.querySelectorAll('[data-action="save-audio"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const input = document.getElementById("input-edit-audio");
-        const item = data.musicas.find(m => m.id === el.dataset.id);
-        if(!item || !input) return;
-        const valor = input.value.trim();
-        if(!valor){
-          await updateDoc(doc(musicasCol, item.id), { audioId: deleteField() });
-        } else {
-          const id = extrairDriveId(valor);
-          if(!id){ showToast("Link do Google Drive inválido"); return; }
-          await updateDoc(doc(musicasCol, item.id), { audioId: id });
-        }
+    document.querySelectorAll('[data-action="cancelar-edit-audio"]').forEach(el => {
+      el.addEventListener("click", () => {
         editingAudioId = null;
         render();
       });
+    });
+
+    document.querySelectorAll('[data-action="remover-audio"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Remover o áudio desta música?")) return;
+        await updateDoc(doc(musicasCol, el.dataset.id), { audioUrl: deleteField(), audioId: deleteField() });
+        editingAudioId = null;
+        render();
+      });
+    });
+
+    const inputAudioFile = document.getElementById("input-audio-file");
+    if(inputAudioFile) inputAudioFile.addEventListener("change", async () => {
+      const file = inputAudioFile.files[0];
+      const musicaId = inputAudioFile.dataset.id;
+      if(!file || !musicaId) return;
+      if(!file.type.startsWith("audio/")){ showToast("Selecione um arquivo de áudio"); return; }
+      enviandoAudioId = musicaId;
+      render();
+      try{
+        const ext = file.name.includes(".") ? file.name.split(".").pop() : "mp3";
+        const path = `audio/${musicaId}-${Date.now()}.${ext}`;
+        const fileRef = storageRef(storage, path);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        await updateDoc(doc(musicasCol, musicaId), { audioUrl: url, audioId: deleteField() });
+        showToast("Áudio enviado!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao enviar áudio");
+      }
+      enviandoAudioId = null;
+      editingAudioId = null;
+      render();
     });
 
     document.querySelectorAll('[data-action="save-letra"]').forEach(el => {

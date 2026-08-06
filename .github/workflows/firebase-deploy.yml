@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - "firestore.rules"
+      - "storage.rules"
       - "functions/**"
 
 jobs:
@@ -27,4 +28,4 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Deploy to Firebase
-        run: npx firebase-tools deploy --only firestore:rules,functions --project bandinha-a22ce --force
+        run: npx firebase-tools deploy --only firestore:rules,storage:rules,functions --project bandinha-a22ce --force
