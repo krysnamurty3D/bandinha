@@ -37,12 +37,12 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "bandinha-shell-v1";
-const APP_SHELL = ["publico.html", "manifest.json", "header.png"];
+const CACHE_NAME = "bandinha-shell-v2";
+const STATIC_ASSETS = ["manifest.json", "header.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
   );
 });
 
@@ -53,21 +53,23 @@ self.addEventListener("activate", event => {
   );
 });
 
+// HTML documents always go straight to the network — never served from cache.
+// Caching them risked showing a stale/broken page on flaky connections instead
+// of just retrying, which is worse than the offline-fallback benefit it gave.
 self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (req.mode === "navigate") return;
 
-  if (req.mode === "navigate" || APP_SHELL.some(p => url.pathname.endsWith(p))) {
+  if (STATIC_ASSETS.some(p => url.pathname.endsWith(p))) {
     event.respondWith(
-      fetch(req)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
-          return res;
-        })
-        .catch(() => caches.match(req).then(cached => cached || caches.match("publico.html")))
+      caches.match(req).then(cached => cached || fetch(req).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
+        return res;
+      }))
     );
   }
 });
