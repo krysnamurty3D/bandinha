@@ -576,6 +576,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, onSnapshot, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+import { getAnalytics, isSupported as isAnalyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDU22nU2MOfb-3Z9xBHYVxrXtFDaG5_93g",
@@ -583,9 +584,13 @@ const firebaseConfig = {
   projectId: "bandinha-a22ce",
   storageBucket: "bandinha-a22ce.firebasestorage.app",
   messagingSenderId: "808882413270",
-  appId: "1:808882413270:web:91dbb55bc2256847ae3377"
+  appId: "1:808882413270:web:91dbb55bc2256847ae3377",
+  measurementId: ""
 };
 const firebaseApp = initializeApp(firebaseConfig);
+if(firebaseConfig.measurementId){
+  isAnalyticsSupported().then(supported => { if(supported) getAnalytics(firebaseApp); }).catch(() => {});
+}
 let db;
 try{
   db = initializeFirestore(firebaseApp, {
