@@ -1,4 +1,5 @@
 rules_version = '2';
+// trigger redeploy with corrected workflow
 service firebase.storage {
   match /b/{bucket}/o {
     match /audio/{allPaths=**} {
