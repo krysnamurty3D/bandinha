@@ -101,8 +101,8 @@
     margin-bottom:12px;
   }
   .card-nova{
-    background:rgba(255,122,26,0.08);
-    border-color:#ff7a1a;
+    background:rgba(232,166,60,0.08);
+    border-color:var(--gold);
   }
   .empty{
     text-align:center;
@@ -336,7 +336,7 @@
   .song-title{font-weight:600;font-size:calc(15px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .badge-nova{
     display:inline-block;
-    background:linear-gradient(135deg, #ffb020, #ff7a1a);
+    background:linear-gradient(135deg, var(--gold), #d97a24);
     color:#241200;
     font-size:calc(9.5px * var(--font-scale, 1));
     font-weight:800;
@@ -358,7 +358,7 @@
     white-space:nowrap;
   }
   .card-nova .status-pill{
-    border-color:rgba(255,122,26,0.55);
+    border-color:rgba(232,166,60,0.55);
   }
   .status-aprender{background:rgba(214,64,42,0.15);color:var(--rose);}
   .status-ensaiando{background:rgba(240,169,60,0.15);color:var(--gold);}
@@ -932,7 +932,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     } else {
       if(meuNome){
         html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-          <button type="button" class="status-pill" style="${!filtroProgresso ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-filtro-progresso" data-status="">Todas</button>
+          <button type="button" class="status-pill" style="${!filtroProgresso ? 'background:rgba(232,166,60,0.18);color:var(--gold);' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-filtro-progresso" data-status="">Todas</button>
           ${MEU_PROGRESSO_OPTS.map(o => `<button type="button" class="status-pill ${filtroProgresso===o.key ? o.cls : ''}" style="${filtroProgresso===o.key ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-filtro-progresso" data-status="${o.key}">${o.label}</button>`).join("")}
         </div>`;
       }
