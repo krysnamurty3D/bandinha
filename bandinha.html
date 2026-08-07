@@ -1681,7 +1681,7 @@ const functionsApp = getFunctions(firebaseApp);
           ` : `
             <div class="member-name" data-action="toggle-membro" data-id="${i.id}" title="Toque para ver detalhes">
               ${escapeHtml(i.nome)}${i.instrumental ? ' <span class="inst-tag">🎸 Instrumental</span>' : ""}
-              ${totalSessoes > 0 ? `<span style="color:var(--muted);font-size:calc(10.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;"><span style="color:var(--green);">✓${presencas}</span> · <span style="color:var(--rose);">✕${faltas}</span></span>` : ""}
+              ${totalSessoes > 0 ? `<span style="font-family:'Montserrat',sans-serif;color:${faltas > 0 ? "var(--rose)" : "var(--green)"};font-size:calc(14.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;">${presencas}/${totalSessoes}</span>` : ""}
             </div>
           `}
           <select class="shirt-select" data-action="shirt" data-id="${i.id}">
