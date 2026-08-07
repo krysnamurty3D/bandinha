@@ -2461,9 +2461,14 @@ const functionsApp = getFunctions(firebaseApp);
     if(btnSalvarValoresFinanceiro) btnSalvarValoresFinanceiro.addEventListener("click", async () => {
       const valorCamisa = parseFloat(document.getElementById("input-valor-camisa").value) || 0;
       const valorTaxa = parseFloat(document.getElementById("input-valor-taxa").value) || 0;
-      await setDoc(configFinanceiroDocRef, { valorCamisa, valorTaxa, valorInscricao: deleteField() });
-      editandoValoresFinanceiro = false;
-      showToast("Valores salvos");
+      try{
+        await setDoc(configFinanceiroDocRef, { valorCamisa, valorTaxa, valorInscricao: deleteField() }, { merge: true });
+        editandoValoresFinanceiro = false;
+        showToast("Valores salvos");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao salvar valores");
+      }
       render();
     });
 
