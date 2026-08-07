@@ -17,28 +17,27 @@
 <meta name="twitter:description" content="Músicas, coreografias, agenda e roteiro da Bandinha - 2ª Igreja Congregacional.">
 <meta name="twitter:image" content="https://bandinha.k3d.app.br/og-image.jpg">
 <link rel="manifest" href="manifest.json">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #17130F;
-    --surface: #241D17;
-    --surface-2: #2E251D;
-    --gold: #F0A93C;
-    --cream: #F4EEE1;
-    --muted: #B8A99A;
-    --rose: #D6402A;
-    --green: #7FA85E;
+    --bg: #140E09;
+    --surface: #221810;
+    --surface-2: #2E2116;
+    --gold: #E8A63C;
+    --cream: #F6EEDC;
+    --muted: #B6A489;
+    --rose: #D8492E;
+    --green: #8AAD6B;
     --blue: #C9932E;
-    --line: rgba(244,238,225,0.12);
+    --line: rgba(246,238,220,0.10);
     --radius: 16px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;touch-action:manipulation;}
   body{
     background: var(--bg);
     color: var(--cream);
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     min-height:100vh;
     -webkit-font-smoothing:antialiased;
   }
@@ -72,7 +71,7 @@
     position:relative;
     z-index:1;
     padding:14px 20px 14px 20px;
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     font-weight:700;
     font-size:calc(28px * var(--font-scale, 1));
     letter-spacing:0.2px;
@@ -82,7 +81,7 @@
     text-shadow:0 2px 8px rgba(0,0,0,0.6);
   }
   .brand small{
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     font-weight:500;
     font-size:calc(12px * var(--font-scale, 1));
     letter-spacing:1.5px;
@@ -220,7 +219,7 @@
     margin-bottom:20px;
   }
   .aovivo-timer{
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     font-weight:800;
     font-size:calc(56px * var(--font-scale, 1));
     letter-spacing:1px;
@@ -250,7 +249,7 @@
     justify-content:center;
   }
   .ring-time{
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     font-weight:800;
     font-size:calc(38px * var(--font-scale, 1));
     color:var(--cream);
@@ -270,7 +269,7 @@
     flex-shrink:0;
   }
   .section-title{
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     font-weight:600;
     font-size:calc(20px * var(--font-scale, 1));
     margin:18px 2px 12px 2px;
@@ -297,6 +296,8 @@
     width:100%; height:100%;
     border:none;
   }
+  .ico{display:inline-flex;vertical-align:-3px;width:15px;height:15px;margin-right:5px;}
+  .ico svg{width:100%;height:100%;}
   .audio-frame{
     width:100%;
     height:80px;
@@ -323,7 +324,7 @@
     border-radius:14px;
     padding:12px 14px;
   }
-  .stat .num{font-family:'Montserrat',sans-serif;font-size:calc(22px * var(--font-scale, 1));font-weight:700;}
+  .stat .num{font-family:var(--font);font-size:calc(22px * var(--font-scale, 1));font-weight:700;}
   .stat .lbl{font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
 
   .song-row{
@@ -382,7 +383,7 @@
     align-items:center;
     cursor:pointer;
   }
-  .roteiro-title{font-family:'Montserrat',sans-serif;font-weight:600;font-size:calc(17px * var(--font-scale, 1));}
+  .roteiro-title{font-family:var(--font);font-weight:600;font-size:calc(17px * var(--font-scale, 1));}
   .roteiro-date{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);margin-top:2px;}
   .roteiro-countdown{font-size:calc(12px * var(--font-scale, 1));color:var(--gold);font-weight:700;margin-top:4px;}
   .roteiro-info-row{
@@ -409,7 +410,7 @@
   }
   .item-row:last-of-type{border-bottom:none;}
   .item-time{
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     font-weight:600;
     color:var(--gold);
     font-size:calc(14px * var(--font-scale, 1));
@@ -437,7 +438,7 @@
     color:var(--muted);
     border:none;
     cursor:pointer;
-    font-family:'Montserrat',sans-serif;
+    font-family:var(--font);
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -538,12 +539,12 @@
 
 <div class="toast" id="toast"></div>
 <div id="urgente-overlay" class="urgente-overlay hidden">
-  <div class="urgente-badge">🚨 URGENTE</div>
+  <div class="urgente-badge"><span class="ico" style="width:16px;height:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20v-4.5A8 8 0 0 1 20 15.5V20"/><line x1="4" y1="20" x2="20" y2="20"/><line x1="12" y1="3" x2="12" y2="5.3"/><line x1="5.6" y1="6.6" x2="7" y2="8"/><line x1="18.4" y1="6.6" x2="17" y2="8"/></svg></span>URGENTE</div>
   <div class="urgente-local" id="urgente-overlay-local"></div>
   <button type="button" id="btn-urgente-ok" class="btn-import urgente-ok">Entendi</button>
 </div>
 <button type="button" id="btn-font-size" class="font-ctrl" title="Tamanho da fonte">Aa</button>
-<button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações">🔔</button>
+<button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações"><span class="ico" style="margin:0;width:16px;height:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4.5 1.6 5.8 1.6 5.8H4.4S6 15 6 10.5Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/></svg></span></button>
 
 <nav class="tabbar">
   <button data-tab="musicas" class="active">
@@ -650,6 +651,15 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(m.audioId) return `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>`;
     return "";
   }
+
+  const ICON_STROKE = 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+  const ICONS = {
+    pin: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 21s-6.5-6.2-6.5-11A6.5 6.5 0 0 1 18.5 10c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.4"/></svg>`,
+    bell: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M6 10.5a6 6 0 0 1 12 0c0 4.5 1.6 5.8 1.6 5.8H4.4S6 15 6 10.5Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/></svg>`,
+    clock: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>`,
+    siren: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 20v-4.5A8 8 0 0 1 20 15.5V20"/><line x1="4" y1="20" x2="20" y2="20"/><line x1="12" y1="3" x2="12" y2="5.3"/><line x1="5.6" y1="6.6" x2="7" y2="8"/><line x1="18.4" y1="6.6" x2="17" y2="8"/></svg>`,
+    megaphone: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 10.5v3a1.5 1.5 0 0 0 1.5 1.5h1l.8 4.5h2l-.6-4.5h1.6l8.2 4V6.5l-8.2 4H5a1.5 1.5 0 0 0-1.5 1.5Z"/></svg>`
+  };
 
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -822,7 +832,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const recente = (Date.now() - a.disparadoEm) < 3 * 60000;
     if(!recente || a.disparadoEm === ultimoUrgenteVisto) return;
     ultimoUrgenteVisto = a.disparadoEm;
-    document.getElementById("urgente-overlay-local").textContent = "📍 " + a.proximaEtapa;
+    document.getElementById("urgente-overlay-local").innerHTML = `<span class="ico" style="width:20px;height:20px;">${ICONS.pin}</span>` + escapeHtml(a.proximaEtapa);
     document.getElementById("urgente-overlay").classList.remove("hidden");
     if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
   }
@@ -988,8 +998,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           <div class="roteiro-body ${open?"":"hidden"}">
             ${(r.hora || r.local) ? `
               <div class="roteiro-info-row">
-                ${r.hora ? `<span>🕐 ${r.hora}</span>` : ""}
-                ${r.local ? `<span>📍 ${escapeHtml(r.local)}</span>` : ""}
+                ${r.hora ? `<span><span class="ico">${ICONS.clock}</span>${r.hora}</span>` : ""}
+                ${r.local ? `<span><span class="ico">${ICONS.pin}</span>${escapeHtml(r.local)}</span>` : ""}
               </div>
             ` : ""}
             ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
@@ -1148,14 +1158,14 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     `;
   }
 
-  const TIPO_ICONE = { urgente: "🚨", custom: "📢", normal: "📍" };
+  const TIPO_ICONE = { urgente: ICONS.siren, custom: ICONS.megaphone, normal: ICONS.pin };
   function renderHistoricoAvisos(){
     if(data.avisosHistorico.length === 0) return "";
     return `
       <div class="section-title" style="margin-top:20px;">Histórico de avisos</div>
       ${data.avisosHistorico.map(h => `
         <div class="card" style="padding:10px 14px;display:flex;gap:10px;align-items:baseline;">
-          <span>${TIPO_ICONE[h.tipo] || "📍"}</span>
+          <span class="ico" style="margin:0;">${TIPO_ICONE[h.tipo] || ICONS.pin}</span>
           <span style="flex:1;min-width:0;">${escapeHtml(h.texto)}</span>
           <span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));flex-shrink:0;">${new Date(h.disparadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
         </div>
@@ -1176,7 +1186,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       const jaConfirmei = meuNome ? vistosAvisoAtual.some(v => v.nome === meuNome) : false;
       return `
         <div class="card aovivo-card" style="border-color:var(--gold);">
-          <div class="aovivo-badge" style="background:rgba(240,169,60,0.2);color:var(--gold);">📢 AVISO</div>
+          <div class="aovivo-badge" style="background:rgba(240,169,60,0.2);color:var(--gold);"><span class="ico" style="margin:0 5px 0 0;">${ICONS.megaphone}</span>AVISO</div>
           <div style="font-weight:700;margin-top:14px;">${escapeHtml(proximaEtapa)}</div>
           ${meuNome ? `
             <button type="button" class="pay-toggle ${jaConfirmei ? "paid" : ""}" style="margin-top:14px;" data-action="confirmar-vi-aviso" ${jaConfirmei ? "disabled" : ""}>${jaConfirmei ? "✓ Você confirmou" : "✓ Marcar que eu vi"}</button>
@@ -1188,10 +1198,10 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(urgente){
       return `
         <div class="card aovivo-card" style="border-color:var(--rose);">
-          <div class="aovivo-badge" style="background:rgba(214,64,42,0.2);color:var(--rose);">🚨 URGENTE</div>
+          <div class="aovivo-badge" style="background:rgba(214,64,42,0.2);color:var(--rose);"><span class="ico" style="margin:0 5px 0 0;">${ICONS.siren}</span>URGENTE</div>
           <div class="aovivo-timer esgotado">Agora!</div>
           <div class="aovivo-label">corram para</div>
-          <div style="font-weight:700;margin-top:10px;">📍 ${escapeHtml(proximaEtapa)}</div>
+          <div style="font-weight:700;margin-top:10px;"><span class="ico">${ICONS.pin}</span>${escapeHtml(proximaEtapa)}</div>
         </div>
       ` + renderSetlistHoje() + renderHistoricoAvisos();
     }
@@ -1199,7 +1209,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       <div class="card aovivo-card">
         ${esgotado ? `<div class="aovivo-timer esgotado">Já!</div>` : renderRingTimer(restanteSeg, totalSeg)}
         <div class="aovivo-label" style="margin-top:14px;">Próxima etapa</div>
-        <div class="aovivo-badge" style="margin-top:6px;">📍 ${escapeHtml(proximaEtapa)}</div>
+        <div class="aovivo-badge" style="margin-top:6px;"><span class="ico">${ICONS.pin}</span>${escapeHtml(proximaEtapa)}</div>
       </div>
     ` + renderSetlistHoje() + renderHistoricoAvisos();
   }

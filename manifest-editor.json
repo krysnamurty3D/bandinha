@@ -3,8 +3,8 @@
   "short_name": "Bandinha",
   "start_url": "bandinha.html",
   "display": "standalone",
-  "background_color": "#17130F",
-  "theme_color": "#17130F",
+  "background_color": "#140E09",
+  "theme_color": "#140E09",
   "icons": [
     {
       "src": "header.png",
