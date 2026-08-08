@@ -943,6 +943,8 @@ const coreografiasCol = collection(db, "coreografias");
 const configDocRef = doc(db, "config", "main");
 const configFinanceiroDocRef = doc(db, "config", "financeiro");
 const setlistEquipeDocRef = doc(db, "config", "setlistEquipe");
+const temporadasCol = collection(db, "temporadas");
+const temporadaAtivaDocRef = doc(db, "config", "temporadaAtiva");
 const progressoCol = collection(db, "progresso");
 const visualizacoesCol = collection(db, "visualizacoes");
 const agendaCol = collection(db, "agenda");
@@ -980,6 +982,7 @@ const functionsApp = getFunctions(firebaseApp);
     siren: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 20v-4.5A8 8 0 0 1 20 15.5V20"/><line x1="4" y1="20" x2="20" y2="20"/><line x1="12" y1="3" x2="12" y2="5.3"/><line x1="5.6" y1="6.6" x2="7" y2="8"/><line x1="18.4" y1="6.6" x2="17" y2="8"/></svg>`,
     megaphone: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 10.5v3a1.5 1.5 0 0 0 1.5 1.5h1l.8 4.5h2l-.6-4.5h1.6l8.2 4V6.5l-8.2 4H5a1.5 1.5 0 0 0-1.5 1.5Z"/></svg>`,
     instrument: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 12h2.2l2-5 2.6 10 2.4-7.5 1.8 3.5H20.5"/></svg>`,
+    temporada: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M4.5 8.5v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>`,
     progresso: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7.5 15.5l3.5-4 3 2.5 4.5-5.5"/></svg>`
   };
   function formatMoeda(v){
@@ -994,7 +997,7 @@ const functionsApp = getFunctions(firebaseApp);
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let finSubTab = "caixa";
@@ -1018,6 +1021,7 @@ const functionsApp = getFunctions(firebaseApp);
   let ensaioEditando = false;
   let enviandoSetlist = false;
   let migrandoAudios = false;
+  let abrindoNovaTemporada = false;
   let editingFinanceiroId = null;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
@@ -1185,6 +1189,16 @@ const functionsApp = getFunctions(firebaseApp);
       safeRender();
     }, e => console.error("Erro ao sincronizar valores financeiros:", e));
 
+    onSnapshot(temporadasCol, snap => {
+      data.temporadas = snap.docs.map(d => d.data());
+      safeRender();
+    }, e => console.error("Erro ao sincronizar temporadas:", e));
+
+    onSnapshot(temporadaAtivaDocRef, snap => {
+      data.temporadaAtiva = snap.data() || null;
+      safeRender();
+    }, e => console.error("Erro ao sincronizar temporada ativa:", e));
+
     onSnapshot(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       markLoaded("progresso");
@@ -1341,6 +1355,7 @@ const functionsApp = getFunctions(firebaseApp);
     else if(currentTab === "progresso") main.innerHTML = renderSectionHeader(ICONS.progresso, "Progresso") + renderProgresso();
     else if(currentTab === "ensaio-menu") main.innerHTML = renderSectionHeader(ICONS.ensaio, "Ensaio") + renderEnsaioMenu();
     else if(currentTab === "agenda") main.innerHTML = renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda();
+    else if(currentTab === "temporadas") main.innerHTML = renderSectionHeader(ICONS.temporada, "Temporadas") + renderTemporadas();
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
@@ -1374,7 +1389,8 @@ const functionsApp = getFunctions(firebaseApp);
       { key: "ensaio-menu", icon: ICONS.ensaio, label: "Ensaio", stat: `${getSetlist().length} no setlist` },
       { key: "agenda", icon: ICONS.agenda, label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
-      { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo }
+      { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
+      { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" }
     ];
 
     return `
@@ -1408,6 +1424,53 @@ const functionsApp = getFunctions(firebaseApp);
         `).join("")}
       </div>
     `;
+  }
+
+  function formatDateHora(ts){
+    return new Date(ts).toLocaleDateString("pt-BR");
+  }
+
+  function renderTemporadas(){
+    const ativa = data.temporadaAtiva;
+    const passadas = [...data.temporadas].filter(t => t.id !== ativa?.id).sort((a,b) => b.iniciadaEm - a.iniciadaEm);
+
+    let html = `
+      <div class="card" style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Temporada ativa</div>
+        ${ativa ? `
+          <div style="font-size:calc(20px * var(--font-scale, 1));font-weight:800;color:var(--gold);">${escapeHtml(ativa.nome)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">Iniciada em ${formatDateHora(ativa.iniciadaEm)}</div>
+        ` : `
+          <div style="color:var(--muted);font-size:calc(14px * var(--font-scale, 1));">Nenhuma temporada iniciada ainda.<br>Os dados de hoje continuam valendo normalmente.</div>
+        `}
+      </div>
+      ${abrindoNovaTemporada ? `
+        <form class="inline-add" id="form-nova-temporada" style="flex-wrap:wrap;margin-bottom:16px;">
+          <input type="text" id="input-nome-temporada" placeholder="Nome da nova temporada (ex: 2027)" required style="flex:1 1 200px;" />
+          <button type="submit" class="btn-add">✓</button>
+          <button type="button" class="del-x" style="width:auto;padding:0 12px;border:1px solid var(--line);border-radius:10px;" data-action="cancelar-nova-temporada">Cancelar</button>
+        </form>
+      ` : `
+        <button type="button" class="btn-import" style="margin-bottom:16px;" data-action="abrir-nova-temporada">${ativa ? "Iniciar nova temporada" : "Iniciar primeira temporada"}</button>
+      `}
+      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));line-height:1.6;margin-bottom:16px;">
+        Iniciar uma nova temporada não apaga nada — os dados de hoje ficam guardados aqui pra consulta, e a partir de então tudo que for cadastrado passa a valer pra temporada nova.
+      </div>
+      <div class="section-title" style="margin-top:0;">Temporadas anteriores</div>
+    `;
+
+    if(passadas.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma temporada anterior ainda.</div>`;
+    } else {
+      html += passadas.map(t => `
+        <div class="card" style="padding:12px 14px;">
+          <div style="font-weight:700;">${escapeHtml(t.nome)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${formatDateHora(t.iniciadaEm)}${t.encerradaEm ? ` – ${formatDateHora(t.encerradaEm)}` : ""}</div>
+        </div>
+      `).join("");
+    }
+
+    return html;
   }
 
   function renderBrand(){
@@ -2990,6 +3053,44 @@ const functionsApp = getFunctions(firebaseApp);
         showToast("Erro ao migrar áudios");
       }
       migrandoAudios = false;
+      render();
+    });
+
+    document.querySelectorAll('[data-action="abrir-nova-temporada"]').forEach(el => {
+      el.addEventListener("click", () => {
+        abrindoNovaTemporada = true;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="cancelar-nova-temporada"]').forEach(el => {
+      el.addEventListener("click", () => {
+        abrindoNovaTemporada = false;
+        render();
+      });
+    });
+
+    const formNovaTemporada = document.getElementById("form-nova-temporada");
+    if(formNovaTemporada) formNovaTemporada.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-nome-temporada");
+      const nome = input.value.trim();
+      if(!nome) return;
+      if(!confirm(`Iniciar a temporada "${nome}"? Os dados de hoje não serão apagados, só arquivados para consulta.`)) return;
+      try{
+        const agora = Date.now();
+        if(data.temporadaAtiva){
+          await updateDoc(doc(temporadasCol, data.temporadaAtiva.id), { encerradaEm: agora });
+        }
+        const novaId = uid();
+        await setDoc(doc(temporadasCol, novaId), { id: novaId, nome, iniciadaEm: agora, encerradaEm: null });
+        await setDoc(temporadaAtivaDocRef, { id: novaId, nome, iniciadaEm: agora });
+        abrindoNovaTemporada = false;
+        showToast("Temporada iniciada!");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao iniciar temporada");
+      }
       render();
     });
 

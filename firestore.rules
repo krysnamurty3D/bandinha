@@ -12,6 +12,9 @@ service cloud.firestore {
     match /financeiro/{docId} {
       allow read, write: if isCoordenador();
     }
+    match /temporadas/{docId} {
+      allow read, write: if isCoordenador();
+    }
     match /musicas/{docId} {
       allow read: if true;
       allow write: if isCoordenador();
