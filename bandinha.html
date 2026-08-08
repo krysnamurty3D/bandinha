@@ -1509,8 +1509,8 @@ const functionsApp = getFunctions(firebaseApp);
   function renderFinanceiro(){
     let html = `
       <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button type="button" class="pay-toggle ${finSubTab === "caixa" ? "paid" : ""}" data-action="fin-subtab" data-sub="caixa">Caixa</button>
-        <button type="button" class="pay-toggle ${finSubTab === "pagamentos" ? "paid" : ""}" data-action="fin-subtab" data-sub="pagamentos">Pagamentos</button>
+        <button type="button" class="pay-toggle ${finSubTab === "caixa" ? "paid" : ""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="fin-subtab" data-sub="caixa">Caixa</button>
+        <button type="button" class="pay-toggle ${finSubTab === "pagamentos" ? "paid" : ""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="fin-subtab" data-sub="pagamentos">Pagamentos</button>
       </div>
     `;
     return html + (finSubTab === "caixa" ? renderFinanceiroCaixa() : renderFinanceiroPagamentos());
@@ -1528,31 +1528,31 @@ const functionsApp = getFunctions(firebaseApp);
 
     let html = `
       <div class="stat-row">
-        <div class="stat"><div class="num" style="color:var(--green);">${formatMoeda(totalReceitas)}</div><div class="lbl">Receitas</div></div>
+        <div class="stat"><div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalReceitas)}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Receitas</div></div>
         <div class="stat">
-          <div class="num" style="color:var(--rose);">${formatMoeda(totalDespesas)}</div>
-          <div class="lbl">Despesas</div>
-          ${despesaPorPessoa !== null ? `<div style="color:var(--muted);font-size:calc(9.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Valor p/ pessoa: <strong style="color:var(--rose);">${formatMoeda(despesaPorPessoa)}</strong></div>` : ""}
+          <div class="num" style="color:var(--rose);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalDespesas)}</div>
+          <div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Despesas</div>
+          ${despesaPorPessoa !== null ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Valor p/ pessoa: <strong style="color:var(--rose);">${formatMoeda(despesaPorPessoa)}</strong></div>` : ""}
         </div>
       </div>
       <div class="card" style="text-align:center;margin-bottom:16px;">
-        <div style="font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Saldo atual</div>
-        <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
+        <div style="font-size:calc(15px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Saldo atual</div>
+        <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
       </div>
       <form class="inline-add" id="form-financeiro" style="flex-wrap:wrap;">
         <div style="display:flex;gap:8px;width:100%;">
-          <button type="button" class="pay-toggle ${finTipoForm === "receita" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="receita" style="flex:1;">Receita</button>
-          <button type="button" class="pay-toggle ${finTipoForm === "despesa" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="despesa" style="flex:1;">Despesa</button>
+          <button type="button" class="pay-toggle ${finTipoForm === "receita" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="receita" style="flex:1;font-size:calc(16.5px * var(--font-scale, 1));">Receita</button>
+          <button type="button" class="pay-toggle ${finTipoForm === "despesa" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="despesa" style="flex:1;font-size:calc(16.5px * var(--font-scale, 1));">Despesa</button>
         </div>
         <input type="text" id="input-fin-descricao" placeholder="Nome da ${finTipoForm === "receita" ? "receita" : "despesa"} (ex: Refrigerante do ensaio)" required style="flex:2 1 200px;" />
-        <input type="text" inputmode="decimal" id="input-fin-valor" placeholder="Valor (ex: 5*32)" required style="flex:1 1 100px;font-size:calc(18px * var(--font-scale, 1));font-weight:700;" />
+        <input type="text" inputmode="decimal" id="input-fin-valor" placeholder="Valor (ex: 5*32)" required style="flex:1 1 100px;font-size:calc(22px * var(--font-scale, 1));font-weight:700;" />
         <input type="date" id="input-fin-data" required value="${new Date().toISOString().slice(0,10)}" style="flex:1 1 140px;" />
-        <button type="submit" class="btn-add">+</button>
+        <button type="submit" class="btn-add" style="font-size:calc(24px * var(--font-scale, 1));">+</button>
       </form>
     `;
 
     if(transacoes.length === 0){
-      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma movimentação registrada ainda.</div>`;
+      html += `<div class="empty" style="font-size:calc(18px * var(--font-scale, 1));"><div class="note-dot"></div><br>Nenhuma movimentação registrada ainda.</div>`;
     } else {
       html += transacoes.map(t => {
         const unitario = t.tipo === "despesa" && totalIntegrantes > 0 ? t.valor / totalIntegrantes : null;
@@ -1576,12 +1576,12 @@ const functionsApp = getFunctions(firebaseApp);
         return `
         <div class="card" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div style="min-width:0;">
-            <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.descricao)}</div>
-            <div style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${formatDate(t.data)}${unitario !== null ? ` · ${formatMoeda(unitario)}/pessoa` : ""}</div>
+            <div style="font-weight:600;font-size:calc(19px * var(--font-scale, 1));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.descricao)}</div>
+            <div style="color:var(--muted);font-size:calc(15px * var(--font-scale, 1));">${formatDate(t.data)}${unitario !== null ? ` · ${formatMoeda(unitario)}/pessoa` : ""}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <span style="font-weight:700;color:${t.tipo === "receita" ? "var(--green)" : "var(--rose)"};">${t.tipo === "receita" ? "+" : "-"}${formatMoeda(t.valor)}</span>
-            <button class="edit-x" data-action="edit-financeiro" data-id="${t.id}" title="Editar">✎</button>
+            <span style="font-weight:700;font-size:calc(19px * var(--font-scale, 1));color:${t.tipo === "receita" ? "var(--green)" : "var(--rose)"};">${t.tipo === "receita" ? "+" : "-"}${formatMoeda(t.valor)}</span>
+            <button class="edit-x" style="width:34px;height:34px;font-size:calc(19px * var(--font-scale, 1));display:flex;align-items:center;justify-content:center;" data-action="edit-financeiro" data-id="${t.id}" title="Editar">✎</button>
             <button class="del-x" data-action="del-financeiro" data-id="${t.id}">✕</button>
           </div>
         </div>
@@ -1600,32 +1600,32 @@ const functionsApp = getFunctions(firebaseApp);
       valoresHtml = `
         <div class="card" style="margin-bottom:16px;">
           <label class="stepper-label">Valores desta rodada</label>
-          <div style="color:var(--muted);font-size:calc(11.5px * var(--font-scale, 1));margin:6px 0 2px;">A inscrição não entra no financeiro da equipe — é paga direto no encontro. O badge de inscrição serve só de controle.</div>
+          <div style="color:var(--muted);font-size:calc(15.5px * var(--font-scale, 1));margin:6px 0 2px;">A inscrição não entra no financeiro da equipe — é paga direto no encontro. O badge de inscrição serve só de controle.</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(13px * var(--font-scale, 1));">Camisa
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(17px * var(--font-scale, 1));">Camisa
               <input type="number" id="input-valor-camisa" step="0.01" min="0" value="${cf.valorCamisa || 0}" style="width:110px;" />
             </label>
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(13px * var(--font-scale, 1));">Taxa da Equipe
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(17px * var(--font-scale, 1));">Taxa da Equipe
               <input type="number" id="input-valor-taxa" step="0.01" min="0" value="${cf.valorTaxa || 0}" style="width:110px;" />
             </label>
           </div>
-          <button type="button" id="btn-salvar-valores-financeiro" class="btn-import" style="margin-top:12px;">Salvar valores</button>
+          <button type="button" id="btn-salvar-valores-financeiro" class="btn-import" style="margin-top:12px;font-size:calc(18px * var(--font-scale, 1));">Salvar valores</button>
         </div>
       `;
     } else {
       valoresHtml = `
         <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);">
+          <div style="font-size:calc(16px * var(--font-scale, 1));color:var(--muted);">
             Camisa <strong style="color:var(--cream);">${formatMoeda(cf.valorCamisa)}</strong> ·
             Taxa <strong style="color:var(--cream);">${formatMoeda(cf.valorTaxa)}</strong>
           </div>
-          <button type="button" class="link-btn" style="padding:0;" data-action="editar-valores-financeiro">Editar valores</button>
+          <button type="button" class="link-btn" style="padding:0;font-size:calc(17px * var(--font-scale, 1));" data-action="editar-valores-financeiro">Editar valores</button>
         </div>
       `;
     }
 
     if(total === 0){
-      return valoresHtml + `<div class="empty"><div class="note-dot"></div><br>Cadastre integrantes primeiro pra acompanhar os pagamentos aqui.</div>`;
+      return valoresHtml + `<div class="empty" style="font-size:calc(18px * var(--font-scale, 1));"><div class="note-dot"></div><br>Cadastre integrantes primeiro pra acompanhar os pagamentos aqui.</div>`;
     }
     const totalInscricao = data.integrantes.filter(i => i.inscricao).length;
     const totalCamisa = data.integrantes.filter(i => i.pagamentoCamisa).length;
@@ -1642,45 +1642,45 @@ const functionsApp = getFunctions(firebaseApp);
     let html = valoresHtml + `
       ${esperado > 0 ? `
         <div class="stat-row">
-          <div class="stat"><div class="num" style="color:var(--green);">${formatMoeda(arrecadado)}</div><div class="lbl">Arrecadado</div></div>
-          <div class="stat"><div class="num">${formatMoeda(esperado)}</div><div class="lbl">Esperado</div></div>
+          <div class="stat"><div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(arrecadado)}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Arrecadado</div></div>
+          <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(esperado)}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Esperado</div></div>
         </div>
       ` : ""}
-      <div style="display:flex;justify-content:space-between;font-size:calc(12px * var(--font-scale, 1));color:var(--muted);margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:calc(16px * var(--font-scale, 1));color:var(--muted);margin-bottom:6px;">
         <span>Pagamentos em dia</span><span style="color:var(--cream);font-weight:700;">${pct}%</span>
       </div>
       <div style="height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-bottom:16px;">
         <div style="height:100%;border-radius:4px;background:var(--green);width:${pct}%;"></div>
       </div>
       <div class="stat-row">
-        <div class="stat"><div class="num">${totalInscricao}/${total}</div><div class="lbl">Inscrição</div></div>
-        <div class="stat"><div class="num">${totalCamisa}/${total}</div><div class="lbl">Camisa</div></div>
-        <div class="stat"><div class="num">${totalTaxa}/${total}</div><div class="lbl">Taxa</div></div>
+        <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${totalInscricao}/${total}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Inscrição</div></div>
+        <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${totalCamisa}/${total}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Camisa</div></div>
+        <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${totalTaxa}/${total}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Taxa</div></div>
       </div>
     `;
 
     if(pendentes.length > 0){
-      html += `<div class="section-title" style="margin-top:0;">Pendentes (${pendentes.length})</div>`;
+      html += `<div class="section-title" style="margin-top:0;font-size:calc(24px * var(--font-scale, 1));">Pendentes (${pendentes.length})</div>`;
       html += pendentes.map(i => `
         <div class="card" style="padding:12px 14px;">
-          <div style="font-weight:600;margin-bottom:8px;">${escapeHtml(i.nome)}</div>
+          <div style="font-weight:600;font-size:calc(19px * var(--font-scale, 1));margin-bottom:8px;">${escapeHtml(i.nome)}</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
-            <button class="pay-toggle ${i.pagamentoCamisa?"paid":""}" data-action="toggle-camisa-pag" data-id="${i.id}">Camisa ${i.pagamentoCamisa ? "✓" : ""}</button>
-            <button class="pay-toggle ${i.taxaEquipe?"paid":""}" data-action="toggle-taxa" data-id="${i.id}">Taxa da Equipe ${i.taxaEquipe ? "✓" : ""}</button>
+            <button class="pay-toggle ${i.inscricao?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
+            <button class="pay-toggle ${i.pagamentoCamisa?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-camisa-pag" data-id="${i.id}">Camisa ${i.pagamentoCamisa ? "✓" : ""}</button>
+            <button class="pay-toggle ${i.taxaEquipe?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-taxa" data-id="${i.id}">Taxa da Equipe ${i.taxaEquipe ? "✓" : ""}</button>
           </div>
         </div>
       `).join("");
     }
 
     if(emDia.length > 0){
-      html += `<div class="section-title">Em dia (${emDia.length})</div>`;
+      html += `<div class="section-title" style="font-size:calc(24px * var(--font-scale, 1));">Em dia (${emDia.length})</div>`;
       html += emDia.map(i => `
         <div class="card" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-          <span style="font-weight:600;">${escapeHtml(i.nome)}</span>
+          <span style="font-weight:600;font-size:calc(19px * var(--font-scale, 1));">${escapeHtml(i.nome)}</span>
           <div style="display:flex;align-items:center;gap:10px;">
-            <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
-            <span style="color:var(--green);font-size:calc(12px * var(--font-scale, 1));font-weight:600;white-space:nowrap;">✓ Tudo pago</span>
+            <button class="pay-toggle ${i.inscricao?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
+            <span style="color:var(--green);font-size:calc(16px * var(--font-scale, 1));font-weight:600;white-space:nowrap;">✓ Tudo pago</span>
           </div>
         </div>
       `).join("");
