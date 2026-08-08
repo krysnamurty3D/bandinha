@@ -48,7 +48,7 @@
     display:flex;
     flex-direction:column;
     position:relative;
-    padding-bottom:88px;
+    padding-bottom:24px;
   }
   header.top{
     position:relative;
@@ -421,35 +421,77 @@
   .chevron{color:var(--muted);transition:transform 0.2s;font-size:calc(14px * var(--font-scale, 1));}
   .chevron.open{transform:rotate(90deg);}
 
-  nav.tabbar{
-    position:fixed;
-    bottom:0; left:0; right:0;
-    background:var(--surface);
-    border-top:1px solid var(--line);
-    display:flex;
-    max-width:560px;
-    margin:0 auto;
-    padding:8px 6px calc(8px + env(safe-area-inset-bottom)) 6px;
-    z-index:10;
+  .home-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
   }
-  nav.tabbar button{
-    flex:1;
-    background:transparent;
-    color:var(--muted);
-    border:none;
-    cursor:pointer;
-    font-family:var(--font);
+  .sec-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 14px 12px;
     display:flex;
     flex-direction:column;
-    align-items:center;
-    gap:4px;
-    padding:8px 4px;
-    border-radius:12px;
-    font-size:calc(11px * var(--font-scale, 1));
-    font-weight:600;
+    gap:14px;
+    min-height:104px;
+    text-align:left;
+    font-family:inherit;
+    cursor:pointer;
+    position:relative;
+    color:inherit;
   }
-  nav.tabbar button.active{color:var(--gold);background:rgba(240,169,60,0.1);}
-  nav.tabbar button svg{width:20px;height:20px;}
+  .sec-card-icon{
+    width:34px; height:34px;
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface-2);
+    color:var(--gold);
+    flex-shrink:0;
+  }
+  .sec-card-icon svg{width:17px;height:17px;}
+  .sec-card-label{
+    font-weight:700;
+    font-size:calc(13.5px * var(--font-scale, 1));
+    letter-spacing:-0.1px;
+  }
+  .sec-card-stat{
+    font-size:calc(10.5px * var(--font-scale, 1));
+    color:var(--muted);
+    margin-top:-8px;
+  }
+  .back-btn{
+    width:30px; height:30px;
+    border-radius:9px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--cream);
+    font-size:14px;
+    flex-shrink:0;
+  }
+  .live-dot{
+    position:absolute;
+    top:12px; right:12px;
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--rose);
+    box-shadow:0 0 0 3px rgba(214,64,42,0.25);
+  }
+  .live-dot::after{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:50%;
+    background:var(--rose);
+    animation:live-pulse 1.6s infinite;
+  }
+  @keyframes live-pulse{
+    0%{opacity:.7;transform:scale(1);}
+    100%{opacity:0;transform:scale(2.4);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .live-dot::after{animation:none;}
+  }
 
   .hidden{display:none !important;}
   .font-ctrl{
@@ -546,33 +588,6 @@
 <button type="button" id="btn-font-size" class="font-ctrl" title="Tamanho da fonte">Aa</button>
 <button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações"><span class="ico" style="margin:0;width:16px;height:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4.5 1.6 5.8 1.6 5.8H4.4S6 15 6 10.5Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/></svg></span></button>
 
-<nav class="tabbar">
-  <button data-tab="musicas" class="active">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
-    Músicas
-  </button>
-  <button data-tab="coreografias">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-    Coreografias
-  </button>
-  <button data-tab="ensaios">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/><circle cx="19" cy="16" r="2.2"/><path d="M21.2 16V6l-3 1"/></svg>
-    Ensaios
-  </button>
-  <button data-tab="agenda">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    Agenda
-  </button>
-  <button data-tab="roteiros">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
-    Roteiro
-  </button>
-  <button data-tab="aovivo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-    Ao Vivo
-  </button>
-</nav>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, onSnapshot, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -617,7 +632,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
 (function(){
   let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, avisosHistorico: [], progressoTodos: [], setlistEquipe: { musicaIds: [] }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
-  let currentTab = "musicas";
+  let currentTab = "home";
   let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
   let openMusicaId = null;
@@ -658,7 +673,13 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     bell: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M6 10.5a6 6 0 0 1 12 0c0 4.5 1.6 5.8 1.6 5.8H4.4S6 15 6 10.5Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/></svg>`,
     clock: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>`,
     siren: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 20v-4.5A8 8 0 0 1 20 15.5V20"/><line x1="4" y1="20" x2="20" y2="20"/><line x1="12" y1="3" x2="12" y2="5.3"/><line x1="5.6" y1="6.6" x2="7" y2="8"/><line x1="18.4" y1="6.6" x2="17" y2="8"/></svg>`,
-    megaphone: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 10.5v3a1.5 1.5 0 0 0 1.5 1.5h1l.8 4.5h2l-.6-4.5h1.6l8.2 4V6.5l-8.2 4H5a1.5 1.5 0 0 0-1.5 1.5Z"/></svg>`
+    megaphone: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 10.5v3a1.5 1.5 0 0 0 1.5 1.5h1l.8 4.5h2l-.6-4.5h1.6l8.2 4V6.5l-8.2 4H5a1.5 1.5 0 0 0-1.5 1.5Z"/></svg>`,
+    musicas: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M9.5 18.2V6.4l9-1.7v11.5"/><circle cx="6.7" cy="18.2" r="2.6"/><circle cx="15.7" cy="16.2" r="2.6"/></svg>`,
+    coreografias: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="4.6" r="1.9"/><path d="M12 8v5.2M12 13.2l-4 6.8M12 13.2l4 6.8M8.3 10.8 12 8l3.7 2.8"/></svg>`,
+    ensaio: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="9" y="2.5" width="6" height="10.5" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8.5" y1="21" x2="15.5" y2="21"/></svg>`,
+    agenda: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3" y="4.5" width="18" height="16" rx="2.2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>`,
+    roteiro: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="8.5" y1="8" x2="15.5" y2="8"/><line x1="8.5" y1="12" x2="15.5" y2="12"/><line x1="8.5" y1="16" x2="12.5" y2="16"/></svg>`,
+    aovivo: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>`
   };
 
   function slugify(s){
@@ -846,9 +867,54 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       return;
     }
     const scrollY = window.scrollY;
-    main.innerHTML = currentTab === "musicas" ? renderMusicas() : currentTab === "roteiros" ? renderRoteiros() : currentTab === "coreografias" ? renderCoreografias() : currentTab === "ensaios" ? renderEnsaios() : currentTab === "agenda" ? renderAgenda() : renderAoVivo();
+    main.innerHTML = currentTab === "home" ? renderHome()
+      : currentTab === "musicas" ? renderSectionHeader(ICONS.musicas, "Músicas") + renderMusicas()
+      : currentTab === "roteiros" ? renderSectionHeader(ICONS.roteiro, "Roteiro") + renderRoteiros()
+      : currentTab === "coreografias" ? renderSectionHeader(ICONS.coreografias, "Coreografias") + renderCoreografias()
+      : currentTab === "ensaios" ? renderSectionHeader(ICONS.ensaio, "Ensaios") + renderEnsaios()
+      : currentTab === "agenda" ? renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda()
+      : renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
     attachHandlers();
     window.scrollTo(0, scrollY);
+  }
+
+  function renderSectionHeader(icon, label){
+    return `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <button type="button" class="back-btn" data-action="ir-home" title="Voltar ao início">◀</button>
+        <div style="display:flex;align-items:center;font-weight:800;font-size:calc(16px * var(--font-scale, 1));"><span class="ico" style="width:18px;height:18px;">${icon}</span>${label}</div>
+      </div>
+    `;
+  }
+
+  function renderHome(){
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const hojeIso = hoje.toISOString().slice(0,10);
+    const proximaAgenda = [...data.agenda].filter(a => a.data >= hojeIso).sort((a,b) => a.data.localeCompare(b.data))[0];
+    const aoVivoAtivo = !!data.aoVivo;
+    const ids = data.setlistEquipe?.musicaIds || [];
+
+    const cards = [
+      { key: "musicas", icon: ICONS.musicas, label: "Músicas", stat: `${data.musicas.filter(m => m.visivel !== false).length} cadastradas` },
+      { key: "coreografias", icon: ICONS.coreografias, label: "Coreografias", stat: `${data.coreografias.length} cadastradas` },
+      { key: "ensaios", icon: ICONS.ensaio, label: "Ensaios", stat: `${ids.length} no setlist` },
+      { key: "agenda", icon: ICONS.agenda, label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
+      { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
+      { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo }
+    ];
+
+    return `
+      <div class="home-grid">
+        ${cards.map(c => `
+          <button type="button" class="sec-card" data-action="ir-tab" data-tab="${c.key}">
+            ${c.live ? `<span class="live-dot"></span>` : ""}
+            <div class="sec-card-icon">${c.icon}</div>
+            <div class="sec-card-label">${c.label}</div>
+            <div class="sec-card-stat">${c.stat}</div>
+          </button>
+        `).join("")}
+      </div>
+    `;
   }
 
   function renderBrand(){
@@ -1110,6 +1176,18 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
             <div class="agenda-title">${a.titulo ? escapeHtml(a.titulo) : ""}</div>
           </div>
           ${tags.length > 0 ? `<div class="agenda-tags">${tags.map(t => `<span class="agenda-tag">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+          ${(a.musicaIds || []).length > 0 ? `
+            <div class="section-title" style="margin-top:10px;"><span class="ico">${ICONS.musicas}</span>Músicas do dia</div>
+            ${a.musicaIds.map(id => data.musicas.find(m => m.id === id)).filter(m => m && m.visivel !== false).map(m => {
+              const { titulo, artista } = splitMusica(m.nome);
+              return `
+              <div class="card" style="padding:10px 14px;margin-bottom:8px;">
+                <div style="font-weight:600;">${escapeHtml(titulo)}</div>
+                ${artista ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">${escapeHtml(artista)}</div>` : ""}
+                ${(m.audioUrl || m.audioId) ? renderAudioPlayer(m) : ""}
+              </div>`;
+            }).join("")}
+          ` : ""}
         </div>
       </div>`;
     }).join("");
@@ -1216,6 +1294,13 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
   // ---------- HANDLERS ----------
   function attachHandlers(){
+    document.querySelectorAll('[data-action="ir-home"]').forEach(el => {
+      el.addEventListener("click", () => irParaTab("home"));
+    });
+    document.querySelectorAll('[data-action="ir-tab"]').forEach(el => {
+      el.addEventListener("click", () => irParaTab(el.dataset.tab));
+    });
+
     const formNome = document.getElementById("form-nome");
     if(formNome) formNome.addEventListener("submit", e => {
       e.preventDefault();
@@ -1314,13 +1399,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
   function irParaTab(tab){
     currentTab = tab;
-    document.querySelectorAll("nav.tabbar button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
     render();
   }
-
-  document.querySelectorAll("nav.tabbar button").forEach(btn => {
-    btn.addEventListener("click", () => irParaTab(btn.dataset.tab));
-  });
 
   document.getElementById("btn-urgente-ok").addEventListener("click", () => {
     document.getElementById("urgente-overlay").classList.add("hidden");
