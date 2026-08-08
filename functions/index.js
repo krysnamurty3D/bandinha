@@ -3,7 +3,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const { getMessaging } = require("firebase-admin/messaging");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -51,7 +51,16 @@ exports.onNovoRoteiro = onDocumentCreated("roteiros/{id}", async event => {
 
 exports.onNovaMusica = onDocumentCreated("musicas/{id}", async event => {
   const m = event.data.data();
+  if (m.visivel === false) return;
   await sendToAll("Nova música adicionada", m.nome || "");
+});
+
+exports.onMusicaRevelada = onDocumentUpdated("musicas/{id}", async event => {
+  const antes = event.data.before.data();
+  const depois = event.data.after.data();
+  if (antes.visivel === false && depois.visivel !== false) {
+    await sendToAll("Nova música revelada", depois.nome || "");
+  }
 });
 
 exports.enviarAvisoAoVivo = onCall(async request => {

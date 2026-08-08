@@ -1769,6 +1769,10 @@ const functionsApp = getFunctions(firebaseApp);
           <input type="checkbox" id="input-musica-nova" />
           Nova
         </label>
+        <label class="check-row" style="flex:0 0 auto;gap:6px;">
+          <input type="checkbox" id="input-musica-oculta" />
+          Adicionar oculta
+        </label>
         <button type="submit" class="btn-add">+</button>
       </form>
       ${totalReal > 0 ? `
@@ -2530,11 +2534,15 @@ const functionsApp = getFunctions(firebaseApp);
       e.preventDefault();
       const input = document.getElementById("input-musica-nome");
       const inputNova = document.getElementById("input-musica-nova");
+      const inputOculta = document.getElementById("input-musica-oculta");
       const nome = input.value.trim();
       if(!nome) return;
       const marcarNova = !!inputNova?.checked;
-      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, ...(marcarNova ? { novaDesde: Date.now() } : {}) };
-      await setDoc(doc(musicasCol, novaMus.id), novaMus); showToast("Música adicionada");
+      const marcarOculta = !!inputOculta?.checked;
+      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, ...(marcarNova ? { novaDesde: Date.now() } : {}), ...(marcarOculta ? { visivel: false } : {}) };
+      await setDoc(doc(musicasCol, novaMus.id), novaMus);
+      inputOculta.checked = false;
+      showToast(marcarOculta ? "Música adicionada (oculta)" : "Música adicionada");
     });
 
     document.querySelectorAll('[data-action="move-musica"]').forEach(el => {
