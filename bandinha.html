@@ -1245,7 +1245,7 @@ const functionsApp = getFunctions(firebaseApp);
     });
 
     onSnapshot(query(avisosHistoricoCol, orderBy("disparadoEm", "desc"), limit(10)), snap => {
-      data.avisosHistorico = snap.docs.map(d => d.data());
+      data.avisosHistorico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       safeRender();
     }, e => console.error("Erro ao sincronizar histórico de avisos:", e));
   }
@@ -1877,6 +1877,7 @@ const functionsApp = getFunctions(firebaseApp);
                 ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
               </div>
               <button class="eye-x ${m.noSetlist ? "" : "hidden-item"}" data-action="toggle-setlist-musica" data-id="${m.id}" title="${m.noSetlist ? "No setlist de ensaio — toque para remover" : "Fora do setlist — toque para adicionar"}">${m.noSetlist ? ICONS.setlist : ICONS.targetOff}</button>
+              <button class="eye-x ${m.status === "pronta" ? "" : "hidden-item"}" style="${m.status === "pronta" ? "color:var(--green);" : ""}" data-action="toggle-pronta-musica" data-id="${m.id}" title="${m.status === "pronta" ? "Pronta — toque para voltar a ensaiando" : "Marcar como pronta"}">${ICONS.presenca}</button>
               <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
               <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? ICONS.eyeOff : ICONS.eye}</button>
               <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
@@ -2360,6 +2361,7 @@ const functionsApp = getFunctions(firebaseApp);
           <span class="ico" style="margin:0;">${TIPO_ICONE[h.tipo] || ICONS.pin}</span>
           <span style="flex:1;min-width:0;">${escapeHtml(h.texto)}</span>
           <span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));flex-shrink:0;">${new Date(h.disparadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+          <button class="del-x" data-action="del-aviso-historico" data-id="${h.id}" title="Remover do histórico">✕</button>
         </div>
       `).join("")}
     `;
@@ -2861,6 +2863,12 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", async () => {
         if(!confirm("Remover este dia da agenda?")) return;
         await deleteDoc(doc(agendaCol, el.dataset.id)); showToast("Dia removido");
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-aviso-historico"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        await deleteDoc(doc(avisosHistoricoCol, el.dataset.id));
       });
     });
 
@@ -3538,6 +3546,16 @@ const functionsApp = getFunctions(firebaseApp);
         const noSetlist = !item.noSetlist;
         await updateDoc(doc(musicasCol, item.id), { noSetlist });
         showToast(noSetlist ? "Adicionada ao setlist" : "Removida do setlist");
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-pronta-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        const novoStatus = item.status === "pronta" ? "ensaiando" : "pronta";
+        await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
+        showToast(novoStatus === "pronta" ? "Música marcada como pronta" : "Música voltou para ensaiando");
       });
     });
 
