@@ -1886,6 +1886,10 @@ const functionsApp = getFunctions(firebaseApp);
           ${open ? `
             <div class="lyrics-box">
               ${renderVisualizacoesBadge("musica", m.id)}
+              <label class="check-row" style="margin-bottom:12px;">
+                <input type="checkbox" data-action="toggle-nova-musica" data-id="${m.id}" ${m.nova ? "checked" : ""} />
+                Música nova
+              </label>
               ${editingAudio ? `
                 ${enviandoAudioId === m.id ? `
                   <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">Enviando áudio...</div>
@@ -3556,6 +3560,19 @@ const functionsApp = getFunctions(firebaseApp);
         const novoStatus = item.status === "pronta" ? "ensaiando" : "pronta";
         await updateDoc(doc(musicasCol, item.id), { status: novoStatus });
         showToast(novoStatus === "pronta" ? "Música marcada como pronta" : "Música voltou para ensaiando");
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-nova-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const nova = el.checked;
+        try{
+          await updateDoc(doc(musicasCol, el.dataset.id), nova ? { nova: true, novaDesde: Date.now() } : { nova: false, novaDesde: deleteField() });
+          showToast(nova ? "Marcada como nova" : "Removida a marca de nova");
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao atualizar");
+        }
       });
     });
 
