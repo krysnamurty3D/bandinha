@@ -1054,7 +1054,7 @@ const functionsApp = getFunctions(firebaseApp);
     return null;
   }
   function renderAudioPlayer(m){
-    if(m.audioUrl) return `<audio controls preload="none" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
+    if(m.audioUrl) return `<audio controls preload="none" data-audio-id="${m.id}" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
     if(m.audioId) return `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>`;
     return "";
   }
@@ -1329,6 +1329,22 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   // ---------- RENDER ----------
+  function capturarAudioTocando(){
+    const audios = document.querySelectorAll("audio[data-audio-id]");
+    for(const a of audios){
+      if(!a.paused) return { id: a.dataset.audioId, time: a.currentTime };
+    }
+    return null;
+  }
+
+  function restaurarAudioTocando(state){
+    if(!state) return;
+    document.querySelectorAll(`audio[data-audio-id="${state.id}"]`).forEach(a => {
+      a.currentTime = state.time;
+      a.play().catch(() => {});
+    });
+  }
+
   function render(){
     const main = document.getElementById("main");
     renderBrand();
@@ -1336,11 +1352,13 @@ const functionsApp = getFunctions(firebaseApp);
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
+    const audioState = capturarAudioTocando();
     if(ensaioAtivo || historicoAtivo){
       document.getElementById("app").classList.add("hidden");
       document.getElementById("ensaio-overlay").classList.remove("hidden");
       document.getElementById("ensaio-overlay").innerHTML = historicoAtivo ? renderHistorico() : renderModoEnsaio();
       attachHandlers();
+      restaurarAudioTocando(audioState);
       return;
     }
     document.getElementById("ensaio-overlay").classList.add("hidden");
@@ -1360,6 +1378,7 @@ const functionsApp = getFunctions(firebaseApp);
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
+    restaurarAudioTocando(audioState);
     window.scrollTo(0, scrollY);
   }
 

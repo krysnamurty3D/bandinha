@@ -662,7 +662,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
   }
   function renderAudioPlayer(m){
-    if(m.audioUrl) return `<audio controls preload="none" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
+    if(m.audioUrl) return `<audio controls preload="none" data-audio-id="${m.id}" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
     if(m.audioId) return `<div class="audio-frame"><iframe src="https://drive.google.com/file/d/${m.audioId}/preview" allow="autoplay"></iframe></div>`;
     return "";
   }
@@ -859,6 +859,22 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   }
 
   // ---------- RENDER ----------
+  function capturarAudioTocando(){
+    const audios = document.querySelectorAll("audio[data-audio-id]");
+    for(const a of audios){
+      if(!a.paused) return { id: a.dataset.audioId, time: a.currentTime };
+    }
+    return null;
+  }
+
+  function restaurarAudioTocando(state){
+    if(!state) return;
+    document.querySelectorAll(`audio[data-audio-id="${state.id}"]`).forEach(a => {
+      a.currentTime = state.time;
+      a.play().catch(() => {});
+    });
+  }
+
   function render(){
     const main = document.getElementById("main");
     renderBrand();
@@ -866,6 +882,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
+    const audioState = capturarAudioTocando();
     const scrollY = window.scrollY;
     main.innerHTML = currentTab === "home" ? renderHome()
       : currentTab === "musicas" ? renderSectionHeader(ICONS.musicas, "Músicas") + renderMusicas()
@@ -875,6 +892,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       : currentTab === "agenda" ? renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda()
       : renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
     attachHandlers();
+    restaurarAudioTocando(audioState);
     window.scrollTo(0, scrollY);
   }
 
