@@ -1033,6 +1033,7 @@ const functionsApp = getFunctions(firebaseApp);
   let abrindoNovoDevocional = false;
   let editandoTamanhosCamisas = false;
   let editingRespostaCamisaId = null;
+  let filtroTamanhoCamisa = null;
   let editingFinanceiroId = null;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
@@ -1604,10 +1605,17 @@ const functionsApp = getFunctions(firebaseApp);
 
       <div class="section-title">Contagem por tamanho</div>
       <div class="stat-row" style="flex-wrap:wrap;">
-        ${(cfg.tamanhos || []).map(t => `<div class="stat"><div class="num">${contagem[t] || 0}</div><div class="lbl">${escapeHtml(t)}</div></div>`).join("")}
+        ${(cfg.tamanhos || []).map(t => `
+          <button type="button" class="stat" style="text-align:center;cursor:pointer;font-family:inherit;${filtroTamanhoCamisa === t ? "border-color:var(--gold);background:rgba(232,166,60,0.08);" : ""}" data-action="filtrar-tamanho-camisa" data-tamanho="${escapeHtml(t)}">
+            <div class="num">${contagem[t] || 0}</div><div class="lbl">${escapeHtml(t)}</div>
+          </button>
+        `).join("")}
       </div>
 
-      <div class="section-title">Respostas (${data.camisas.length})</div>
+      <div class="section-title" style="display:flex;align-items:center;gap:8px;">
+        <span>Respostas (${filtroTamanhoCamisa ? contagem[filtroTamanhoCamisa] || 0 : data.camisas.length})${filtroTamanhoCamisa ? ` — ${escapeHtml(filtroTamanhoCamisa)}` : ""}</span>
+        ${filtroTamanhoCamisa ? `<button type="button" class="link-btn" style="padding:0;font-size:calc(12px * var(--font-scale, 1));" data-action="limpar-filtro-tamanho-camisa">limpar filtro</button>` : ""}
+      </div>
     `;
 
     if(data.camisas.length === 0){
@@ -1615,7 +1623,13 @@ const functionsApp = getFunctions(firebaseApp);
       return html;
     }
 
-    const ordenadas = [...data.camisas].sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR", { sensitivity: "base" }));
+    const filtradas = filtroTamanhoCamisa ? data.camisas.filter(c => c.tamanho === filtroTamanhoCamisa) : data.camisas;
+    if(filtradas.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Ninguém escolheu esse tamanho ainda.</div>`;
+      return html;
+    }
+
+    const ordenadas = [...filtradas].sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR", { sensitivity: "base" }));
     html += ordenadas.map(c => {
       const editing = editingRespostaCamisaId === c.id;
       return `
@@ -3427,6 +3441,20 @@ const functionsApp = getFunctions(firebaseApp);
     document.querySelectorAll('[data-action="editar-tamanhos-camisas"]').forEach(el => {
       el.addEventListener("click", () => {
         editandoTamanhosCamisas = true;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="filtrar-tamanho-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroTamanhoCamisa = filtroTamanhoCamisa === el.dataset.tamanho ? null : el.dataset.tamanho;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="limpar-filtro-tamanho-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroTamanhoCamisa = null;
         render();
       });
     });
