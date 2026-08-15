@@ -1620,23 +1620,26 @@ const functionsApp = getFunctions(firebaseApp);
       const editing = editingRespostaCamisaId === c.id;
       return `
       <div class="card" style="padding:10px 14px;">
-        <div class="song-row">
-          ${editing ? `
-            <input type="text" class="edit-nome-input" id="input-edit-nome-camisa" data-id="${c.id}" value="${escapeHtml(c.nome)}" placeholder="Nome" style="flex:1 1 auto;"/>
-            <select id="input-edit-tamanho-camisa" data-id="${c.id}" style="flex:0 0 auto;">
+        ${editing ? `
+          <input type="text" class="edit-nome-input" id="input-edit-nome-camisa" data-id="${c.id}" value="${escapeHtml(c.nome)}" placeholder="Nome" style="width:100%;margin-bottom:8px;"/>
+          <div class="song-row">
+            <select id="input-edit-tamanho-camisa" data-id="${c.id}" style="flex:1 1 auto;min-width:0;">
               ${(cfg.tamanhos || []).map(t => `<option value="${escapeHtml(t)}" ${c.tamanho === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
             </select>
-            <button class="btn-save-nome" style="width:auto;padding:0 10px;" data-action="save-resposta-camisa" data-id="${c.id}">✓</button>
-          ` : `
+            <button class="btn-save-nome" style="width:auto;padding:0 10px;flex-shrink:0;" data-action="save-resposta-camisa" data-id="${c.id}">✓</button>
+            <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
+          </div>
+        ` : `
+          <div class="song-row">
             <div class="song-name">
               <div class="song-title">${escapeHtml(c.nome)}</div>
               ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
             </div>
             <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}</span>
             <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar">✎</button>
-          `}
-          <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
-        </div>
+            <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
+          </div>
+        `}
       </div>`;
     }).join("");
     return html;
