@@ -63,6 +63,20 @@ exports.onMusicaRevelada = onDocumentUpdated("musicas/{id}", async event => {
   }
 });
 
+exports.onNovoDevocional = onDocumentCreated("devocionais/{id}", async event => {
+  const d = event.data.data();
+  if (d.visivel === false) return;
+  await sendToAll("Novo devocional", d.titulo || "");
+});
+
+exports.onDevocionalRevelado = onDocumentUpdated("devocionais/{id}", async event => {
+  const antes = event.data.before.data();
+  const depois = event.data.after.data();
+  if (antes.visivel === false && depois.visivel !== false) {
+    await sendToAll("Novo devocional", depois.titulo || "");
+  }
+});
+
 exports.enviarAvisoAoVivo = onCall(async request => {
   if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");

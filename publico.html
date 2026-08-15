@@ -628,15 +628,17 @@ const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const avisosHistoricoCol = collection(db, "avisosHistorico");
 const avisoVistosCol = collection(db, "avisoVistos");
 const setlistEquipeDocRef = doc(db, "config", "setlistEquipe");
+const devocionaisCol = collection(db, "devocionais");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 
 (function(){
-  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, avisosHistorico: [], progressoTodos: [], setlistEquipe: { musicaIds: [] }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, avisosHistorico: [], progressoTodos: [], setlistEquipe: { musicaIds: [] }, devocionais: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let currentTab = "home";
   let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
   let openMusicaId = null;
   let openEnsaioId = null;
+  let openDevocionalId = null;
   let openCoreografiaId = null;
   let collapsedGroups = {};
   let loaded = false;
@@ -679,7 +681,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     ensaio: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="9" y="2.5" width="6" height="10.5" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8.5" y1="21" x2="15.5" y2="21"/></svg>`,
     agenda: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3" y="4.5" width="18" height="16" rx="2.2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>`,
     roteiro: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="8.5" y1="8" x2="15.5" y2="8"/><line x1="8.5" y1="12" x2="15.5" y2="12"/><line x1="8.5" y1="16" x2="12.5" y2="16"/></svg>`,
-    aovivo: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>`
+    aovivo: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>`,
+    devocional: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 6.5c-1.5-1.6-4.4-2-7.5-1.3v13c3.1-.7 6 -.3 7.5 1.3 1.5-1.6 4.4-2 7.5-1.3v-13c-3.1-.7-6-.3-7.5 1.3Z"/><line x1="12" y1="6.5" x2="12" y2="19.5"/></svg>`
   };
 
   function slugify(s){
@@ -799,6 +802,11 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       safeRender();
     }, e => { console.error("Erro ao sincronizar agenda:", e); });
 
+    onSnapshot(devocionaisCol, snap => {
+      data.devocionais = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar devocionais:", e); });
+
     onSnapshot(aoVivoDocRef, snap => {
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
@@ -890,6 +898,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       : currentTab === "coreografias" ? renderSectionHeader(ICONS.coreografias, "Coreografias") + renderCoreografias()
       : currentTab === "ensaios" ? renderSectionHeader(ICONS.ensaio, "Ensaios") + renderEnsaios()
       : currentTab === "agenda" ? renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda()
+      : currentTab === "devocionais" ? renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais()
       : renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
     attachHandlers();
     restaurarAudioTocando(audioState);
@@ -918,7 +927,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       { key: "ensaios", icon: ICONS.ensaio, label: "Ensaios", stat: `${ids.length} no setlist` },
       { key: "agenda", icon: ICONS.agenda, label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
-      { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo }
+      { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
+      { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` }
     ];
 
     return `
@@ -1211,6 +1221,25 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }).join("");
   }
 
+  function renderDevocionais(){
+    const visiveis = data.devocionais.filter(d => d.visivel !== false).sort((a,b) => (b.criadoEm||0) - (a.criadoEm||0));
+    if(visiveis.length === 0){
+      return `<div class="empty"><div class="note-dot"></div><br>Nenhum devocional publicado ainda.</div>`;
+    }
+    return visiveis.map(d => {
+      const open = openDevocionalId === d.id;
+      return `
+      <div class="card" data-action="toggle-devocional" data-id="${d.id}" style="cursor:pointer;">
+        <div style="font-weight:700;font-size:calc(15px * var(--font-scale, 1));">${escapeHtml(d.titulo)}</div>
+        ${open ? `
+          <div class="lyrics-text" style="margin-top:10px;">${formatLyrics(d.texto || "")}</div>
+        ` : `
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">Toque para ler</div>
+        `}
+      </div>`;
+    }).join("");
+  }
+
   function renderRingTimer(restanteSeg, totalSeg){
     const r = 54;
     const c = 2 * Math.PI * r;
@@ -1317,6 +1346,13 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     });
     document.querySelectorAll('[data-action="ir-tab"]').forEach(el => {
       el.addEventListener("click", () => irParaTab(el.dataset.tab));
+    });
+
+    document.querySelectorAll('[data-action="toggle-devocional"]').forEach(el => {
+      el.addEventListener("click", () => {
+        openDevocionalId = openDevocionalId === el.dataset.id ? null : el.dataset.id;
+        render();
+      });
     });
 
     const formNome = document.getElementById("form-nome");

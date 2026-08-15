@@ -953,6 +953,7 @@ const pushTokensCol = collection(db, "pushTokens");
 const locaisCol = collection(db, "locais");
 const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const avisosHistoricoCol = collection(db, "avisosHistorico");
+const devocionaisCol = collection(db, "devocionais");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 
@@ -983,6 +984,7 @@ const functionsApp = getFunctions(firebaseApp);
     megaphone: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 10.5v3a1.5 1.5 0 0 0 1.5 1.5h1l.8 4.5h2l-.6-4.5h1.6l8.2 4V6.5l-8.2 4H5a1.5 1.5 0 0 0-1.5 1.5Z"/></svg>`,
     instrument: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 12h2.2l2-5 2.6 10 2.4-7.5 1.8 3.5H20.5"/></svg>`,
     temporada: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M4.5 8.5v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>`,
+    devocional: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 6.5c-1.5-1.6-4.4-2-7.5-1.3v13c3.1-.7 6 -.3 7.5 1.3 1.5-1.6 4.4-2 7.5-1.3v-13c-3.1-.7-6-.3-7.5 1.3Z"/><line x1="12" y1="6.5" x2="12" y2="19.5"/></svg>`,
     progresso: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7.5 15.5l3.5-4 3 2.5 4.5-5.5"/></svg>`,
     whatsapp: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M6.5 17.5 4 20l2.6-.7A8.5 8.5 0 1 0 4 12a8.4 8.4 0 0 0 1.1 4.2Z"/><path d="M8.8 9.2c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.4.6 1.5.1.1.1.3 0 .4-.1.2-.2.3-.3.4l-.4.4c-.1.1-.2.3-.1.5.3.6.8 1.2 1.3 1.6.6.5 1.1.7 1.3.8.2.1.3.1.4-.1l.6-.7c.2-.2.3-.2.5-.1l1.4.7c.2.1.3.1.4.3.1.2.1.9-.2 1.3-.3.5-1.3.9-1.8.9-.5 0-1.2 0-3.4-1.4-2.1-1.3-2.9-2.9-3-3.1-.1-.2-.9-1.3-.9-2.4 0-1.1.6-1.6.8-1.9Z" fill="currentColor" stroke="none"/></svg>`
   };
@@ -998,7 +1000,7 @@ const functionsApp = getFunctions(firebaseApp);
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let finSubTab = "caixa";
@@ -1023,6 +1025,9 @@ const functionsApp = getFunctions(firebaseApp);
   let enviandoSetlist = false;
   let migrandoAudios = false;
   let abrindoNovaTemporada = false;
+  let openDevocionalId = null;
+  let editingDevocionalId = null;
+  let abrindoNovoDevocional = false;
   let editingFinanceiroId = null;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
@@ -1200,6 +1205,11 @@ const functionsApp = getFunctions(firebaseApp);
       safeRender();
     }, e => console.error("Erro ao sincronizar temporada ativa:", e));
 
+    onSnapshot(devocionaisCol, snap => {
+      data.devocionais = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      safeRender();
+    }, e => console.error("Erro ao sincronizar devocionais:", e));
+
     onSnapshot(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       markLoaded("progresso");
@@ -1375,6 +1385,7 @@ const functionsApp = getFunctions(firebaseApp);
     else if(currentTab === "ensaio-menu") main.innerHTML = renderSectionHeader(ICONS.ensaio, "Ensaio") + renderEnsaioMenu();
     else if(currentTab === "agenda") main.innerHTML = renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda();
     else if(currentTab === "temporadas") main.innerHTML = renderSectionHeader(ICONS.temporada, "Temporadas") + renderTemporadas();
+    else if(currentTab === "devocionais") main.innerHTML = renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais();
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
@@ -1410,7 +1421,8 @@ const functionsApp = getFunctions(firebaseApp);
       { key: "agenda", icon: ICONS.agenda, label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
       { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
-      { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" }
+      { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" },
+      { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` }
     ];
 
     return `
@@ -1490,6 +1502,59 @@ const functionsApp = getFunctions(firebaseApp);
       `).join("");
     }
 
+    return html;
+  }
+
+  function renderDevocionais(){
+    let html = `
+      ${abrindoNovoDevocional ? `
+        <form class="inline-add" id="form-devocional" style="flex-wrap:wrap;margin-bottom:16px;">
+          <input type="text" id="input-devocional-titulo" placeholder="Título" required style="flex:1 1 100%;" />
+          <textarea id="input-devocional-texto" placeholder="Texto do devocional... Use **negrito** e *itálico*" required style="flex:1 1 100%;min-height:140px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;color:var(--cream);padding:10px 12px;font-family:inherit;font-size:calc(14px * var(--font-scale, 1));"></textarea>
+          <label class="check-row" style="flex:0 0 auto;gap:6px;">
+            <input type="checkbox" id="input-devocional-publicar" checked />
+            Publicar agora
+          </label>
+          <button type="submit" class="btn-add">✓</button>
+          <button type="button" class="del-x" style="width:auto;padding:0 12px;border:1px solid var(--line);border-radius:10px;" data-action="cancelar-novo-devocional">Cancelar</button>
+        </form>
+      ` : `
+        <button type="button" class="btn-import" style="margin-bottom:16px;" data-action="abrir-novo-devocional">+ Novo devocional</button>
+      `}
+    `;
+    if(data.devocionais.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum devocional publicado ainda.</div>`;
+      return html;
+    }
+    const ordenados = [...data.devocionais].sort((a,b) => (b.criadoEm||0) - (a.criadoEm||0));
+    html += ordenados.map(d => {
+      const open = openDevocionalId === d.id;
+      const editing = editingDevocionalId === d.id;
+      const oculto = d.visivel === false;
+      return `
+      <div class="card ${oculto ? "item-hidden" : ""}">
+        <div class="song-row">
+          <div class="song-name" data-action="toggle-devocional" data-id="${d.id}">
+            <div class="song-title">${oculto ? `<span class="badge-nova" style="background:var(--surface-2);color:var(--muted);">RASCUNHO</span> ` : ""}${escapeHtml(d.titulo)}</div>
+          </div>
+          <button class="eye-x ${oculto ? "hidden-item" : ""}" data-action="toggle-visivel-devocional" data-id="${d.id}" title="${oculto ? "Oculto — toque para publicar" : "Publicado — toque para ocultar"}">${oculto ? ICONS.eyeOff : ICONS.eye}</button>
+          <button class="edit-x" data-action="edit-devocional" data-id="${d.id}" title="Editar">✎</button>
+          <button class="del-x" data-action="del-devocional" data-id="${d.id}">✕</button>
+        </div>
+        ${open ? `
+          <div class="lyrics-box">
+            ${editing ? `
+              <input type="text" class="edit-nome-input" id="input-edit-devocional-titulo" data-id="${d.id}" value="${escapeHtml(d.titulo)}" placeholder="Título" style="margin-bottom:8px;"/>
+              <textarea class="lyrics-textarea" id="input-edit-devocional-texto" data-id="${d.id}">${escapeHtml(d.texto || "")}</textarea>
+              <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:-4px 0 10px 0;">Use **texto** para negrito e *texto* para itálico</div>
+              <button class="btn-import" data-action="save-devocional" data-id="${d.id}">Salvar</button>
+            ` : `
+              <div class="lyrics-text">${formatLyrics(d.texto || "")}</div>
+            `}
+          </div>
+        ` : ""}
+      </div>`;
+    }).join("");
     return html;
   }
 
@@ -3167,6 +3232,90 @@ const functionsApp = getFunctions(firebaseApp);
         showToast("Erro ao iniciar temporada");
       }
       render();
+    });
+
+    document.querySelectorAll('[data-action="abrir-novo-devocional"]').forEach(el => {
+      el.addEventListener("click", () => {
+        abrindoNovoDevocional = true;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="cancelar-novo-devocional"]').forEach(el => {
+      el.addEventListener("click", () => {
+        abrindoNovoDevocional = false;
+        render();
+      });
+    });
+
+    const formDevocional = document.getElementById("form-devocional");
+    if(formDevocional) formDevocional.addEventListener("submit", async e => {
+      e.preventDefault();
+      const titulo = document.getElementById("input-devocional-titulo").value.trim();
+      const texto = document.getElementById("input-devocional-texto").value.trim();
+      const publicar = document.getElementById("input-devocional-publicar").checked;
+      if(!titulo || !texto) return;
+      const novoId = uid();
+      try{
+        await setDoc(doc(devocionaisCol, novoId), { id: novoId, titulo, texto, criadoEm: Date.now(), visivel: publicar });
+        abrindoNovoDevocional = false;
+        showToast(publicar ? "Devocional publicado" : "Devocional salvo como rascunho");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao salvar devocional");
+      }
+      render();
+    });
+
+    document.querySelectorAll('[data-action="toggle-devocional"]').forEach(el => {
+      el.addEventListener("click", () => {
+        openDevocionalId = openDevocionalId === el.dataset.id ? null : el.dataset.id;
+        editingDevocionalId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-visivel-devocional"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.devocionais.find(d => d.id === el.dataset.id);
+        if(!item) return;
+        const visivel = item.visivel === false;
+        await updateDoc(doc(devocionaisCol, item.id), { visivel });
+        showToast(visivel ? "Devocional publicado" : "Devocional ocultado");
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-devocional"]').forEach(el => {
+      el.addEventListener("click", () => {
+        openDevocionalId = el.dataset.id;
+        editingDevocionalId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-devocional"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const tituloInput = document.getElementById("input-edit-devocional-titulo");
+        const textoInput = document.getElementById("input-edit-devocional-texto");
+        if(tituloInput && textoInput){
+          const titulo = tituloInput.value.trim();
+          const texto = textoInput.value.trim();
+          if(titulo && texto){
+            await updateDoc(doc(devocionaisCol, el.dataset.id), { titulo, texto });
+            showToast("Devocional atualizado");
+          }
+        }
+        editingDevocionalId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-devocional"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Remover este devocional?")) return;
+        await deleteDoc(doc(devocionaisCol, el.dataset.id));
+        showToast("Devocional removido");
+      });
     });
 
     document.querySelectorAll('[data-action="toggle-setlist-ensaio"]').forEach(el => {
