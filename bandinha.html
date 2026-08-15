@@ -1535,7 +1535,7 @@ const functionsApp = getFunctions(firebaseApp);
       <div class="card ${oculto ? "card-nova" : ""}">
         <div class="song-row">
           <div class="song-name" data-action="toggle-devocional" data-id="${d.id}">
-            <div class="song-title">${oculto ? `<span class="badge-nova">RASCUNHO</span> ` : ""}${escapeHtml(d.titulo)}</div>
+            <div class="song-title">${oculto ? `<span class="badge-nova">RASCUNHO</span> ` : (d.publicadoEm ? `<span class="agenda-tag" style="margin-right:6px;">${formatDateHora(d.publicadoEm)}</span>` : "")}${escapeHtml(d.titulo)}</div>
           </div>
           <button class="eye-x ${oculto ? "hidden-item" : ""}" data-action="toggle-visivel-devocional" data-id="${d.id}" title="${oculto ? "Oculto — toque para publicar" : "Publicado — toque para ocultar"}">${oculto ? ICONS.eyeOff : ICONS.eye}</button>
           <button class="edit-x" data-action="edit-devocional" data-id="${d.id}" title="Editar">✎</button>
@@ -3257,7 +3257,8 @@ const functionsApp = getFunctions(firebaseApp);
       if(!titulo || !texto) return;
       const novoId = uid();
       try{
-        await setDoc(doc(devocionaisCol, novoId), { id: novoId, titulo, texto, criadoEm: Date.now(), visivel: publicar });
+        const agora = Date.now();
+        await setDoc(doc(devocionaisCol, novoId), { id: novoId, titulo, texto, criadoEm: agora, visivel: publicar, ...(publicar ? { publicadoEm: agora } : {}) });
         abrindoNovoDevocional = false;
         openDevocionalId = novoId;
         showToast(publicar ? "Devocional publicado" : "Devocional salvo como rascunho — toque no ícone de olho quando quiser publicar");
@@ -3281,7 +3282,7 @@ const functionsApp = getFunctions(firebaseApp);
         const item = data.devocionais.find(d => d.id === el.dataset.id);
         if(!item) return;
         const visivel = item.visivel === false;
-        await updateDoc(doc(devocionaisCol, item.id), { visivel });
+        await updateDoc(doc(devocionaisCol, item.id), { visivel, ...(visivel ? { publicadoEm: Date.now() } : {}) });
         showToast(visivel ? "Devocional publicado" : "Devocional ocultado");
       });
     });
@@ -3307,6 +3308,7 @@ const functionsApp = getFunctions(firebaseApp);
           }
         }
         editingDevocionalId = null;
+        openDevocionalId = null;
         render();
       });
     });
