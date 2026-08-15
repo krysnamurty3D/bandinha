@@ -955,10 +955,10 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     return `
       <div class="home-grid">
         ${cards.map(c => `
-          <button type="button" class="sec-card ${c.featured ? "card-nova" : ""}" data-action="ir-tab" data-tab="${c.key}">
+          <button type="button" class="sec-card" style="${c.featured ? "background:rgba(214,64,42,0.12);border-color:var(--rose);" : ""}" data-action="ir-tab" data-tab="${c.key}">
             ${c.live ? `<span class="live-dot"></span>` : ""}
-            <div class="sec-card-icon">${c.icon}</div>
-            <div class="sec-card-label">${c.label}</div>
+            <div class="sec-card-icon" style="${c.featured ? "background:var(--rose);color:#fff;" : ""}">${c.icon}</div>
+            <div class="sec-card-label" style="${c.featured ? "color:var(--rose);" : ""}">${c.label}</div>
             <div class="sec-card-stat">${c.stat}</div>
           </button>
         `).join("")}
