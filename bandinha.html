@@ -1532,10 +1532,10 @@ const functionsApp = getFunctions(firebaseApp);
       const editing = editingDevocionalId === d.id;
       const oculto = d.visivel === false;
       return `
-      <div class="card ${oculto ? "item-hidden" : ""}">
+      <div class="card ${oculto ? "card-nova" : ""}">
         <div class="song-row">
           <div class="song-name" data-action="toggle-devocional" data-id="${d.id}">
-            <div class="song-title">${oculto ? `<span class="badge-nova" style="background:var(--surface-2);color:var(--muted);">RASCUNHO</span> ` : ""}${escapeHtml(d.titulo)}</div>
+            <div class="song-title">${oculto ? `<span class="badge-nova">RASCUNHO</span> ` : ""}${escapeHtml(d.titulo)}</div>
           </div>
           <button class="eye-x ${oculto ? "hidden-item" : ""}" data-action="toggle-visivel-devocional" data-id="${d.id}" title="${oculto ? "Oculto — toque para publicar" : "Publicado — toque para ocultar"}">${oculto ? ICONS.eyeOff : ICONS.eye}</button>
           <button class="edit-x" data-action="edit-devocional" data-id="${d.id}" title="Editar">✎</button>
@@ -3259,7 +3259,8 @@ const functionsApp = getFunctions(firebaseApp);
       try{
         await setDoc(doc(devocionaisCol, novoId), { id: novoId, titulo, texto, criadoEm: Date.now(), visivel: publicar });
         abrindoNovoDevocional = false;
-        showToast(publicar ? "Devocional publicado" : "Devocional salvo como rascunho");
+        openDevocionalId = novoId;
+        showToast(publicar ? "Devocional publicado" : "Devocional salvo como rascunho — toque no ícone de olho quando quiser publicar");
       }catch(err){
         console.error(err);
         showToast("Erro ao salvar devocional");
