@@ -1297,7 +1297,10 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         `).join("")}
       </div>
       ${tamanhoCamisaSelecionado ? `
-        <button type="button" class="btn-import" style="background:var(--gold);color:#241200;" data-action="confirmar-tamanho-camisa">Confirmar tamanho: ${escapeHtml(tamanhoCamisaSelecionado)}</button>
+        <button type="button" style="width:100%;border:none;cursor:pointer;font-family:inherit;background:var(--gold);color:#241200;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:18px 16px;border-radius:16px;" data-action="confirmar-tamanho-camisa">
+          <span style="font-size:calc(22px * var(--font-scale, 1));font-weight:800;">Tamanho ${escapeHtml(tamanhoCamisaSelecionado)}</span>
+          <span style="font-size:calc(13px * var(--font-scale, 1));font-weight:600;">Toque aqui para confirmar</span>
+        </button>
       ` : ""}
     `;
   }
