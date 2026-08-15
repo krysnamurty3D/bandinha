@@ -1621,18 +1621,19 @@ const functionsApp = getFunctions(firebaseApp);
       return `
       <div class="card" style="padding:10px 14px;">
         <div class="song-row">
-          <div class="song-name">
-            <div class="song-title">${escapeHtml(c.nome)}</div>
-            ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
-          </div>
           ${editing ? `
+            <input type="text" class="edit-nome-input" id="input-edit-nome-camisa" data-id="${c.id}" value="${escapeHtml(c.nome)}" placeholder="Nome" style="flex:1 1 auto;"/>
             <select id="input-edit-tamanho-camisa" data-id="${c.id}" style="flex:0 0 auto;">
               ${(cfg.tamanhos || []).map(t => `<option value="${escapeHtml(t)}" ${c.tamanho === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
             </select>
             <button class="btn-save-nome" style="width:auto;padding:0 10px;" data-action="save-resposta-camisa" data-id="${c.id}">✓</button>
           ` : `
+            <div class="song-name">
+              <div class="song-title">${escapeHtml(c.nome)}</div>
+              ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
+            </div>
             <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}</span>
-            <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar tamanho">✎</button>
+            <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar">✎</button>
           `}
           <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
         </div>
@@ -3452,10 +3453,12 @@ const functionsApp = getFunctions(firebaseApp);
 
     document.querySelectorAll('[data-action="save-resposta-camisa"]').forEach(el => {
       el.addEventListener("click", async () => {
+        const nomeInput = document.getElementById("input-edit-nome-camisa");
         const select = document.getElementById("input-edit-tamanho-camisa");
-        if(select){
-          await updateDoc(doc(camisasCol, el.dataset.id), { tamanho: select.value });
-          showToast("Tamanho atualizado");
+        const nome = nomeInput ? nomeInput.value.trim() : "";
+        if(select && nome){
+          await updateDoc(doc(camisasCol, el.dataset.id), { nome, tamanho: select.value });
+          showToast("Resposta atualizada");
         }
         editingRespostaCamisaId = null;
         render();
