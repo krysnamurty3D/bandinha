@@ -954,6 +954,8 @@ const locaisCol = collection(db, "locais");
 const aoVivoDocRef = doc(db, "aoVivo", "atual");
 const avisosHistoricoCol = collection(db, "avisosHistorico");
 const devocionaisCol = collection(db, "devocionais");
+const camisasCol = collection(db, "camisas");
+const configCamisasDocRef = doc(db, "config", "camisas");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 
@@ -985,6 +987,7 @@ const functionsApp = getFunctions(firebaseApp);
     instrument: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 12h2.2l2-5 2.6 10 2.4-7.5 1.8 3.5H20.5"/></svg>`,
     temporada: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M4.5 8.5v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>`,
     devocional: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 6.5c-1.5-1.6-4.4-2-7.5-1.3v13c3.1-.7 6 -.3 7.5 1.3 1.5-1.6 4.4-2 7.5-1.3v-13c-3.1-.7-6-.3-7.5 1.3Z"/><line x1="12" y1="6.5" x2="12" y2="19.5"/></svg>`,
+    camisa: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M8 3.5 4.5 6.5 3 9.5l3 1.8V20h12v-8.7l3-1.8-1.5-3L16 3.5c0 1.8-1.8 3.2-4 3.2s-4-1.4-4-3.2Z"/></svg>`,
     progresso: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7.5 15.5l3.5-4 3 2.5 4.5-5.5"/></svg>`,
     whatsapp: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M6.5 17.5 4 20l2.6-.7A8.5 8.5 0 1 0 4 12a8.4 8.4 0 0 0 1.1 4.2Z"/><path d="M8.8 9.2c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.4.6 1.5.1.1.1.3 0 .4-.1.2-.2.3-.3.4l-.4.4c-.1.1-.2.3-.1.5.3.6.8 1.2 1.3 1.6.6.5 1.1.7 1.3.8.2.1.3.1.4-.1l.6-.7c.2-.2.3-.2.5-.1l1.4.7c.2.1.3.1.4.3.1.2.1.9-.2 1.3-.3.5-1.3.9-1.8.9-.5 0-1.2 0-3.4-1.4-2.1-1.3-2.9-2.9-3-3.1-.1-.2-.9-1.3-.9-2.4 0-1.1.6-1.6.8-1.9Z" fill="currentColor" stroke="none"/></svg>`
   };
@@ -1000,7 +1003,7 @@ const functionsApp = getFunctions(firebaseApp);
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let finSubTab = "caixa";
@@ -1028,6 +1031,8 @@ const functionsApp = getFunctions(firebaseApp);
   let openDevocionalId = null;
   let editingDevocionalId = null;
   let abrindoNovoDevocional = false;
+  let editandoTamanhosCamisas = false;
+  let editingRespostaCamisaId = null;
   let editingFinanceiroId = null;
   let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
@@ -1210,6 +1215,16 @@ const functionsApp = getFunctions(firebaseApp);
       safeRender();
     }, e => console.error("Erro ao sincronizar devocionais:", e));
 
+    onSnapshot(camisasCol, snap => {
+      data.camisas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      safeRender();
+    }, e => console.error("Erro ao sincronizar camisas:", e));
+
+    onSnapshot(configCamisasDocRef, snap => {
+      data.configCamisas = snap.data() || { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] };
+      safeRender();
+    }, e => console.error("Erro ao sincronizar config de camisas:", e));
+
     onSnapshot(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       markLoaded("progresso");
@@ -1386,6 +1401,7 @@ const functionsApp = getFunctions(firebaseApp);
     else if(currentTab === "agenda") main.innerHTML = renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda();
     else if(currentTab === "temporadas") main.innerHTML = renderSectionHeader(ICONS.temporada, "Temporadas") + renderTemporadas();
     else if(currentTab === "devocionais") main.innerHTML = renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais();
+    else if(currentTab === "camisas") main.innerHTML = renderSectionHeader(ICONS.camisa, "Camisas") + renderCamisas();
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
@@ -1422,7 +1438,8 @@ const functionsApp = getFunctions(firebaseApp);
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
       { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
       { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" },
-      { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` }
+      { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` },
+      { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo }
     ];
 
     return `
@@ -1553,6 +1570,72 @@ const functionsApp = getFunctions(firebaseApp);
             `}
           </div>
         ` : ""}
+      </div>`;
+    }).join("");
+    return html;
+  }
+
+  function renderCamisas(){
+    const cfg = data.configCamisas;
+    const contagem = {};
+    (cfg.tamanhos || []).forEach(t => contagem[t] = 0);
+    data.camisas.forEach(c => { contagem[c.tamanho] = (contagem[c.tamanho] || 0) + 1; });
+
+    let html = `
+      <div class="card" style="text-align:center;margin-bottom:16px;${cfg.ativo ? "border-color:var(--gold);" : ""}">
+        <div style="font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Status da campanha</div>
+        <div style="font-size:calc(20px * var(--font-scale, 1));font-weight:800;color:${cfg.ativo ? "var(--gold)" : "var(--muted)"};">${cfg.ativo ? "Ativa" : "Inativa"}</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${cfg.ativo ? "Visível e em destaque na página pública" : "Escondida da página pública"}</div>
+        <button type="button" class="btn-import" style="margin-top:14px;${cfg.ativo ? "background:var(--rose);color:#fff;" : "background:var(--gold);color:#241200;"}" data-action="toggle-campanha-camisas">${cfg.ativo ? "Encerrar campanha" : "Ativar e publicar campanha"}</button>
+      </div>
+
+      <div class="section-title" style="margin-top:0;">Tamanhos disponíveis</div>
+      ${editandoTamanhosCamisas ? `
+        <form class="inline-add" id="form-tamanhos-camisas" style="flex-wrap:wrap;margin-bottom:16px;">
+          <input type="text" id="input-tamanhos-camisas" value="${escapeHtml((cfg.tamanhos || []).join(", "))}" placeholder="PP, P, M, G, GG, XG" style="flex:1 1 200px;" />
+          <button type="submit" class="btn-add">✓</button>
+        </form>
+      ` : `
+        <div class="card" style="padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">${(cfg.tamanhos || []).map(t => `<span class="agenda-tag">${escapeHtml(t)}</span>`).join("")}</div>
+          <button type="button" class="edit-x" data-action="editar-tamanhos-camisas" title="Editar tamanhos">✎</button>
+        </div>
+      `}
+
+      <div class="section-title">Contagem por tamanho</div>
+      <div class="stat-row" style="flex-wrap:wrap;">
+        ${(cfg.tamanhos || []).map(t => `<div class="stat"><div class="num">${contagem[t] || 0}</div><div class="lbl">${escapeHtml(t)}</div></div>`).join("")}
+      </div>
+
+      <div class="section-title">Respostas (${data.camisas.length})</div>
+    `;
+
+    if(data.camisas.length === 0){
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma resposta ainda.</div>`;
+      return html;
+    }
+
+    const ordenadas = [...data.camisas].sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR", { sensitivity: "base" }));
+    html += ordenadas.map(c => {
+      const editing = editingRespostaCamisaId === c.id;
+      return `
+      <div class="card" style="padding:10px 14px;">
+        <div class="song-row">
+          <div class="song-name">
+            <div class="song-title">${escapeHtml(c.nome)}</div>
+            ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
+          </div>
+          ${editing ? `
+            <select id="input-edit-tamanho-camisa" data-id="${c.id}" style="flex:0 0 auto;">
+              ${(cfg.tamanhos || []).map(t => `<option value="${escapeHtml(t)}" ${c.tamanho === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
+            </select>
+            <button class="btn-save-nome" style="width:auto;padding:0 10px;" data-action="save-resposta-camisa" data-id="${c.id}">✓</button>
+          ` : `
+            <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}</span>
+            <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar tamanho">✎</button>
+          `}
+          <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
+        </div>
       </div>`;
     }).join("");
     return html;
@@ -3318,6 +3401,72 @@ const functionsApp = getFunctions(firebaseApp);
         if(!confirm("Remover este devocional?")) return;
         await deleteDoc(doc(devocionaisCol, el.dataset.id));
         showToast("Devocional removido");
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-campanha-camisas"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const ativo = !data.configCamisas.ativo;
+        if(ativo && !confirm("Ativar a campanha de camisas? Ela aparecerá em destaque na página pública para os integrantes escolherem o tamanho.")) return;
+        if(!ativo && !confirm("Encerrar a campanha? Ela some da página pública, mas as respostas continuam salvas aqui.")) return;
+        try{
+          await setDoc(configCamisasDocRef, { ativo, tamanhos: data.configCamisas.tamanhos || ["PP","P","M","G","GG","XG"] }, { merge: true });
+          showToast(ativo ? "Campanha ativada" : "Campanha encerrada");
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao atualizar campanha");
+        }
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="editar-tamanhos-camisas"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editandoTamanhosCamisas = true;
+        render();
+      });
+    });
+
+    const formTamanhosCamisas = document.getElementById("form-tamanhos-camisas");
+    if(formTamanhosCamisas) formTamanhosCamisas.addEventListener("submit", async e => {
+      e.preventDefault();
+      const tamanhos = document.getElementById("input-tamanhos-camisas").value.split(",").map(t => t.trim()).filter(Boolean);
+      if(tamanhos.length === 0) return;
+      try{
+        await setDoc(configCamisasDocRef, { ativo: data.configCamisas.ativo || false, tamanhos }, { merge: true });
+        editandoTamanhosCamisas = false;
+        showToast("Tamanhos atualizados");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao salvar tamanhos");
+      }
+      render();
+    });
+
+    document.querySelectorAll('[data-action="edit-resposta-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingRespostaCamisaId = el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-resposta-camisa"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const select = document.getElementById("input-edit-tamanho-camisa");
+        if(select){
+          await updateDoc(doc(camisasCol, el.dataset.id), { tamanho: select.value });
+          showToast("Tamanho atualizado");
+        }
+        editingRespostaCamisaId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="del-resposta-camisa"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!confirm("Remover esta resposta?")) return;
+        await deleteDoc(doc(camisasCol, el.dataset.id));
+        showToast("Resposta removida");
       });
     });
 

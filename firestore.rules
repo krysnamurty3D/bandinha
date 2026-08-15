@@ -73,5 +73,14 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly(['nome','disparadoEm','vistoEm']);
       allow update, delete: if false;
     }
+    match /camisas/{docId} {
+      allow read: if true;
+      allow create: if isCoordenador() || (
+        request.resource.data.keys().hasOnly(['nome','tamanho','confirmadoEm']) &&
+        request.resource.data.nome is string &&
+        request.resource.data.tamanho is string
+      );
+      allow update, delete: if isCoordenador();
+    }
   }
 }

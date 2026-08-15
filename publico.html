@@ -629,16 +629,19 @@ const avisosHistoricoCol = collection(db, "avisosHistorico");
 const avisoVistosCol = collection(db, "avisoVistos");
 const setlistEquipeDocRef = doc(db, "config", "setlistEquipe");
 const devocionaisCol = collection(db, "devocionais");
+const camisasCol = collection(db, "camisas");
+const configCamisasDocRef = doc(db, "config", "camisas");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 
 (function(){
-  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, avisosHistorico: [], progressoTodos: [], setlistEquipe: { musicaIds: [] }, devocionais: [], config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { musicas: [], roteiros: [], coreografias: [], agenda: [], aoVivo: null, avisosHistorico: [], progressoTodos: [], setlistEquipe: { musicaIds: [] }, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: [] }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let currentTab = "home";
   let ultimoUrgenteVisto = null;
   let openRoteiroId = null;
   let openMusicaId = null;
   let openEnsaioId = null;
   let openDevocionalId = null;
+  let tamanhoCamisaSelecionado = null;
   let openCoreografiaId = null;
   let collapsedGroups = {};
   let loaded = false;
@@ -682,7 +685,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     agenda: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3" y="4.5" width="18" height="16" rx="2.2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>`,
     roteiro: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="8.5" y1="8" x2="15.5" y2="8"/><line x1="8.5" y1="12" x2="15.5" y2="12"/><line x1="8.5" y1="16" x2="12.5" y2="16"/></svg>`,
     aovivo: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>`,
-    devocional: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 6.5c-1.5-1.6-4.4-2-7.5-1.3v13c3.1-.7 6 -.3 7.5 1.3 1.5-1.6 4.4-2 7.5-1.3v-13c-3.1-.7-6-.3-7.5 1.3Z"/><line x1="12" y1="6.5" x2="12" y2="19.5"/></svg>`
+    devocional: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 6.5c-1.5-1.6-4.4-2-7.5-1.3v13c3.1-.7 6 -.3 7.5 1.3 1.5-1.6 4.4-2 7.5-1.3v-13c-3.1-.7-6-.3-7.5 1.3Z"/><line x1="12" y1="6.5" x2="12" y2="19.5"/></svg>`,
+    camisa: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M8 3.5 4.5 6.5 3 9.5l3 1.8V20h12v-8.7l3-1.8-1.5-3L16 3.5c0 1.8-1.8 3.2-4 3.2s-4-1.4-4-3.2Z"/></svg>`
   };
 
   function slugify(s){
@@ -807,6 +811,16 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       safeRender();
     }, e => { console.error("Erro ao sincronizar devocionais:", e); });
 
+    onSnapshot(camisasCol, snap => {
+      data.camisas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar camisas:", e); });
+
+    onSnapshot(configCamisasDocRef, snap => {
+      data.configCamisas = snap.data() || { ativo: false, tamanhos: [] };
+      safeRender();
+    }, e => { console.error("Erro ao sincronizar config de camisas:", e); });
+
     onSnapshot(aoVivoDocRef, snap => {
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
@@ -899,6 +913,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       : currentTab === "ensaios" ? renderSectionHeader(ICONS.ensaio, "Ensaios") + renderEnsaios()
       : currentTab === "agenda" ? renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda()
       : currentTab === "devocionais" ? renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais()
+      : currentTab === "camisas" ? renderSectionHeader(ICONS.camisa, "Camisas") + renderCamisas()
       : renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
     attachHandlers();
     restaurarAudioTocando(audioState);
@@ -931,10 +946,16 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` }
     ];
 
+    if(data.configCamisas.ativo){
+      const slug = meuNome ? slugify(meuNome) : null;
+      const jaRespondeu = slug ? data.camisas.some(c => c.id === slug) : false;
+      cards.unshift({ key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: jaRespondeu ? "Você já escolheu" : "Escolha seu tamanho!", live: true, featured: true });
+    }
+
     return `
       <div class="home-grid">
         ${cards.map(c => `
-          <button type="button" class="sec-card" data-action="ir-tab" data-tab="${c.key}">
+          <button type="button" class="sec-card ${c.featured ? "card-nova" : ""}" data-action="ir-tab" data-tab="${c.key}">
             ${c.live ? `<span class="live-dot"></span>` : ""}
             <div class="sec-card-icon">${c.icon}</div>
             <div class="sec-card-label">${c.label}</div>
@@ -1241,6 +1262,46 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     }).join("");
   }
 
+  function renderCamisas(){
+    const cfg = data.configCamisas;
+    if(!cfg.ativo){
+      return `<div class="empty"><div class="note-dot"></div><br>Nenhuma campanha de camisas ativa no momento.</div>`;
+    }
+    if(!meuNome){
+      return `
+        <div class="card">
+          <div style="margin-bottom:10px;font-size:calc(15px * var(--font-scale, 1));">Digite seu nome para escolher o tamanho da sua camisa</div>
+          <form id="form-nome" class="inline-add" style="margin-bottom:0;">
+            <input type="text" id="input-meu-nome" placeholder="Seu nome" required />
+            <button type="submit" class="btn-add">✓</button>
+          </form>
+        </div>
+      `;
+    }
+    const meuId = slugify(meuNome);
+    const minhaResposta = data.camisas.find(c => c.id === meuId);
+    if(minhaResposta){
+      return `
+        <div class="card" style="text-align:center;">
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Seu tamanho</div>
+          <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:var(--gold);">${escapeHtml(minhaResposta.tamanho)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:8px;">✓ Confirmado — só o coordenador pode alterar agora.</div>
+        </div>
+      `;
+    }
+    return `
+      <div style="margin-bottom:14px;color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Escolha o tamanho da sua camisa. Depois de confirmar, só o coordenador poderá alterar.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        ${(cfg.tamanhos || []).map(t => `
+          <button type="button" class="status-pill ${tamanhoCamisaSelecionado === t ? "status-pronta" : ""}" style="padding:10px 18px;font-size:calc(14px * var(--font-scale, 1));font-weight:700;" data-action="selecionar-tamanho-camisa" data-tamanho="${escapeHtml(t)}">${escapeHtml(t)}</button>
+        `).join("")}
+      </div>
+      ${tamanhoCamisaSelecionado ? `
+        <button type="button" class="btn-import" style="background:var(--gold);color:#241200;" data-action="confirmar-tamanho-camisa">Confirmar tamanho: ${escapeHtml(tamanhoCamisaSelecionado)}</button>
+      ` : ""}
+    `;
+  }
+
   function renderRingTimer(restanteSeg, totalSeg){
     const r = 54;
     const c = 2 * Math.PI * r;
@@ -1352,6 +1413,29 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     document.querySelectorAll('[data-action="toggle-devocional"]').forEach(el => {
       el.addEventListener("click", () => {
         openDevocionalId = openDevocionalId === el.dataset.id ? null : el.dataset.id;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="selecionar-tamanho-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        tamanhoCamisaSelecionado = el.dataset.tamanho;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="confirmar-tamanho-camisa"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        if(!meuNome || !tamanhoCamisaSelecionado) return;
+        if(!confirm(`Confirmar o tamanho ${tamanhoCamisaSelecionado}? Depois de confirmar, só o coordenador vai poder alterar.`)) return;
+        try{
+          await setDoc(doc(camisasCol, slugify(meuNome)), { nome: meuNome, tamanho: tamanhoCamisaSelecionado, confirmadoEm: Date.now() });
+          tamanhoCamisaSelecionado = null;
+          showToast("Tamanho confirmado!");
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao confirmar. Tente de novo.");
+        }
         render();
       });
     });
