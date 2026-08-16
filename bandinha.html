@@ -1720,8 +1720,39 @@ const functionsApp = getFunctions(firebaseApp);
     const totalOfertas = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
     const totalReceitas = totalReceitasLancadas + receitaTaxas + totalOfertas;
     const saldo = totalReceitas - totalDespesas;
+    const cf = data.configFinanceiro || { valorCamisa: 0, valorTaxa: 0 };
 
-    let html = `
+    let valoresHtml = "";
+    if(editandoValoresFinanceiro){
+      valoresHtml = `
+        <div class="card" style="margin-bottom:16px;">
+          <label class="stepper-label">Valores da Taxa da Equipe</label>
+          <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin:6px 0 2px;">A camisa está incluída na taxa — a taxa recebida de cada integrante é a soma dos dois valores.</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(17px * var(--font-scale, 1));">Camisa
+              <input type="number" id="input-valor-camisa" step="0.01" min="0" value="${cf.valorCamisa || 0}" style="width:110px;" />
+            </label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(17px * var(--font-scale, 1));">Taxa
+              <input type="number" id="input-valor-taxa" step="0.01" min="0" value="${cf.valorTaxa || 0}" style="width:110px;" />
+            </label>
+          </div>
+          <button type="button" id="btn-salvar-valores-financeiro" class="btn-import" style="margin-top:12px;">Salvar valores</button>
+        </div>
+      `;
+    } else {
+      valoresHtml = `
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:calc(15px * var(--font-scale, 1));color:var(--muted);">
+            Camisa <strong style="color:var(--cream);">${formatMoeda(cf.valorCamisa)}</strong> +
+            Taxa <strong style="color:var(--cream);">${formatMoeda(cf.valorTaxa)}</strong> =
+            <strong style="color:var(--gold);">${formatMoeda((cf.valorCamisa||0) + (cf.valorTaxa||0))}</strong> por pessoa
+          </div>
+          <button type="button" class="link-btn" style="padding:0;" data-action="editar-valores-financeiro">Editar valores</button>
+        </div>
+      `;
+    }
+
+    let html = valoresHtml + `
       <div class="stat-row">
         <div class="stat">
           <div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalReceitas)}</div>
