@@ -1725,6 +1725,13 @@ const functionsApp = getFunctions(firebaseApp);
         <div style="font-size:calc(15px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Saldo atual</div>
         <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
       </div>
+      ${data.configFinanceiro?.valorCamisa > 0 ? `
+        <div class="card" style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;"><span class="ico">${ICONS.camisa}</span>Despesa com camisas (estimativa)</div>
+          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--rose);">${formatMoeda(totalIntegrantes * data.configFinanceiro.valorCamisa)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalIntegrantes} integrantes × ${formatMoeda(data.configFinanceiro.valorCamisa)} — atualiza sozinho conforme a equipe muda</div>
+        </div>
+      ` : ""}
       <form class="inline-add" id="form-financeiro" style="flex-wrap:wrap;">
         <div style="display:flex;gap:8px;width:100%;">
           <button type="button" class="pay-toggle ${finTipoForm === "receita" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="receita" style="flex:1;font-size:calc(16.5px * var(--font-scale, 1));">Receita</button>
@@ -1737,7 +1744,7 @@ const functionsApp = getFunctions(firebaseApp);
       </form>
       ${data.configFinanceiro?.valorCamisa > 0 ? `
         <button type="button" class="link-btn" style="padding:0 0 16px;font-size:calc(13px * var(--font-scale, 1));" data-action="preencher-despesa-camisas">
-          <span class="ico">${ICONS.camisa}</span>Preencher despesa com camisas (${data.integrantes.length} × ${formatMoeda(data.configFinanceiro.valorCamisa)})
+          <span class="ico">${ICONS.camisa}</span>Lançar essa estimativa como despesa agora
         </button>
       ` : ""}
     `;
