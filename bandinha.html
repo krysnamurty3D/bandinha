@@ -956,6 +956,7 @@ const avisosHistoricoCol = collection(db, "avisosHistorico");
 const devocionaisCol = collection(db, "devocionais");
 const camisasCol = collection(db, "camisas");
 const configCamisasDocRef = doc(db, "config", "camisas");
+const configNotificacoesDocRef = doc(db, "config", "notificacoes");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 
@@ -1003,7 +1004,7 @@ const functionsApp = getFunctions(firebaseApp);
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configNotificacoes: { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let editandoValoresFinanceiro = false;
@@ -1038,6 +1039,7 @@ const functionsApp = getFunctions(firebaseApp);
   let editingFinanceiroId = null;
   let historicoAtivo = false;
   let mostrarOcultasMusicas = true;
+  let buscaMusicas = "";
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
@@ -1072,6 +1074,9 @@ const functionsApp = getFunctions(firebaseApp);
   }
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+  function normalizarBusca(s){
+    return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   }
   function computeOrdemAlfabetica(nome){
     const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -1226,6 +1231,11 @@ const functionsApp = getFunctions(firebaseApp);
       data.configCamisas = snap.data() || { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] };
       safeRender();
     }, e => console.error("Erro ao sincronizar config de camisas:", e));
+
+    onSnapshot(configNotificacoesDocRef, snap => {
+      data.configNotificacoes = { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true, ...(snap.data() || {}) };
+      safeRender();
+    }, e => console.error("Erro ao sincronizar config de notificações:", e));
 
     onSnapshot(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -1423,6 +1433,7 @@ const functionsApp = getFunctions(firebaseApp);
     else if(currentTab === "temporadas") main.innerHTML = renderSectionHeader(ICONS.temporada, "Temporadas") + renderTemporadas();
     else if(currentTab === "devocionais") main.innerHTML = renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais();
     else if(currentTab === "camisas") main.innerHTML = renderSectionHeader(ICONS.camisa, "Camisas") + renderCamisas();
+    else if(currentTab === "notificacoes") main.innerHTML = renderSectionHeader(ICONS.bell, "Notificações") + renderNotificacoes();
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
@@ -1464,7 +1475,8 @@ const functionsApp = getFunctions(firebaseApp);
       { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
       { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" },
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` },
-      { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo }
+      { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo },
+      { key: "notificacoes", icon: ICONS.bell, label: "Notificações", stat: `${Object.values(data.configNotificacoes).filter(Boolean).length}/${Object.keys(data.configNotificacoes).length} ativas` }
     ];
 
     return `
@@ -1681,6 +1693,32 @@ const functionsApp = getFunctions(firebaseApp);
       </div>`;
     }).join("");
     return html;
+  }
+
+  const CATEGORIAS_NOTIFICACAO = [
+    { key: "agenda", label: "Agenda", desc: "Nova data marcada e lembretes de horário" },
+    { key: "musicas", label: "Músicas", desc: "Música nova adicionada ou revelada" },
+    { key: "devocionais", label: "Devocionais", desc: "Novo devocional publicado" },
+    { key: "roteiros", label: "Roteiro", desc: "Novo roteiro criado" },
+    { key: "camisas", label: "Camisas", desc: "Campanha de camisas ativada" },
+    { key: "aovivo", label: "Ao Vivo", desc: "Avisos ao vivo enviados durante o encontro" },
+    { key: "lembretes", label: "Lembretes de Agenda", desc: "Avisos 24h/3h/30min antes de um evento" }
+  ];
+
+  function renderNotificacoes(){
+    const cfg = data.configNotificacoes;
+    return `
+      <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:16px;">Escolha quais avisos disparam notificação push pra equipe. Desligar aqui não esconde nada do app — só evita a notificação.</div>
+      ${CATEGORIAS_NOTIFICACAO.map(c => `
+        <div class="card" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;">${c.label}</div>
+            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${c.desc}</div>
+          </div>
+          <input type="checkbox" style="flex-shrink:0;width:22px;height:22px;" data-action="toggle-notificacao" data-chave="${c.key}" ${cfg[c.key] !== false ? "checked" : ""} />
+        </div>
+      `).join("")}
+    `;
   }
 
   function renderBrand(){
@@ -2014,6 +2052,7 @@ const functionsApp = getFunctions(firebaseApp);
         <button type="submit" class="btn-add">+</button>
       </form>
       ${totalReal > 0 ? `
+        <input type="text" id="input-busca-musicas" placeholder="Buscar por título ou artista..." value="${escapeHtml(buscaMusicas)}" style="margin-bottom:10px;" />
         <label class="check-row">
           <input type="checkbox" id="input-mostrar-ocultas" ${mostrarOcultasMusicas ? "checked" : ""} />
           Mostrar músicas ocultas
@@ -2023,9 +2062,14 @@ const functionsApp = getFunctions(firebaseApp);
     if(totalReal === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
-      const ordenadas = [...data.musicas].sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0)).filter(m => mostrarOcultasMusicas || m.visivel !== false);
+      const termo = normalizarBusca(buscaMusicas.trim());
+      const ordenadas = [...data.musicas].sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0))
+        .filter(m => mostrarOcultasMusicas || m.visivel !== false)
+        .filter(m => !termo || normalizarBusca(m.nome).includes(termo));
       if(ordenadas.length === 0){
-        html += `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
+        html += termo
+          ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
+          : `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
       }
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
@@ -3248,6 +3292,12 @@ const functionsApp = getFunctions(firebaseApp);
       render();
     });
 
+    const inputBuscaMusicas = document.getElementById("input-busca-musicas");
+    if(inputBuscaMusicas) inputBuscaMusicas.addEventListener("input", () => {
+      buscaMusicas = inputBuscaMusicas.value;
+      render();
+    });
+
     document.querySelectorAll('[data-action="limpar-historico"]').forEach(el => {
       el.addEventListener("click", async () => {
         if(!confirm("Apagar todo o histórico de ensaios e as datas de \"último ensaio\" de cada música? Essa ação não pode ser desfeita.")) return;
@@ -3599,6 +3649,19 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", () => {
         editandoTamanhosCamisas = true;
         render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-notificacao"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const chave = el.dataset.chave;
+        const ativo = el.checked;
+        try{
+          await setDoc(configNotificacoesDocRef, { [chave]: ativo }, { merge: true });
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao salvar");
+        }
       });
     });
 

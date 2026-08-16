@@ -30,6 +30,12 @@ async function sendToAll(title, body, url) {
   await Promise.all(invalidos.map(t => db.collection("pushTokens").doc(t).delete()));
 }
 
+async function notificacaoAtiva(categoria) {
+  const snap = await db.collection("config").doc("notificacoes").get();
+  const cfg = snap.exists ? snap.data() : {};
+  return cfg[categoria] !== false;
+}
+
 const HISTORICO_LIMITE = 15;
 
 async function registrarHistorico(tipo, texto) {
@@ -39,12 +45,14 @@ async function registrarHistorico(tipo, texto) {
 }
 
 exports.onNovaAgenda = onDocumentCreated("agenda/{id}", async event => {
+  if (!(await notificacaoAtiva("agenda"))) return;
   const a = event.data.data();
   const titulo = a.titulo || "Novo dia marcado";
   await sendToAll("Nova data na Agenda", `${titulo} — ${a.data?.split("-").reverse().join("/") || ""}`);
 });
 
 exports.onNovoRoteiro = onDocumentCreated("roteiros/{id}", async event => {
+  if (!(await notificacaoAtiva("roteiros"))) return;
   const r = event.data.data();
   await sendToAll("Novo roteiro criado", r.titulo || "Roteiro do próximo encontro");
 });
@@ -52,6 +60,7 @@ exports.onNovoRoteiro = onDocumentCreated("roteiros/{id}", async event => {
 exports.onNovaMusica = onDocumentCreated("musicas/{id}", async event => {
   const m = event.data.data();
   if (m.visivel === false) return;
+  if (!(await notificacaoAtiva("musicas"))) return;
   await sendToAll("Nova música adicionada", m.nome || "");
 });
 
@@ -59,6 +68,7 @@ exports.onMusicaRevelada = onDocumentUpdated("musicas/{id}", async event => {
   const antes = event.data.before.data();
   const depois = event.data.after.data();
   if (antes.visivel === false && depois.visivel !== false) {
+    if (!(await notificacaoAtiva("musicas"))) return;
     await sendToAll("Nova música revelada", depois.nome || "");
   }
 });
@@ -67,6 +77,7 @@ exports.onCamisasAtivado = onDocumentWritten("config/camisas", async event => {
   const antes = event.data.before.data() || {};
   const depois = event.data.after.data() || {};
   if (!antes.ativo && depois.ativo) {
+    if (!(await notificacaoAtiva("camisas"))) return;
     await sendToAll("Campanha de camisas", "Escolha o tamanho da sua camisa!", "publico.html?tab=camisas");
   }
 });
@@ -74,6 +85,7 @@ exports.onCamisasAtivado = onDocumentWritten("config/camisas", async event => {
 exports.onNovoDevocional = onDocumentCreated("devocionais/{id}", async event => {
   const d = event.data.data();
   if (d.visivel === false) return;
+  if (!(await notificacaoAtiva("devocionais"))) return;
   await sendToAll("Novo devocional", d.titulo || "");
 });
 
@@ -81,6 +93,7 @@ exports.onDevocionalRevelado = onDocumentUpdated("devocionais/{id}", async event
   const antes = event.data.before.data();
   const depois = event.data.after.data();
   if (antes.visivel === false && depois.visivel !== false) {
+    if (!(await notificacaoAtiva("devocionais"))) return;
     await sendToAll("Novo devocional", depois.titulo || "");
   }
 });
@@ -104,7 +117,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
       avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
       avisoAntesEnviado: true
     });
-    await sendToAll("Aviso", textoLimpo, "publico.html?tab=aovivo");
+    if (await notificacaoAtiva("aovivo")) await sendToAll("Aviso", textoLimpo, "publico.html?tab=aovivo");
     await registrarHistorico("custom", textoLimpo);
     return { ok: true };
   }
@@ -124,7 +137,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
     avisoAntesEnviado: false
   });
-  await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
+  if (await notificacaoAtiva("aovivo")) await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
   await registrarHistorico(urgente ? "urgente" : "normal", texto);
   return { ok: true };
 });
@@ -138,7 +151,7 @@ exports.avisoAntesFim = onSchedule("* * * * *", async () => {
   const limiar = a.avisoAntesMin || 5;
   const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
   if (restanteMin <= limiar && restanteMin > limiar - 1) {
-    await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
+    if (await notificacaoAtiva("aovivo")) await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
     await ref.update({ avisoAntesEnviado: true });
   }
 });
@@ -213,6 +226,7 @@ exports.migrarAudiosDrive = onCall({ timeoutSeconds: 300 }, async request => {
 });
 
 exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
+  if (!(await notificacaoAtiva("lembretes"))) return;
   const agora = Date.now();
   const snap = await db.collection("agenda").get();
   for (const docSnap of snap.docs) {

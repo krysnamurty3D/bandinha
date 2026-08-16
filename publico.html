@@ -651,6 +651,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   let meuNome = localStorage.getItem("bandinha-nome") || "";
   let meuProgresso = {};
   let filtroProgresso = null;
+  let buscaMusicas = "";
   let vistosAvisoAtual = [];
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
@@ -693,6 +694,9 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
   function slugify(s){
     return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+  function normalizarBusca(s){
+    return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   }
 
   function registrarVisualizacao(tipo, itemId){
@@ -1102,6 +1106,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
       </div>
       ${renderNomeBox()}
+      ${total > 0 ? `<input type="text" id="input-busca-musicas" placeholder="Buscar por título ou artista..." value="${escapeHtml(buscaMusicas)}" style="margin-bottom:12px;" />` : ""}
     `;
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista ainda.</div>`;
@@ -1112,11 +1117,15 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           ${MEU_PROGRESSO_OPTS.map(o => `<button type="button" class="status-pill ${filtroProgresso===o.key ? o.cls : ''}" style="${filtroProgresso===o.key ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-filtro-progresso" data-status="${o.key}">${o.label}</button>`).join("")}
         </div>`;
       }
+      const termo = normalizarBusca(buscaMusicas.trim());
       const ordenadas = [...musicasVisiveis]
         .filter(m => !filtroProgresso || meuProgresso[m.id] === filtroProgresso)
+        .filter(m => !termo || normalizarBusca(m.nome).includes(termo))
         .sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0));
       if(ordenadas.length === 0){
-        html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música com esse status ainda.</div>`;
+        html += termo
+          ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
+          : `<div class="empty"><div class="note-dot"></div><br>Nenhuma música com esse status ainda.</div>`;
       }
       html += ordenadas.map((m, idx) => {
         const open = openMusicaId === m.id;
@@ -1527,6 +1536,12 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         filtroProgresso = el.dataset.status || null;
         render();
       });
+    });
+
+    const inputBuscaMusicas = document.getElementById("input-busca-musicas");
+    if(inputBuscaMusicas) inputBuscaMusicas.addEventListener("input", () => {
+      buscaMusicas = inputBuscaMusicas.value;
+      render();
     });
 
     document.querySelectorAll('[data-action="confirmar-vi-aviso"]').forEach(el => {
