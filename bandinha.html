@@ -1023,7 +1023,9 @@ const functionsApp = getFunctions(firebaseApp);
   let editingMusicaNomeId = null;
   let ensaioAtivo = false;
   let ensaioIndex = 0;
-  let ensaioEditando = false;
+  let ensaioModo = "lista";
+  let ensaioData = null;
+  let abrindoAdicionarMusicaEnsaio = false;
   let enviandoSetlist = false;
   let migrandoAudios = false;
   let abrindoNovaTemporada = false;
@@ -1034,7 +1036,6 @@ const functionsApp = getFunctions(firebaseApp);
   let editingRespostaCamisaId = null;
   let filtroTamanhoCamisa = null;
   let editingFinanceiroId = null;
-  let ensaioSessaoIds = new Set();
   let historicoAtivo = false;
   let mostrarOcultasMusicas = true;
   let openCoreografiaId = null;
@@ -1437,7 +1438,7 @@ const functionsApp = getFunctions(firebaseApp);
       { key: "financeiro", icon: ICONS.financeiro, label: "Financeiro", stat: `Saldo: ${formatMoeda(saldoFin)}` },
       { key: "musicas", icon: ICONS.musicas, label: "Músicas", stat: `${prontas}/${musicasVisiveis.length} prontas` },
       { key: "coreografias", icon: ICONS.coreografias, label: "Coreografias", stat: `${data.coreografias.length} cadastradas` },
-      { key: "ensaio-menu", icon: ICONS.ensaio, label: "Ensaio", stat: `${getSetlist().length} no setlist` },
+      { key: "ensaio-menu", icon: ICONS.ensaio, label: "Ensaio", stat: `${getPlanoDoDia(pickDefaultEnsaioData()).length} no setlist` },
       { key: "agenda", icon: ICONS.agenda, label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
       { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
@@ -1462,7 +1463,7 @@ const functionsApp = getFunctions(firebaseApp);
 
   function renderEnsaioMenu(){
     const subcards = [
-      { icon: ICONS.setlist, label: "Setlist", stat: `${getSetlist().length} músicas`, action: "abrir-modo-ensaio" },
+      { icon: ICONS.setlist, label: "Setlist", stat: `${getPlanoDoDia(pickDefaultEnsaioData()).length} músicas`, action: "abrir-modo-ensaio" },
       { icon: ICONS.presenca, label: "Lista de Presença", stat: `${data.historico.length} sessões`, action: "abrir-historico" },
       { icon: ICONS.progresso, label: "Progresso", stat: `${data.progresso.filter(p => p.status).length} marcações`, action: "ir-tab", tab: "progresso" }
     ];
@@ -2029,7 +2030,6 @@ const functionsApp = getFunctions(firebaseApp);
                 <div class="song-title">${m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
                 ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
               </div>
-              <button class="eye-x ${m.noSetlist ? "" : "hidden-item"}" data-action="toggle-setlist-musica" data-id="${m.id}" title="${m.noSetlist ? "No setlist de ensaio — toque para remover" : "Fora do setlist — toque para adicionar"}">${m.noSetlist ? ICONS.setlist : ICONS.targetOff}</button>
               <button class="eye-x ${m.status === "pronta" ? "" : "hidden-item"}" style="${m.status === "pronta" ? "color:var(--green);" : ""}" data-action="toggle-pronta-musica" data-id="${m.id}" title="${m.status === "pronta" ? "Pronta — toque para voltar a ensaiando" : "Marcar como pronta"}">${ICONS.presenca}</button>
               <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
               <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? ICONS.eyeOff : ICONS.eye}</button>
@@ -2165,44 +2165,150 @@ const functionsApp = getFunctions(firebaseApp);
     return `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;"><span class="ico">${ICONS.eye}</span>${vistos.length} visualiza${vistos.length===1?"ção":"ções"}: ${nomes}</div>`;
   }
 
-  function getSetlist(){
-    return [...data.musicas].filter(m => m.noSetlist && m.visivel !== false).sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  function agendaOrdenada(){
+    return [...data.agenda].sort((a,b) => a.data.localeCompare(b.data));
+  }
+
+  function pickDefaultEnsaioData(){
+    const hojeIso = new Date().toISOString().slice(0,10);
+    const ordenada = agendaOrdenada();
+    const futura = ordenada.find(a => a.data >= hojeIso);
+    if(futura) return futura.data;
+    if(ordenada.length > 0) return ordenada[ordenada.length - 1].data;
+    return hojeIso;
+  }
+
+  function getAgendaDoDia(dataIso){
+    return data.agenda.find(a => a.data === dataIso) || null;
+  }
+
+  function getPlanoDoDia(dataIso){
+    const a = getAgendaDoDia(dataIso);
+    const ids = a?.musicaIds || [];
+    return ids.map(id => data.musicas.find(m => m.id === id)).filter(Boolean);
+  }
+
+  function getEnsaiadasDoDia(dataIso){
+    const sessao = data.historico.find(s => s.data === dataIso);
+    return sessao?.musicaIds || [];
+  }
+
+  async function toggleEnsaiada(dataIso, musicaId){
+    const sessao = data.historico.find(s => s.data === dataIso);
+    const atuais = sessao?.musicaIds || [];
+    const marcado = atuais.includes(musicaId);
+    const novos = marcado ? atuais.filter(id => id !== musicaId) : [...atuais, musicaId];
+    await setDoc(doc(historicoCol, dataIso), { data: dataIso, musicaIds: novos, presentes: sessao?.presentes || [] }, { merge: true });
+    let maxData = null;
+    data.historico.forEach(s => {
+      const ids = s.data === dataIso ? novos : (s.musicaIds || []);
+      if(ids.includes(musicaId) && (!maxData || s.data > maxData)) maxData = s.data;
+    });
+    if(!sessao && novos.includes(musicaId) && (!maxData || dataIso > maxData)) maxData = dataIso;
+    await updateDoc(doc(musicasCol, musicaId), { ultimoEnsaio: maxData });
   }
 
   function renderModoEnsaio(){
-    if(ensaioEditando) return renderEditarSetlist();
-    const fila = getSetlist();
-    if(fila.length === 0){
+    if(!ensaioData) ensaioData = pickDefaultEnsaioData();
+    return ensaioModo === "slideshow" ? renderEnsaioSlideshow() : renderEnsaioLista();
+  }
+
+  function renderEnsaioLista(){
+    if(agendaOrdenada().length === 0){
       return `
         <div class="ensaio-top">
-          <span class="ensaio-progress">Setlist vazio</span>
+          <span class="ensaio-progress">Ensaio</span>
           <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
         </div>
-        <div class="empty"><div class="note-dot"></div><br>Nenhuma música no setlist ainda.</div>
-        <button type="button" class="btn-import" style="margin-top:16px;" data-action="abrir-editar-setlist">+ Montar setlist</button>
+        <div class="empty"><div class="note-dot"></div><br>Cadastre uma data na Agenda primeiro pra montar o setlist do ensaio.</div>
       `;
     }
-    if(ensaioIndex >= fila.length) ensaioIndex = fila.length - 1;
+    const plano = getPlanoDoDia(ensaioData);
+    const ensaiadas = getEnsaiadasDoDia(ensaioData);
+    const [y, m, d] = ensaioData.split("-");
+    const weekday = AGENDA_DIAS_SEMANA[new Date(ensaioData + "T00:00:00").getDay()];
+    const agendaDoDia = getAgendaDoDia(ensaioData);
+    const disponiveis = [...data.musicas].filter(mm => mm.visivel !== false && !(agendaDoDia?.musicaIds || []).includes(mm.id))
+      .sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+
+    return `
+      <div class="ensaio-top">
+        <span class="ensaio-progress">Ensaio</span>
+        <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <select id="input-ensaio-data" style="flex:1;">
+          ${agendaOrdenada().map(a => `<option value="${a.data}" ${a.data === ensaioData ? "selected" : ""}>${AGENDA_DIAS_SEMANA[new Date(a.data + "T00:00:00").getDay()]} ${a.data.split("-").reverse().join("/")}${a.titulo ? ` — ${a.titulo}` : ""}</option>`).join("")}
+        </select>
+      </div>
+      <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">${weekday}, ${d}/${m}/${y} · ${ensaiadas.length}/${plano.length} ensaiadas</div>
+      ${plano.length > 0 ? `
+        <button type="button" class="btn-import" style="margin-bottom:12px;" data-action="iniciar-ensaio-slideshow">▶ Iniciar ensaio (letra e áudio)</button>
+      ` : ""}
+      <button type="button" id="btn-enviar-setlist" class="btn-import" style="margin-bottom:16px;background:var(--gold);color:#241200;" ${(plano.length === 0 || enviandoSetlist) ? "disabled" : ""}>${enviandoSetlist ? "Enviando..." : `<span class="ico">${ICONS.upload}</span>Enviar setlist para a Equipe`}</button>
+      <div class="section-title" style="margin-top:0;">Músicas do dia</div>
+      ${plano.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música definida pra essa data ainda.</div>` : plano.map(mm => {
+        const { titulo, artista } = splitMusica(mm.nome);
+        const ensaiada = ensaiadas.includes(mm.id);
+        return `
+        <div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <label class="check-row" style="flex:1;min-width:0;gap:10px;">
+            <input type="checkbox" data-action="toggle-ensaiada" data-id="${mm.id}" ${ensaiada ? "checked" : ""} />
+            <span style="display:flex;flex-direction:column;min-width:0;">
+              <span style="${ensaiada ? "color:var(--green);" : ""}">${escapeHtml(titulo)}</span>
+              ${artista ? `<span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${escapeHtml(artista)}</span>` : ""}
+            </span>
+          </label>
+          <button class="del-x" data-action="remover-do-plano" data-id="${mm.id}" title="Remover dessa data">✕</button>
+        </div>
+      `;
+      }).join("")}
+      ${abrindoAdicionarMusicaEnsaio ? `
+        <div class="section-title">Adicionar música</div>
+        ${disponiveis.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Todas as músicas visíveis já estão nessa data.</div>` : disponiveis.map(mm => `
+          <label class="check-row" style="justify-content:space-between;">
+            <span>${escapeHtml(splitMusica(mm.nome).titulo)}</span>
+            <input type="checkbox" data-action="adicionar-ao-plano" data-id="${mm.id}" />
+          </label>
+        `).join("")}
+        <button type="button" class="link-btn" style="padding-top:10px;" data-action="fechar-adicionar-musica-ensaio">Fechar</button>
+      ` : `
+        <button type="button" class="link-btn" style="padding-top:10px;" data-action="abrir-adicionar-musica-ensaio">+ Adicionar música a essa data</button>
+      `}
+    `;
+  }
+
+  function renderEnsaioSlideshow(){
+    const plano = getPlanoDoDia(ensaioData);
+    if(plano.length === 0){
+      ensaioModo = "lista";
+      return renderEnsaioLista();
+    }
+    if(ensaioIndex >= plano.length) ensaioIndex = plano.length - 1;
     if(ensaioIndex < 0) ensaioIndex = 0;
-    const m = fila[ensaioIndex];
-    ensaioSessaoIds.add(m.id);
+    const m = plano[ensaioIndex];
+    const ensaiadas = getEnsaiadasDoDia(ensaioData);
+    const ensaiada = ensaiadas.includes(m.id);
     const { titulo, artista } = splitMusica(m.nome);
     return `
       <div class="ensaio-top">
-        <span class="ensaio-progress">${ensaioIndex + 1} / ${fila.length}</span>
+        <span class="ensaio-progress">${ensaioIndex + 1} / ${plano.length}</span>
         <div style="display:flex;gap:10px;align-items:center;">
-          <button type="button" class="link-btn" style="padding:0;" data-action="abrir-editar-setlist">Editar setlist</button>
+          <button type="button" class="link-btn" style="padding:0;" data-action="voltar-lista-ensaio">◀ Lista</button>
           <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
         </div>
       </div>
       <div class="ensaio-title">${escapeHtml(titulo)}</div>
       ${artista ? `<div class="ensaio-artist">${escapeHtml(artista)}</div>` : ""}
       ${renderAudioPlayer(m)}
+      <label class="check-row" style="margin:12px 0;">
+        <input type="checkbox" data-action="toggle-ensaiada" data-id="${m.id}" ${ensaiada ? "checked" : ""} />
+        <span style="${ensaiada ? "color:var(--green);font-weight:600;" : ""}">${ensaiada ? "✓ Ensaiada" : "Marcar como ensaiada"}</span>
+      </label>
       <div class="ensaio-lyrics">${m.letra ? formatLyrics(m.letra) : '<span style="color:var(--muted);">Sem letra cadastrada.</span>'}</div>
       <div class="ensaio-nav">
         <button type="button" data-action="ensaio-anterior" ${ensaioIndex === 0 ? "disabled" : ""}>◀ Anterior</button>
-        <button type="button" data-action="ensaio-remover" data-id="${m.id}">Remover do setlist</button>
-        <button type="button" data-action="ensaio-proxima" ${ensaioIndex === fila.length - 1 ? "disabled" : ""}>Próxima ▶</button>
+        <button type="button" data-action="ensaio-proxima" ${ensaioIndex === plano.length - 1 ? "disabled" : ""}>Próxima ▶</button>
       </div>
     `;
   }
@@ -2276,40 +2382,6 @@ const functionsApp = getFunctions(firebaseApp);
             `;
           })() : ""}
         </div>
-      `;
-      }).join("")}
-    `;
-  }
-
-  function renderEditarSetlist(){
-    const todas = [...data.musicas].filter(m => m.visivel !== false).sort((a,b) => {
-      if(!a.ultimoEnsaio && !b.ultimoEnsaio) return a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
-      if(!a.ultimoEnsaio) return -1;
-      if(!b.ultimoEnsaio) return 1;
-      return a.ultimoEnsaio.localeCompare(b.ultimoEnsaio);
-    });
-    return `
-      <div class="ensaio-top">
-        <span class="ensaio-progress">Editar setlist (${getSetlist().length})</span>
-        <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
-      </div>
-      <button type="button" class="btn-import" style="margin-bottom:10px;" data-action="fechar-editar-setlist">◀ Voltar ao ensaio</button>
-      <button type="button" id="btn-enviar-setlist" class="btn-import" style="margin-bottom:16px;background:var(--gold);color:#241200;" ${(getSetlist().length === 0 || enviandoSetlist) ? "disabled" : ""}>${enviandoSetlist ? "Enviando..." : `<span class="ico">${ICONS.upload}</span>Enviar setlist para a Equipe`}</button>
-      <div class="section-title" style="margin-top:0;">Ordenadas por há mais tempo sem ensaiar</div>
-      ${todas.map(m => {
-        const { titulo, artista } = splitMusica(m.nome);
-        const status = m.ultimoEnsaio
-          ? `Ensaiada há ${diasDesde(m.ultimoEnsaio)}d`
-          : "Nunca ensaiada";
-        return `
-        <label class="check-row" style="justify-content:space-between;">
-          <span style="display:flex;flex-direction:column;min-width:0;">
-            <span>${escapeHtml(titulo)}</span>
-            ${artista ? `<span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${escapeHtml(artista)}</span>` : ""}
-            <span style="color:${m.ultimoEnsaio ? "var(--muted)" : "var(--rose)"};font-size:calc(11px * var(--font-scale, 1));font-weight:600;margin-top:2px;">${status}</span>
-          </span>
-          <input type="checkbox" data-action="toggle-setlist-ensaio" data-id="${m.id}" ${m.noSetlist ? "checked" : ""} />
-        </label>
       `;
       }).join("")}
     `;
@@ -2525,7 +2597,7 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function renderSetlistHoje(){
-    const setlist = getSetlist();
+    const setlist = getPlanoDoDia(new Date().toISOString().slice(0,10));
     if(setlist.length === 0) return "";
     return `
       <div class="section-title" style="margin-top:20px;">Setlist de hoje — progresso da equipe</div>
@@ -3106,9 +3178,9 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", () => {
         currentTab = "ensaio-menu";
         ensaioAtivo = true;
-        ensaioEditando = false;
+        ensaioModo = "lista";
         ensaioIndex = 0;
-        ensaioSessaoIds = new Set();
+        if(!ensaioData) ensaioData = pickDefaultEnsaioData();
         render();
       });
     });
@@ -3215,29 +3287,71 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
-    document.querySelectorAll('[data-action="abrir-editar-setlist"]').forEach(el => {
-      el.addEventListener("click", () => {
-        ensaioEditando = true;
-        render();
-      });
+    const inputEnsaioData = document.getElementById("input-ensaio-data");
+    if(inputEnsaioData) inputEnsaioData.addEventListener("change", () => {
+      ensaioData = inputEnsaioData.value;
+      render();
     });
 
-    document.querySelectorAll('[data-action="fechar-editar-setlist"]').forEach(el => {
+    document.querySelectorAll('[data-action="iniciar-ensaio-slideshow"]').forEach(el => {
       el.addEventListener("click", () => {
-        ensaioEditando = false;
+        ensaioModo = "slideshow";
         ensaioIndex = 0;
         render();
       });
     });
 
+    document.querySelectorAll('[data-action="voltar-lista-ensaio"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ensaioModo = "lista";
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="abrir-adicionar-musica-ensaio"]').forEach(el => {
+      el.addEventListener("click", () => {
+        abrindoAdicionarMusicaEnsaio = true;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="fechar-adicionar-musica-ensaio"]').forEach(el => {
+      el.addEventListener("click", () => {
+        abrindoAdicionarMusicaEnsaio = false;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="adicionar-ao-plano"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const agendaDoDia = getAgendaDoDia(ensaioData);
+        if(!agendaDoDia) return;
+        await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayUnion(el.dataset.id) });
+      });
+    });
+
+    document.querySelectorAll('[data-action="remover-do-plano"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const agendaDoDia = getAgendaDoDia(ensaioData);
+        if(!agendaDoDia) return;
+        await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayRemove(el.dataset.id) });
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-ensaiada"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        await toggleEnsaiada(ensaioData, el.dataset.id);
+      });
+    });
+
     const btnEnviarSetlist = document.getElementById("btn-enviar-setlist");
     if(btnEnviarSetlist) btnEnviarSetlist.addEventListener("click", async () => {
-      const musicaIds = getSetlist().map(m => m.id);
+      const musicaIds = getPlanoDoDia(ensaioData).map(m => m.id);
       if(musicaIds.length === 0) return;
       enviandoSetlist = true;
       render();
       try{
-        await setDoc(setlistEquipeDocRef, { musicaIds, enviadoEm: Date.now() });
+        await setDoc(setlistEquipeDocRef, { musicaIds, data: ensaioData, ensaiadas: getEnsaiadasDoDia(ensaioData), enviadoEm: Date.now() });
         showToast("Setlist enviado para a equipe!");
       }catch(err){
         console.error(err);
@@ -3476,41 +3590,12 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
-    document.querySelectorAll('[data-action="toggle-setlist-ensaio"]').forEach(el => {
-      el.addEventListener("change", async () => {
-        const item = data.musicas.find(m => m.id === el.dataset.id);
-        if(!item) return;
-        item.noSetlist = el.checked;
-        render();
-        await updateDoc(doc(musicasCol, item.id), { noSetlist: el.checked });
-      });
-    });
-
-    document.querySelectorAll('[data-action="ensaio-remover"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const item = data.musicas.find(m => m.id === el.dataset.id);
-        if(!item) return;
-        item.noSetlist = false;
-        render();
-        await updateDoc(doc(musicasCol, item.id), { noSetlist: false });
-      });
-    });
-
     document.querySelectorAll('[data-action="sair-ensaio"]').forEach(el => {
-      el.addEventListener("click", async () => {
+      el.addEventListener("click", () => {
         if(historicoAtivo){ historicoAtivo = false; render(); return; }
         ensaioAtivo = false;
-        ensaioEditando = false;
-        if(ensaioSessaoIds.size > 0){
-          const hoje = new Date().toISOString().slice(0,10);
-          const idsVisitados = [...ensaioSessaoIds];
-          const existente = data.historico.find(h => h.data === hoje);
-          const musicaIds = [...new Set([...(existente?.musicaIds || []), ...idsVisitados])];
-          await setDoc(doc(historicoCol, hoje), { data: hoje, musicaIds }, { merge: true });
-          await Promise.all(idsVisitados.map(id => updateDoc(doc(musicasCol, id), { ultimoEnsaio: hoje })));
-          showToast("Ensaio registrado no histórico");
-        }
-        ensaioSessaoIds = new Set();
+        ensaioModo = "lista";
+        abrindoAdicionarMusicaEnsaio = false;
         render();
       });
     });
@@ -3881,16 +3966,6 @@ const functionsApp = getFunctions(firebaseApp);
         if(editingMusicaNomeId === inputEditMusicaNome.dataset.id) salvarMusicaNome(inputEditMusicaNome.dataset.id, inputEditMusicaNome);
       });
     }
-
-    document.querySelectorAll('[data-action="toggle-setlist-musica"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const item = data.musicas.find(m => m.id === el.dataset.id);
-        if(!item) return;
-        const noSetlist = !item.noSetlist;
-        await updateDoc(doc(musicasCol, item.id), { noSetlist });
-        showToast(noSetlist ? "Adicionada ao setlist" : "Removida do setlist");
-      });
-    });
 
     document.querySelectorAll('[data-action="toggle-pronta-musica"]').forEach(el => {
       el.addEventListener("click", async () => {
