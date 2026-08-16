@@ -1735,6 +1735,11 @@ const functionsApp = getFunctions(firebaseApp);
         <input type="date" id="input-fin-data" required value="${new Date().toISOString().slice(0,10)}" style="flex:1 1 140px;" />
         <button type="submit" class="btn-add" style="font-size:calc(24px * var(--font-scale, 1));">+</button>
       </form>
+      ${data.configFinanceiro?.valorCamisa > 0 ? `
+        <button type="button" class="link-btn" style="padding:0 0 16px;font-size:calc(13px * var(--font-scale, 1));" data-action="preencher-despesa-camisas">
+          <span class="ico">${ICONS.camisa}</span>Preencher despesa com camisas (${data.integrantes.length} × ${formatMoeda(data.configFinanceiro.valorCamisa)})
+        </button>
+      ` : ""}
     `;
 
     if(transacoes.length === 0){
@@ -2729,6 +2734,18 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("click", () => {
         finTipoForm = el.dataset.tipo;
         render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="preencher-despesa-camisas"]').forEach(el => {
+      el.addEventListener("click", () => {
+        finTipoForm = "despesa";
+        render();
+        const valor = data.integrantes.length * (data.configFinanceiro?.valorCamisa || 0);
+        const descInput = document.getElementById("input-fin-descricao");
+        const valorInput = document.getElementById("input-fin-valor");
+        if(descInput) descInput.value = "Camisas da equipe";
+        if(valorInput) valorInput.value = valor.toFixed(2);
       });
     });
 
