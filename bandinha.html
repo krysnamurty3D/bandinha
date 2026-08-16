@@ -1006,7 +1006,6 @@ const functionsApp = getFunctions(firebaseApp);
   let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
-  let finSubTab = "caixa";
   let editandoValoresFinanceiro = false;
   let currentUser = null;
   let authReady = false;
@@ -1697,13 +1696,7 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function renderFinanceiro(){
-    let html = `
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button type="button" class="pay-toggle ${finSubTab === "caixa" ? "paid" : ""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="fin-subtab" data-sub="caixa">Caixa</button>
-        <button type="button" class="pay-toggle ${finSubTab === "pagamentos" ? "paid" : ""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="fin-subtab" data-sub="pagamentos">Pagamentos</button>
-      </div>
-    `;
-    return html + (finSubTab === "caixa" ? renderFinanceiroCaixa() : renderFinanceiroPagamentos());
+    return renderFinanceiroCaixa();
   }
 
   function renderFinanceiroCaixa(){
@@ -1842,104 +1835,6 @@ const functionsApp = getFunctions(firebaseApp);
       `;
       }).join("");
     }
-    return html;
-  }
-
-  function renderFinanceiroPagamentos(){
-    const total = data.integrantes.length;
-    const cf = data.configFinanceiro || { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 };
-
-    let valoresHtml = "";
-    if(editandoValoresFinanceiro){
-      valoresHtml = `
-        <div class="card" style="margin-bottom:16px;">
-          <label class="stepper-label">Valores desta rodada</label>
-          <div style="color:var(--muted);font-size:calc(15.5px * var(--font-scale, 1));margin:6px 0 2px;">A inscrição não entra no financeiro da equipe — é paga direto no encontro. O badge de inscrição serve só de controle.</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(17px * var(--font-scale, 1));">Camisa
-              <input type="number" id="input-valor-camisa" step="0.01" min="0" value="${cf.valorCamisa || 0}" style="width:110px;" />
-            </label>
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:calc(17px * var(--font-scale, 1));">Taxa da Equipe
-              <input type="number" id="input-valor-taxa" step="0.01" min="0" value="${cf.valorTaxa || 0}" style="width:110px;" />
-            </label>
-          </div>
-          <button type="button" id="btn-salvar-valores-financeiro" class="btn-import" style="margin-top:12px;font-size:calc(18px * var(--font-scale, 1));">Salvar valores</button>
-        </div>
-      `;
-    } else {
-      valoresHtml = `
-        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <div style="font-size:calc(16px * var(--font-scale, 1));color:var(--muted);">
-            Camisa <strong style="color:var(--cream);">${formatMoeda(cf.valorCamisa)}</strong> ·
-            Taxa <strong style="color:var(--cream);">${formatMoeda(cf.valorTaxa)}</strong>
-          </div>
-          <button type="button" class="link-btn" style="padding:0;font-size:calc(17px * var(--font-scale, 1));" data-action="editar-valores-financeiro">Editar valores</button>
-        </div>
-      `;
-    }
-
-    if(total === 0){
-      return valoresHtml + `<div class="empty" style="font-size:calc(18px * var(--font-scale, 1));"><div class="note-dot"></div><br>Cadastre integrantes primeiro pra acompanhar os pagamentos aqui.</div>`;
-    }
-    const totalInscricao = data.integrantes.filter(i => i.inscricao).length;
-    const totalCamisa = data.integrantes.filter(i => i.pagamentoCamisa).length;
-    const totalTaxa = data.integrantes.filter(i => i.taxaEquipe).length;
-    const pago = totalCamisa + totalTaxa;
-    const pct = Math.round(pago / (total * 2) * 100);
-    const arrecadado = totalCamisa * (cf.valorCamisa||0) + totalTaxa * (cf.valorTaxa||0);
-    const esperado = total * ((cf.valorCamisa||0) + (cf.valorTaxa||0));
-    const pendentes = data.integrantes.filter(i => !i.pagamentoCamisa || !i.taxaEquipe)
-      .sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
-    const emDia = data.integrantes.filter(i => i.pagamentoCamisa && i.taxaEquipe)
-      .sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
-
-    let html = valoresHtml + `
-      ${esperado > 0 ? `
-        <div class="stat-row">
-          <div class="stat"><div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(arrecadado)}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Arrecadado</div></div>
-          <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(esperado)}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Esperado</div></div>
-        </div>
-      ` : ""}
-      <div style="display:flex;justify-content:space-between;font-size:calc(16px * var(--font-scale, 1));color:var(--muted);margin-bottom:6px;">
-        <span>Pagamentos em dia</span><span style="color:var(--cream);font-weight:700;">${pct}%</span>
-      </div>
-      <div style="height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-bottom:16px;">
-        <div style="height:100%;border-radius:4px;background:var(--green);width:${pct}%;"></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${totalInscricao}/${total}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Inscrição</div></div>
-        <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${totalCamisa}/${total}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Camisa</div></div>
-        <div class="stat"><div class="num" style="font-size:calc(26px * var(--font-scale, 1));">${totalTaxa}/${total}</div><div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Taxa</div></div>
-      </div>
-    `;
-
-    if(pendentes.length > 0){
-      html += `<div class="section-title" style="margin-top:0;font-size:calc(24px * var(--font-scale, 1));">Pendentes (${pendentes.length})</div>`;
-      html += pendentes.map(i => `
-        <div class="card" style="padding:12px 14px;">
-          <div style="font-weight:600;font-size:calc(19px * var(--font-scale, 1));margin-bottom:8px;">${escapeHtml(i.nome)}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            <button class="pay-toggle ${i.inscricao?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
-            <button class="pay-toggle ${i.pagamentoCamisa?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-camisa-pag" data-id="${i.id}">Camisa ${i.pagamentoCamisa ? "✓" : ""}</button>
-            <button class="pay-toggle ${i.taxaEquipe?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-taxa" data-id="${i.id}">Taxa da Equipe ${i.taxaEquipe ? "✓" : ""}</button>
-          </div>
-        </div>
-      `).join("");
-    }
-
-    if(emDia.length > 0){
-      html += `<div class="section-title" style="font-size:calc(24px * var(--font-scale, 1));">Em dia (${emDia.length})</div>`;
-      html += emDia.map(i => `
-        <div class="card" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-          <span style="font-weight:600;font-size:calc(19px * var(--font-scale, 1));">${escapeHtml(i.nome)}</span>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <button class="pay-toggle ${i.inscricao?"paid":""}" style="font-size:calc(16.5px * var(--font-scale, 1));" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
-            <span style="color:var(--green);font-size:calc(16px * var(--font-scale, 1));font-weight:600;white-space:nowrap;">✓ Tudo pago</span>
-          </div>
-        </div>
-      `).join("");
-    }
-
     return html;
   }
 
@@ -2788,14 +2683,6 @@ const functionsApp = getFunctions(firebaseApp);
       const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false, confirmado: false };
       instrumentalCheck.checked = false;
       await setDoc(doc(integrantesCol, novoInt.id), novoInt); showToast("Integrante adicionado");
-    });
-
-    document.querySelectorAll('[data-action="fin-subtab"]').forEach(el => {
-      el.addEventListener("click", () => {
-        finSubTab = el.dataset.sub;
-        editingFinanceiroId = null;
-        render();
-      });
     });
 
     document.querySelectorAll('[data-action="fin-tipo-form"]').forEach(el => {
@@ -3652,15 +3539,15 @@ const functionsApp = getFunctions(firebaseApp);
           <td>${i.instrumental ? "Sim" : "—"}</td>
           <td>${i.camisa || "—"}</td>
           <td>${i.inscricao ? "Pago" : "Em aberto"}</td>
-          <td>${i.pagamentoCamisa ? "Pago" : "Em aberto"}</td>
           <td>${i.taxaEquipe ? "Pago" : "Em aberto"}</td>
+          <td>${i.oferta > 0 ? formatMoeda(i.oferta) : "—"}</td>
         </tr>
       `).join("");
       document.getElementById("print-report").innerHTML = `
         <h1>Relatório de Integrantes — ${escapeHtml(data.config.titulo || "Bandinha")}</h1>
         <div class="print-meta">Gerado em ${new Date().toLocaleDateString("pt-BR")} · ${data.integrantes.length} integrantes</div>
         <table>
-          <thead><tr><th>Nome</th><th>Sexo</th><th>Instrumental</th><th>Camisa</th><th>Inscrição</th><th>Pag. Camisa</th><th>Taxa Equipe</th></tr></thead>
+          <thead><tr><th>Nome</th><th>Sexo</th><th>Instrumental</th><th>Camisa</th><th>Inscrição</th><th>Taxa Equipe</th><th>Oferta</th></tr></thead>
           <tbody>${linhas}</tbody>
         </table>
       `;
@@ -3758,14 +3645,6 @@ const functionsApp = getFunctions(firebaseApp);
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
         await updateDoc(doc(integrantesCol, item.id), { inscricao: !item.inscricao });
-      });
-    });
-
-    document.querySelectorAll('[data-action="toggle-camisa-pag"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const item = data.integrantes.find(i => i.id === el.dataset.id);
-        if(!item) return;
-        await updateDoc(doc(integrantesCol, item.id), { pagamentoCamisa: !item.pagamentoCamisa });
       });
     });
 
