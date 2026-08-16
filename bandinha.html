@@ -2175,6 +2175,8 @@ const functionsApp = getFunctions(firebaseApp);
     const futura = ordenada.find(a => a.data >= hojeIso);
     if(futura) return futura.data;
     if(ordenada.length > 0) return ordenada[ordenada.length - 1].data;
+    const historicoOrdenado = [...data.historico].sort((a,b) => a.data.localeCompare(b.data));
+    if(historicoOrdenado.length > 0) return historicoOrdenado[historicoOrdenado.length - 1].data;
     return hojeIso;
   }
 
@@ -2182,9 +2184,21 @@ const functionsApp = getFunctions(firebaseApp);
     return data.agenda.find(a => a.data === dataIso) || null;
   }
 
+  function datasEnsaioDisponiveis(){
+    const agendaDatas = agendaOrdenada().map(a => a.data);
+    const historicoDatas = [...data.historico].map(s => s.data).filter(d => !agendaDatas.includes(d));
+    return [...agendaDatas, ...historicoDatas].sort();
+  }
+
   function getPlanoDoDia(dataIso){
     const a = getAgendaDoDia(dataIso);
-    const ids = a?.musicaIds || [];
+    let ids;
+    if(a){
+      ids = a.musicaIds || [];
+    } else {
+      const sessao = data.historico.find(s => s.data === dataIso);
+      ids = sessao?.musicaIds || [];
+    }
     return ids.map(id => data.musicas.find(m => m.id === id)).filter(Boolean);
   }
 
@@ -2214,13 +2228,22 @@ const functionsApp = getFunctions(firebaseApp);
   }
 
   function renderEnsaioLista(){
-    if(agendaOrdenada().length === 0){
+    const datasDisponiveis = datasEnsaioDisponiveis();
+    const formDataRetroativa = `
+      <form class="inline-add" id="form-data-retroativa" style="margin-bottom:14px;">
+        <input type="date" id="input-data-retroativa" required max="${new Date().toISOString().slice(0,10)}" style="flex:1;" />
+        <button type="submit" class="btn-add">+</button>
+      </form>
+      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:-6px 0 14px;">Adicionar data de um ensaio anterior (ex: já ensaiado antes desse app)</div>
+    `;
+    if(datasDisponiveis.length === 0){
       return `
         <div class="ensaio-top">
           <span class="ensaio-progress">Ensaio</span>
           <button type="button" class="del-x" data-action="sair-ensaio">✕</button>
         </div>
-        <div class="empty"><div class="note-dot"></div><br>Cadastre uma data na Agenda primeiro pra montar o setlist do ensaio.</div>
+        <div class="empty"><div class="note-dot"></div><br>Cadastre uma data na Agenda, ou adicione uma data retroativa abaixo, pra montar o setlist do ensaio.</div>
+        ${formDataRetroativa}
       `;
     }
     const plano = getPlanoDoDia(ensaioData);
@@ -2228,7 +2251,8 @@ const functionsApp = getFunctions(firebaseApp);
     const [y, m, d] = ensaioData.split("-");
     const weekday = AGENDA_DIAS_SEMANA[new Date(ensaioData + "T00:00:00").getDay()];
     const agendaDoDia = getAgendaDoDia(ensaioData);
-    const disponiveis = [...data.musicas].filter(mm => mm.visivel !== false && !(agendaDoDia?.musicaIds || []).includes(mm.id))
+    const idsAtuais = agendaDoDia ? (agendaDoDia.musicaIds || []) : plano.map(mm => mm.id);
+    const disponiveis = [...data.musicas].filter(mm => mm.visivel !== false && !idsAtuais.includes(mm.id))
       .sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
 
     return `
@@ -2238,10 +2262,15 @@ const functionsApp = getFunctions(firebaseApp);
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
         <select id="input-ensaio-data" style="flex:1;">
-          ${agendaOrdenada().map(a => `<option value="${a.data}" ${a.data === ensaioData ? "selected" : ""}>${AGENDA_DIAS_SEMANA[new Date(a.data + "T00:00:00").getDay()]} ${a.data.split("-").reverse().join("/")}${a.titulo ? ` — ${a.titulo}` : ""}</option>`).join("")}
+          ${datasDisponiveis.map(dataIso => {
+            const a = getAgendaDoDia(dataIso);
+            const label = `${AGENDA_DIAS_SEMANA[new Date(dataIso + "T00:00:00").getDay()]} ${dataIso.split("-").reverse().join("/")}${a?.titulo ? ` — ${a.titulo}` : a ? "" : " (retroativo)"}`;
+            return `<option value="${dataIso}" ${dataIso === ensaioData ? "selected" : ""}>${label}</option>`;
+          }).join("")}
         </select>
       </div>
-      <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">${weekday}, ${d}/${m}/${y} · ${ensaiadas.length}/${plano.length} ensaiadas</div>
+      ${formDataRetroativa}
+      <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">${weekday}, ${d}/${m}/${y} · ${ensaiadas.length}/${plano.length} ensaiadas${!agendaDoDia && plano.length > 0 ? " · registro retroativo" : ""}</div>
       ${plano.length > 0 ? `
         <button type="button" class="btn-import" style="margin-bottom:12px;" data-action="iniciar-ensaio-slideshow">▶ Iniciar ensaio (letra e áudio)</button>
       ` : ""}
@@ -3325,17 +3354,39 @@ const functionsApp = getFunctions(firebaseApp);
     document.querySelectorAll('[data-action="adicionar-ao-plano"]').forEach(el => {
       el.addEventListener("click", async () => {
         const agendaDoDia = getAgendaDoDia(ensaioData);
-        if(!agendaDoDia) return;
-        await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayUnion(el.dataset.id) });
+        if(agendaDoDia){
+          await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayUnion(el.dataset.id) });
+        } else {
+          const sessao = data.historico.find(s => s.data === ensaioData);
+          await setDoc(doc(historicoCol, ensaioData), { data: ensaioData, musicaIds: arrayUnion(el.dataset.id), presentes: sessao?.presentes || [] }, { merge: true });
+        }
       });
     });
 
     document.querySelectorAll('[data-action="remover-do-plano"]').forEach(el => {
       el.addEventListener("click", async () => {
         const agendaDoDia = getAgendaDoDia(ensaioData);
-        if(!agendaDoDia) return;
-        await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayRemove(el.dataset.id) });
+        if(agendaDoDia){
+          await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayRemove(el.dataset.id) });
+        } else {
+          await updateDoc(doc(historicoCol, ensaioData), { musicaIds: arrayRemove(el.dataset.id) });
+        }
       });
+    });
+
+    const formDataRetroativa = document.getElementById("form-data-retroativa");
+    if(formDataRetroativa) formDataRetroativa.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-data-retroativa");
+      const dataIso = input.value;
+      if(!dataIso) return;
+      const existente = data.historico.find(s => s.data === dataIso);
+      if(!existente){
+        await setDoc(doc(historicoCol, dataIso), { data: dataIso, musicaIds: [], presentes: [] });
+      }
+      ensaioData = dataIso;
+      showToast("Data adicionada — marque as músicas ensaiadas");
+      render();
     });
 
     document.querySelectorAll('[data-action="toggle-ensaiada"]').forEach(el => {
