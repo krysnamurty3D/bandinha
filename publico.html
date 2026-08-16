@@ -904,6 +904,23 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     });
   }
 
+  function capturarFocoInput(){
+    const el = document.activeElement;
+    if(!el || !el.id || !["INPUT","TEXTAREA","SELECT"].includes(el.tagName)) return null;
+    return { id: el.id, value: el.value, selStart: el.selectionStart, selEnd: el.selectionEnd };
+  }
+
+  function restaurarFocoInput(state){
+    if(!state) return;
+    const el = document.getElementById(state.id);
+    if(!el) return;
+    el.value = state.value;
+    el.focus();
+    if(typeof state.selStart === "number" && el.setSelectionRange){
+      try{ el.setSelectionRange(state.selStart, state.selEnd); }catch(e){}
+    }
+  }
+
   function render(){
     const main = document.getElementById("main");
     renderBrand();
@@ -912,6 +929,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       return;
     }
     const audioState = capturarAudioTocando();
+    const focoState = capturarFocoInput();
     const scrollY = window.scrollY;
     main.innerHTML = currentTab === "home" ? renderHome()
       : currentTab === "musicas" ? renderSectionHeader(ICONS.musicas, "Músicas") + renderMusicas()
@@ -924,6 +942,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       : renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
     attachHandlers();
     restaurarAudioTocando(audioState);
+    restaurarFocoInput(focoState);
     window.scrollTo(0, scrollY);
   }
 

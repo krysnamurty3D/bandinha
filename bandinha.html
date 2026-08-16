@@ -1372,6 +1372,23 @@ const functionsApp = getFunctions(firebaseApp);
     });
   }
 
+  function capturarFocoInput(){
+    const el = document.activeElement;
+    if(!el || !el.id || !["INPUT","TEXTAREA","SELECT"].includes(el.tagName)) return null;
+    return { id: el.id, value: el.value, selStart: el.selectionStart, selEnd: el.selectionEnd };
+  }
+
+  function restaurarFocoInput(state){
+    if(!state) return;
+    const el = document.getElementById(state.id);
+    if(!el) return;
+    el.value = state.value;
+    el.focus();
+    if(typeof state.selStart === "number" && el.setSelectionRange){
+      try{ el.setSelectionRange(state.selStart, state.selEnd); }catch(e){}
+    }
+  }
+
   function render(){
     const main = document.getElementById("main");
     renderBrand();
@@ -1380,12 +1397,14 @@ const functionsApp = getFunctions(firebaseApp);
       return;
     }
     const audioState = capturarAudioTocando();
+    const focoState = capturarFocoInput();
     if(ensaioAtivo || historicoAtivo){
       document.getElementById("app").classList.add("hidden");
       document.getElementById("ensaio-overlay").classList.remove("hidden");
       document.getElementById("ensaio-overlay").innerHTML = historicoAtivo ? renderHistorico() : renderModoEnsaio();
       attachHandlers();
       restaurarAudioTocando(audioState);
+      restaurarFocoInput(focoState);
       return;
     }
     document.getElementById("ensaio-overlay").classList.add("hidden");
@@ -1408,6 +1427,7 @@ const functionsApp = getFunctions(firebaseApp);
 
     attachHandlers();
     restaurarAudioTocando(audioState);
+    restaurarFocoInput(focoState);
     window.scrollTo(0, scrollY);
   }
 
