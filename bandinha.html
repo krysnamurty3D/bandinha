@@ -394,7 +394,6 @@
     border-radius:8px;
     font-size:calc(15px * var(--font-scale, 1));
   }
-  .shirt-select{width:74px;flex-shrink:0;padding:8px 6px;font-size:calc(13px * var(--font-scale, 1));}
   .pay-toggle{
     flex-shrink:0;
     border-radius:10px;
@@ -961,7 +960,6 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 const functionsApp = getFunctions(firebaseApp);
 
 (function(){
-  const SHIRT_SIZES = ["PP","P","M","G","GG","XG"];
   const ICON_STROKE = 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
   const ICONS = {
     integrantes: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"/><circle cx="9.5" cy="8" r="3.2"/><path d="M16.5 15c1.8.3 3 1.4 3 3v2"/><path d="M14.3 5.2a3.2 3.2 0 0 1 0 5.9"/></svg>`,
@@ -1988,15 +1986,10 @@ const functionsApp = getFunctions(firebaseApp);
               ${totalSessoes > 0 ? `<span style="font-family:var(--font);color:${faltas > 0 ? "var(--rose)" : "var(--green)"};font-size:calc(14.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;">${presencas}/${totalSessoes}</span>` : ""}
             </div>
           `}
-          <select class="shirt-select" data-action="shirt" data-id="${i.id}">
-            <option value="">Cam.</option>
-            ${SHIRT_SIZES.map(s => `<option value="${s}" ${i.camisa===s?"selected":""}>${s}</option>`).join("")}
-          </select>
           ${editingNameId === i.id ? "" : `<button class="edit-x" data-action="edit-nome" data-id="${i.id}" title="Editar nome">✎</button>`}
           <button class="del-x" data-action="del-integrante" data-id="${i.id}">✕</button>
         </div>
         <div class="member-sub ${expandedMemberId === i.id ? "" : "hidden"}" style="flex-direction:column;align-items:stretch;gap:8px;">
-          <span>Camisa: ${i.camisa ? i.camisa : "não definida"}</span>
           ${totalSessoes > 0 ? `<span>Presença: ${presencas} de ${totalSessoes} ensaio${totalSessoes === 1 ? "" : "s"} (${Math.round(presencas / totalSessoes * 100)}%)</span>` : `<span style="color:var(--muted);">Nenhum ensaio com chamada registrada ainda.</span>`}
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
             <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
@@ -3751,17 +3744,20 @@ const functionsApp = getFunctions(firebaseApp);
     const btnRelatorioPdf = document.getElementById("btn-relatorio-pdf");
     if(btnRelatorioPdf) btnRelatorioPdf.addEventListener("click", () => {
       const genLabel = { M: "Homem", F: "Mulher" };
-      const linhas = [...data.integrantes].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })).map(i => `
+      const linhas = [...data.integrantes].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })).map(i => {
+        const respostaCamisa = data.camisas.find(c => c.id === slugify(i.nome));
+        return `
         <tr>
           <td>${escapeHtml(i.nome)}</td>
           <td>${genLabel[i.genero] || "—"}</td>
           <td>${i.instrumental ? "Sim" : "—"}</td>
-          <td>${i.camisa || "—"}</td>
+          <td>${respostaCamisa ? escapeHtml(respostaCamisa.tamanho) : "—"}</td>
           <td>${i.inscricao ? "Pago" : "Em aberto"}</td>
           <td>${i.taxaEquipe ? "Pago" : "Em aberto"}</td>
           <td>${i.oferta > 0 ? formatMoeda(i.oferta) : "—"}</td>
         </tr>
-      `).join("");
+      `;
+      }).join("");
       document.getElementById("print-report").innerHTML = `
         <h1>Relatório de Integrantes — ${escapeHtml(data.config.titulo || "Bandinha")}</h1>
         <div class="print-meta">Gerado em ${new Date().toLocaleDateString("pt-BR")} · ${data.integrantes.length} integrantes</div>
@@ -3808,13 +3804,6 @@ const functionsApp = getFunctions(firebaseApp);
       const adicionados = novos.length;
       const repetidos = nomes.length - adicionados;
       showToast(`${adicionados} nome${adicionados===1?"":"s"} importado${adicionados===1?"":"s"}${repetidos>0?` (${repetidos} já existia${repetidos===1?"":"m"})`:""}`);
-    });
-
-    document.querySelectorAll('[data-action="shirt"]').forEach(el => {
-      el.addEventListener("change", async () => {
-        const item = data.integrantes.find(i => i.id === el.dataset.id);
-        if(item){ await updateDoc(doc(integrantesCol, item.id), { camisa: el.value }); showToast("Tamanho salvo"); }
-      });
     });
 
     document.querySelectorAll('[data-action="toggle-membro"]').forEach(el => {
