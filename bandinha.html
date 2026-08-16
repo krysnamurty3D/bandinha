@@ -1041,6 +1041,7 @@ const functionsApp = getFunctions(firebaseApp);
   let openCoreografiaId = null;
   let editingCoreografiaId = null;
   let editingProgressoNome = null;
+  let editingOfertaId = null;
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
   let selectedProximaEtapa = null;
@@ -1988,10 +1989,15 @@ const functionsApp = getFunctions(firebaseApp);
         <div class="member-sub ${expandedMemberId === i.id ? "" : "hidden"}" style="flex-direction:column;align-items:stretch;gap:8px;">
           <span>Camisa: ${i.camisa ? i.camisa : "não definida"}</span>
           ${totalSessoes > 0 ? `<span>Presença: ${presencas} de ${totalSessoes} ensaio${totalSessoes === 1 ? "" : "s"} (${Math.round(presencas / totalSessoes * 100)}%)</span>` : `<span style="color:var(--muted);">Nenhum ensaio com chamada registrada ainda.</span>`}
-          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
             <button class="pay-toggle ${i.inscricao?"paid":""}" data-action="toggle-inscricao" data-id="${i.id}">Inscrição ${i.inscricao ? "✓" : ""}</button>
-            <button class="pay-toggle ${i.pagamentoCamisa?"paid":""}" data-action="toggle-camisa-pag" data-id="${i.id}">Camisa ${i.pagamentoCamisa ? "✓" : ""}</button>
             <button class="pay-toggle ${i.taxaEquipe?"paid":""}" data-action="toggle-taxa" data-id="${i.id}">Taxa da Equipe ${i.taxaEquipe ? "✓" : ""}</button>
+            ${editingOfertaId === i.id ? `
+              <input type="text" inputmode="decimal" class="edit-nome-input" id="input-edit-oferta" data-id="${i.id}" value="${i.oferta || ""}" placeholder="Valor da oferta" style="width:110px;flex:0 0 auto;" />
+              <button class="btn-save-nome" style="width:auto;padding:0 10px;" data-action="save-oferta" data-id="${i.id}">✓</button>
+            ` : `
+              <button class="pay-toggle ${i.oferta > 0 ? "paid" : ""}" data-action="edit-oferta" data-id="${i.id}">Oferta${i.oferta > 0 ? `: ${formatMoeda(i.oferta)}` : ""}</button>
+            `}
           </div>
           <span style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
             <label class="check-row-inline">
@@ -3713,6 +3719,27 @@ const functionsApp = getFunctions(firebaseApp);
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
         await updateDoc(doc(integrantesCol, item.id), { taxaEquipe: !item.taxaEquipe });
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-oferta"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingOfertaId = el.dataset.id;
+        render();
+        const input = document.getElementById("input-edit-oferta");
+        if(input){ input.focus(); input.select(); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-oferta"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const input = document.getElementById("input-edit-oferta");
+        if(input){
+          const valor = parseFloat(input.value.replace(",", ".")) || 0;
+          await updateDoc(doc(integrantesCol, el.dataset.id), { oferta: valor });
+        }
+        editingOfertaId = null;
+        render();
       });
     });
 
