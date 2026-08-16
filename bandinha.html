@@ -1424,8 +1424,10 @@ const functionsApp = getFunctions(firebaseApp);
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
     const totalConfirmados = data.integrantes.filter(i => i.confirmado).length;
-    const receitaTaxasHome = data.integrantes.filter(i => i.taxaEquipe).length * (data.configFinanceiro?.valorTaxa || 0);
-    const saldoFin = data.financeiro.reduce((acc,t) => acc + (t.tipo === "receita" ? (t.valor||0) : -(t.valor||0)), 0) + receitaTaxasHome;
+    const valorTaxaCompletoHome = (data.configFinanceiro?.valorTaxa || 0) + (data.configFinanceiro?.valorCamisa || 0);
+    const receitaTaxasHome = data.integrantes.filter(i => i.taxaEquipe).length * valorTaxaCompletoHome;
+    const totalOfertasHome = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
+    const saldoFin = data.financeiro.reduce((acc,t) => acc + (t.tipo === "receita" ? (t.valor||0) : -(t.valor||0)), 0) + receitaTaxasHome + totalOfertasHome;
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const hojeIso = hoje.toISOString().slice(0,10);
     const proximaAgenda = [...data.agenda].filter(a => a.data >= hojeIso).sort((a,b) => a.data.localeCompare(b.data))[0];
@@ -1713,8 +1715,10 @@ const functionsApp = getFunctions(firebaseApp);
     const totalIntegrantes = data.integrantes.length;
     const despesaPorPessoa = totalIntegrantes > 0 ? totalDespesas / totalIntegrantes : null;
     const totalTaxaPaga = data.integrantes.filter(i => i.taxaEquipe).length;
-    const receitaTaxas = totalTaxaPaga * (data.configFinanceiro?.valorTaxa || 0);
-    const totalReceitas = totalReceitasLancadas + receitaTaxas;
+    const valorTaxaCompleto = (data.configFinanceiro?.valorTaxa || 0) + (data.configFinanceiro?.valorCamisa || 0);
+    const receitaTaxas = totalTaxaPaga * valorTaxaCompleto;
+    const totalOfertas = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
+    const totalReceitas = totalReceitasLancadas + receitaTaxas + totalOfertas;
     const saldo = totalReceitas - totalDespesas;
 
     let html = `
@@ -1722,7 +1726,7 @@ const functionsApp = getFunctions(firebaseApp);
         <div class="stat">
           <div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalReceitas)}</div>
           <div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Receitas</div>
-          ${receitaTaxas > 0 ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Inclui ${formatMoeda(receitaTaxas)} de taxas (${totalTaxaPaga})</div>` : ""}
+          ${(receitaTaxas > 0 || totalOfertas > 0) ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Inclui ${formatMoeda(receitaTaxas)} de taxas${totalOfertas > 0 ? ` + ${formatMoeda(totalOfertas)} de ofertas` : ""}</div>` : ""}
         </div>
         <div class="stat">
           <div class="num" style="color:var(--rose);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalDespesas)}</div>
@@ -1734,13 +1738,18 @@ const functionsApp = getFunctions(firebaseApp);
         <div style="font-size:calc(15px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Saldo atual</div>
         <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
       </div>
-      ${data.configFinanceiro?.valorTaxa > 0 ? `
+      ${valorTaxaCompleto > 0 ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Receita da Taxa da Equipe</div>
           <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaTaxas)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(data.configFinanceiro.valorTaxa)} — contabiliza sozinho conforme você marca em Pagamentos</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(valorTaxaCompleto)} (taxa ${formatMoeda(data.configFinanceiro.valorTaxa)} + camisa ${formatMoeda(data.configFinanceiro.valorCamisa)}) — contabiliza sozinho conforme você marca em Pagamentos</div>
         </div>
       ` : ""}
+      <div class="card" style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Ofertas recebidas</div>
+        <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(totalOfertas)}</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${data.integrantes.filter(i => i.oferta > 0).length} pessoa${data.integrantes.filter(i => i.oferta > 0).length === 1 ? "" : "s"} deram oferta — some sozinho conforme você registra em Integrantes</div>
+      </div>
       ${data.configFinanceiro?.valorCamisa > 0 ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;"><span class="ico">${ICONS.camisa}</span>Despesa com camisas (estimativa)</div>
