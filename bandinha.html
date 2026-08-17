@@ -1164,34 +1164,41 @@ const functionsApp = getFunctions(firebaseApp);
     render();
   }
 
+  function renderSeRelevante(tabs){
+    if(!loaded){ safeRender(); return; }
+    if(ensaioAtivo || historicoAtivo || currentTab === "home" || tabs.includes(currentTab)){
+      safeRender();
+    }
+  }
+
   function load(){
     onSnapshot(integrantesCol, snap => {
       data.integrantes = snap.docs.map(d => d.data());
       markLoaded("integrantes");
-      safeRender();
+      renderSeRelevante(["integrantes", "financeiro", "camisas"]);
     }, e => { console.error("Erro ao sincronizar integrantes:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(financeiroCol, snap => {
       data.financeiro = snap.docs.map(d => d.data());
-      safeRender();
+      renderSeRelevante(["financeiro"]);
     }, e => console.error("Erro ao sincronizar financeiro:", e));
 
     onSnapshot(musicasCol, snap => {
       data.musicas = snap.docs.map(d => d.data());
       markLoaded("musicas");
-      safeRender();
+      renderSeRelevante(["musicas", "agenda", "ensaio-menu"]);
     }, e => { console.error("Erro ao sincronizar músicas:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(roteirosCol, snap => {
       data.roteiros = snap.docs.map(d => d.data());
       markLoaded("roteiros");
-      safeRender();
+      renderSeRelevante(["roteiros"]);
     }, e => { console.error("Erro ao sincronizar roteiros:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(coreografiasCol, snap => {
       data.coreografias = snap.docs.map(d => d.data());
       markLoaded("coreografias");
-      safeRender();
+      renderSeRelevante(["coreografias"]);
     }, e => { console.error("Erro ao sincronizar coreografias:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(configDocRef, snap => {
@@ -1202,86 +1209,86 @@ const functionsApp = getFunctions(firebaseApp);
 
     onSnapshot(configFinanceiroDocRef, snap => {
       data.configFinanceiro = snap.data() || { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 };
-      safeRender();
+      renderSeRelevante(["financeiro"]);
     }, e => console.error("Erro ao sincronizar valores financeiros:", e));
 
     onSnapshot(temporadasCol, snap => {
       data.temporadas = snap.docs.map(d => d.data());
-      safeRender();
+      renderSeRelevante(["temporadas"]);
     }, e => console.error("Erro ao sincronizar temporadas:", e));
 
     onSnapshot(temporadaAtivaDocRef, snap => {
       data.temporadaAtiva = snap.data() || null;
-      safeRender();
+      renderSeRelevante(["temporadas"]);
     }, e => console.error("Erro ao sincronizar temporada ativa:", e));
 
     onSnapshot(devocionaisCol, snap => {
       data.devocionais = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      safeRender();
+      renderSeRelevante(["devocionais"]);
     }, e => console.error("Erro ao sincronizar devocionais:", e));
 
     onSnapshot(camisasCol, snap => {
       data.camisas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      safeRender();
+      renderSeRelevante(["camisas"]);
     }, e => console.error("Erro ao sincronizar camisas:", e));
 
     onSnapshot(configCamisasDocRef, snap => {
       data.configCamisas = snap.data() || { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] };
-      safeRender();
+      renderSeRelevante(["camisas"]);
     }, e => console.error("Erro ao sincronizar config de camisas:", e));
 
     onSnapshot(configNotificacoesDocRef, snap => {
       data.configNotificacoes = { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true, ...(snap.data() || {}) };
-      safeRender();
+      renderSeRelevante(["notificacoes"]);
     }, e => console.error("Erro ao sincronizar config de notificações:", e));
 
     onSnapshot(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       markLoaded("progresso");
-      safeRender();
+      renderSeRelevante(["progresso", "aovivo"]);
     }, e => { console.error("Erro ao sincronizar progresso:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(visualizacoesCol, snap => {
       data.visualizacoes = snap.docs.map(d => d.data());
       markLoaded("visualizacoes");
-      safeRender();
+      renderSeRelevante(["musicas", "coreografias"]);
     }, e => { console.error("Erro ao sincronizar visualizações:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(agendaCol, snap => {
       data.agenda = snap.docs.map(d => d.data());
       markLoaded("agenda");
-      safeRender();
+      renderSeRelevante(["agenda", "ensaio-menu"]);
     }, e => { console.error("Erro ao sincronizar agenda:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(historicoCol, snap => {
       data.historico = snap.docs.map(d => d.data());
       markLoaded("historico");
-      safeRender();
+      renderSeRelevante(["integrantes", "ensaio-menu"]);
     }, e => { console.error("Erro ao sincronizar histórico:", e); showToast("Erro ao sincronizar"); });
 
     onSnapshot(locaisCol, snap => {
       data.locais = snap.docs.map(d => d.data());
       markLoaded("locais");
-      safeRender();
+      renderSeRelevante(["aovivo"]);
     }, e => {
       console.error("Erro ao sincronizar locais:", e);
       markLoaded("locais");
-      safeRender();
+      renderSeRelevante(["aovivo"]);
     });
 
     onSnapshot(aoVivoDocRef, snap => {
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
-      safeRender();
+      renderSeRelevante(["aovivo"]);
     }, e => {
       console.error("Erro ao sincronizar ao vivo:", e);
       markLoaded("aoVivo");
-      safeRender();
+      renderSeRelevante(["aovivo"]);
     });
 
     onSnapshot(query(avisosHistoricoCol, orderBy("disparadoEm", "desc"), limit(10)), snap => {
       data.avisosHistorico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      safeRender();
+      renderSeRelevante(["aovivo"]);
     }, e => console.error("Erro ao sincronizar histórico de avisos:", e));
   }
 
