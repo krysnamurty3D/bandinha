@@ -1653,6 +1653,13 @@ const functionsApp = getFunctions(firebaseApp);
         `).join("")}
       </div>
 
+      ${data.camisas.length > 0 ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button type="button" class="link-btn" style="padding:0;color:#25D366;display:flex;align-items:center;gap:5px;" data-action="compartilhar-camisas-compacto"><span class="ico" style="margin:0;">${ICONS.whatsapp}</span>Relatório compacto</button>
+          <button type="button" class="link-btn" style="padding:0;color:#25D366;display:flex;align-items:center;gap:5px;" data-action="compartilhar-camisas-detalhado"><span class="ico" style="margin:0;">${ICONS.whatsapp}</span>Relatório detalhado</button>
+        </div>
+      ` : ""}
+
       <div class="section-title" style="display:flex;align-items:center;gap:8px;">
         <span>Respostas (${filtroTamanhoCamisa ? contagem[filtroTamanhoCamisa] || 0 : data.camisas.length})${filtroTamanhoCamisa ? ` — ${escapeHtml(filtroTamanhoCamisa)}` : ""}</span>
         ${filtroTamanhoCamisa ? `<button type="button" class="link-btn" style="padding:0;font-size:calc(12px * var(--font-scale, 1));" data-action="limpar-filtro-tamanho-camisa">limpar filtro</button>` : ""}
@@ -2628,6 +2635,29 @@ const functionsApp = getFunctions(firebaseApp);
     return texto;
   }
 
+  function montarTextoCamisasCompacto(){
+    const cfg = data.configCamisas;
+    const contagem = {};
+    (cfg.tamanhos || []).forEach(t => contagem[t] = 0);
+    data.camisas.forEach(c => { contagem[c.tamanho] = (contagem[c.tamanho] || 0) + 1; });
+    let texto = `👕 *Camisas — Resumo por tamanho*\n\n`;
+    texto += (cfg.tamanhos || []).map(t => `${t}: ${contagem[t] || 0}`).join("\n");
+    texto += `\n\nTotal: ${data.camisas.length}`;
+    return texto;
+  }
+
+  function montarTextoCamisasDetalhado(){
+    const cfg = data.configCamisas;
+    let texto = `👕 *Camisas — Lista detalhada*\n`;
+    (cfg.tamanhos || []).forEach(t => {
+      const pessoas = data.camisas.filter(c => c.tamanho === t).sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR", { sensitivity: "base" }));
+      if(pessoas.length === 0) return;
+      texto += `\n*${t}* (${pessoas.length})\n${pessoas.map(c => `- ${c.nome}`).join("\n")}\n`;
+    });
+    texto += `\nTotal: ${data.camisas.length}`;
+    return texto;
+  }
+
   function renderRingTimer(restanteSeg, totalSeg){
     const r = 54;
     const c = 2 * Math.PI * r;
@@ -3204,6 +3234,18 @@ const functionsApp = getFunctions(firebaseApp);
         if(!evento) return;
         const texto = montarTextoAgendaWhatsapp(evento);
         window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+      });
+    });
+
+    document.querySelectorAll('[data-action="compartilhar-camisas-compacto"]').forEach(el => {
+      el.addEventListener("click", () => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(montarTextoCamisasCompacto())}`, "_blank");
+      });
+    });
+
+    document.querySelectorAll('[data-action="compartilhar-camisas-detalhado"]').forEach(el => {
+      el.addEventListener("click", () => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(montarTextoCamisasDetalhado())}`, "_blank");
       });
     });
 
