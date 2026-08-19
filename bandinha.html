@@ -1497,6 +1497,7 @@ const functionsApp = getFunctions(firebaseApp);
           </button>
         `).join("")}
       </div>
+      <button type="button" id="btn-exportar-dados" class="link-btn" style="margin-top:16px;"><span class="ico">${ICONS.cloud}</span>Exportar todos os dados (backup)</button>
     `;
   }
 
@@ -3834,6 +3835,38 @@ const functionsApp = getFunctions(firebaseApp);
         ensaioIndex = ensaioIndex + 1;
         render();
       });
+    });
+
+    const btnExportarDados = document.getElementById("btn-exportar-dados");
+    if(btnExportarDados) btnExportarDados.addEventListener("click", () => {
+      const exportado = {
+        exportadoEm: new Date().toISOString(),
+        integrantes: data.integrantes,
+        musicas: data.musicas,
+        roteiros: data.roteiros,
+        coreografias: data.coreografias,
+        agenda: data.agenda,
+        locais: data.locais,
+        historico: data.historico,
+        financeiro: data.financeiro,
+        temporadas: data.temporadas,
+        temporadaAtiva: data.temporadaAtiva,
+        devocionais: data.devocionais,
+        camisas: data.camisas,
+        configFinanceiro: data.configFinanceiro,
+        configCamisas: data.configCamisas,
+        config: data.config
+      };
+      const blob = new Blob([JSON.stringify(exportado, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bandinha-backup-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("Backup baixado");
     });
 
     const btnRelatorioPdf = document.getElementById("btn-relatorio-pdf");
