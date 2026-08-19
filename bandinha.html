@@ -1032,6 +1032,8 @@ const functionsApp = getFunctions(firebaseApp);
   let editingDevocionalId = null;
   let abrindoNovoDevocional = false;
   let editandoTamanhosCamisas = false;
+  let ofertasExpandido = false;
+  let filtroTaxaIntegrantes = null;
   let editingRespostaCamisaId = null;
   let filtroTamanhoCamisa = null;
   let editingFinanceiroId = null;
@@ -1840,10 +1842,20 @@ const functionsApp = getFunctions(firebaseApp);
           <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(valorTaxaCompleto)} (taxa ${formatMoeda(data.configFinanceiro.valorTaxa)} + camisa ${formatMoeda(data.configFinanceiro.valorCamisa)}) — contabiliza sozinho conforme você marca em Pagamentos</div>
         </div>
       ` : ""}
-      <div class="card" style="text-align:center;margin-bottom:16px;">
+      <div class="card" style="text-align:center;margin-bottom:16px;cursor:pointer;" data-action="toggle-ofertas-expandido">
         <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Ofertas recebidas</div>
         <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(totalOfertas)}</div>
-        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${data.integrantes.filter(i => i.oferta > 0).length} pessoa${data.integrantes.filter(i => i.oferta > 0).length === 1 ? "" : "s"} deram oferta — some sozinho conforme você registra em Integrantes</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${data.integrantes.filter(i => i.oferta > 0).length} pessoa${data.integrantes.filter(i => i.oferta > 0).length === 1 ? "" : "s"} deram oferta — toque para ${ofertasExpandido ? "recolher" : "ver quem"}</div>
+        ${ofertasExpandido ? `
+          <div style="text-align:left;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+            ${[...data.integrantes].filter(i => i.oferta > 0).sort((a,b) => b.oferta - a.oferta).map(i => `
+              <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:calc(14px * var(--font-scale, 1));">
+                <span>${escapeHtml(i.nome)}</span>
+                <span style="color:var(--green);font-weight:600;">${formatMoeda(i.oferta)}</span>
+              </div>
+            `).join("") || `<span style="color:var(--muted);">Ninguém deu oferta ainda.</span>`}
+          </div>
+        ` : ""}
       </div>
       ${data.configFinanceiro?.valorCamisa > 0 ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
@@ -1958,16 +1970,36 @@ const functionsApp = getFunctions(firebaseApp);
     if(total === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhum integrante ainda.<br>Adicione o primeiro nome acima.</div>`;
     } else {
+      const totalTaxaPaga = data.integrantes.filter(i => i.taxaEquipe).length;
+      html += `
+        <div class="section-title" style="margin-top:0;display:flex;align-items:center;gap:8px;">
+          <span>Filtrar por Taxa da Equipe</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button type="button" class="pay-toggle ${!filtroTaxaIntegrantes ? "paid" : ""}" data-action="filtrar-taxa-integrantes" data-valor="">Todos (${total})</button>
+          <button type="button" class="pay-toggle ${filtroTaxaIntegrantes === "pago" ? "paid" : ""}" data-action="filtrar-taxa-integrantes" data-valor="pago">Pagou (${totalTaxaPaga})</button>
+          <button type="button" class="pay-toggle ${filtroTaxaIntegrantes === "pendente" ? "paid" : ""}" data-action="filtrar-taxa-integrantes" data-valor="pendente">Não pagou (${total - totalTaxaPaga})</button>
+        </div>
+      `;
       const porNome = (a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
-      const homens = data.integrantes.filter(i => i.genero === "M").sort(porNome);
-      const mulheres = data.integrantes.filter(i => i.genero === "F").sort(porNome);
-      const semGenero = data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F").sort(porNome);
-      const instrumental = data.integrantes.filter(i => i.instrumental).sort(porNome);
+      const filtrados = data.integrantes.filter(i => {
+        if(filtroTaxaIntegrantes === "pago") return !!i.taxaEquipe;
+        if(filtroTaxaIntegrantes === "pendente") return !i.taxaEquipe;
+        return true;
+      });
+      const homens = filtrados.filter(i => i.genero === "M").sort(porNome);
+      const mulheres = filtrados.filter(i => i.genero === "F").sort(porNome);
+      const semGenero = filtrados.filter(i => i.genero !== "M" && i.genero !== "F").sort(porNome);
+      const instrumental = filtrados.filter(i => i.instrumental).sort(porNome);
 
-      html += renderGroup("homens", "Homens", homens, "var(--blue)");
-      html += renderGroup("mulheres", "Mulheres", mulheres, "var(--rose)");
-      if(semGenero.length > 0) html += renderGroup("semGenero", "Sem sexo definido", semGenero, "var(--muted)");
-      html += renderGroup("instrumental", "Instrumental", instrumental, "var(--gold)");
+      if(filtrados.length === 0){
+        html += `<div class="empty"><div class="note-dot"></div><br>Ninguém nesse filtro.</div>`;
+      } else {
+        html += renderGroup("homens", "Homens", homens, "var(--blue)");
+        html += renderGroup("mulheres", "Mulheres", mulheres, "var(--rose)");
+        if(semGenero.length > 0) html += renderGroup("semGenero", "Sem sexo definido", semGenero, "var(--muted)");
+        html += renderGroup("instrumental", "Instrumental", instrumental, "var(--gold)");
+      }
     }
     return html;
   }
@@ -3683,6 +3715,20 @@ const functionsApp = getFunctions(firebaseApp);
           console.error(err);
           showToast("Erro ao atualizar campanha");
         }
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="filtrar-taxa-integrantes"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroTaxaIntegrantes = el.dataset.valor || null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-ofertas-expandido"]').forEach(el => {
+      el.addEventListener("click", () => {
+        ofertasExpandido = !ofertasExpandido;
         render();
       });
     });
