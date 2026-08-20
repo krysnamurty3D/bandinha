@@ -1698,11 +1698,18 @@ const functionsApp = getFunctions(firebaseApp);
 
       <div class="section-title">Contagem por tamanho</div>
       <div class="stat-row" style="flex-wrap:wrap;">
-        ${(cfg.tamanhos || []).map(t => `
+        ${(() => {
+          const maxContagem = Math.max(1, ...(cfg.tamanhos || []).map(t => contagem[t] || 0));
+          return (cfg.tamanhos || []).map(t => {
+            const n = contagem[t] || 0;
+            const proporcao = n / maxContagem;
+            const corNum = n === 0 ? "var(--muted)" : proporcao > 0.66 ? "var(--green)" : proporcao > 0.33 ? "var(--gold)" : "var(--rose)";
+            return `
           <button type="button" class="stat" style="text-align:center;cursor:pointer;font-family:inherit;${filtroTamanhoCamisa === t ? "border-color:var(--gold);background:rgba(232,166,60,0.08);" : ""}" data-action="filtrar-tamanho-camisa" data-tamanho="${escapeHtml(t)}">
-            <div class="num">${contagem[t] || 0}</div><div class="lbl">${escapeHtml(t)}</div>
-          </button>
-        `).join("")}
+            <div class="num" style="color:${corNum};">${n}</div><div class="lbl">${escapeHtml(t)}</div>
+          </button>`;
+          }).join("");
+        })()}
       </div>
 
       ${data.camisas.length > 0 ? `
