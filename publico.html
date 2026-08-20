@@ -642,6 +642,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   let openMusicaId = null;
   let openEnsaioId = null;
   let openHistoricoData = null;
+  let agendaMusicasAbertas = {};
   let openDevocionalId = null;
   let tamanhoCamisaSelecionado = null;
   let openCoreografiaId = null;
@@ -1302,18 +1303,26 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
             <div class="agenda-title">${a.titulo ? escapeHtml(a.titulo) : ""}</div>
           </div>
           ${tags.length > 0 ? `<div class="agenda-tags">${tags.map(t => `<span class="agenda-tag">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
-          ${(a.musicaIds || []).length > 0 ? `
-            <div class="section-title" style="margin-top:10px;"><span class="ico">${ICONS.musicas}</span>Músicas do dia</div>
-            ${a.musicaIds.map(id => data.musicas.find(m => m.id === id)).filter(m => m && m.visivel !== false).map(m => {
-              const { titulo, artista } = splitMusica(m.nome);
-              return `
-              <div class="card" style="padding:10px 14px;margin-bottom:8px;">
-                <div style="font-weight:600;">${escapeHtml(titulo)}</div>
-                ${artista ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">${escapeHtml(artista)}</div>` : ""}
-                ${(m.audioUrl || m.audioId) ? renderAudioPlayer(m) : ""}
-              </div>`;
-            }).join("")}
-          ` : ""}
+          ${(() => {
+            const musicasDoDia = (a.musicaIds || []).map(id => data.musicas.find(m => m.id === id)).filter(m => m && m.visivel !== false);
+            if(musicasDoDia.length === 0) return "";
+            const colapsavel = passado;
+            const aberto = !colapsavel || !!agendaMusicasAbertas[a.id];
+            return `
+              <div class="section-title" style="margin-top:10px;${colapsavel ? "cursor:pointer;" : ""}" ${colapsavel ? `data-action="toggle-agenda-musicas" data-id="${a.id}"` : ""}>
+                <span class="ico">${ICONS.musicas}</span>Músicas do dia (${musicasDoDia.length})${colapsavel ? `<span style="margin-left:auto;color:var(--muted);">${aberto ? "▲" : "▼"}</span>` : ""}
+              </div>
+              ${aberto ? musicasDoDia.map(m => {
+                const { titulo, artista } = splitMusica(m.nome);
+                return `
+                <div class="card" style="padding:10px 14px;margin-bottom:8px;">
+                  <div style="font-weight:600;">${escapeHtml(titulo)}</div>
+                  ${artista ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">${escapeHtml(artista)}</div>` : ""}
+                  ${(m.audioUrl || m.audioId) ? renderAudioPlayer(m) : ""}
+                </div>`;
+              }).join("") : ""}
+            `;
+          })()}
         </div>
       </div>`;
     }).join("");
@@ -1600,6 +1609,14 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       el.addEventListener("click", () => {
         const d = el.dataset.data;
         openHistoricoData = (openHistoricoData === d) ? null : d;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-agenda-musicas"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        agendaMusicasAbertas[id] = !agendaMusicasAbertas[id];
         render();
       });
     });
