@@ -296,6 +296,22 @@
     width:100%; height:100%;
     border:none;
   }
+  .video-frame-auto{
+    position:relative;
+    width:100%;
+    max-width:480px;
+    margin:0 auto 14px;
+    aspect-ratio:16/9;
+    border-radius:10px;
+    overflow:hidden;
+    background:#000;
+  }
+  .video-frame-auto iframe{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    border:none;
+  }
   .ico{display:inline-flex;vertical-align:-3px;width:15px;height:15px;margin-right:5px;}
   .ico svg{width:100%;height:100%;}
   .audio-frame{
@@ -955,6 +971,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     attachHandlers();
     restaurarAudioTocando(audioState);
     restaurarFocoInput(focoState);
+    ajustarProporcaoVideos();
     window.scrollTo(0, scrollY);
   }
 
@@ -1340,13 +1357,29 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(/^[a-zA-Z0-9_-]{10,}$/.test(limpo)) return limpo;
     return null;
   }
-  function renderVideoLink(link){
+  function renderVideoLink(link, frameId){
     if(!link) return "";
     const youtubeId = extrairYoutubeId(link);
-    if(youtubeId) return `<div class="video-frame"><iframe src="https://www.youtube.com/embed/${youtubeId}" allow="autoplay" allowfullscreen></iframe></div>`;
+    if(youtubeId) return `<div class="video-frame-auto" id="${frameId}" data-youtube-id="${youtubeId}"><iframe src="https://www.youtube.com/embed/${youtubeId}" allow="autoplay" allowfullscreen></iframe></div>`;
     const driveId = extrairDriveId(link);
-    if(driveId) return `<div class="video-frame"><iframe src="https://drive.google.com/file/d/${driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>`;
+    if(driveId) return `<div class="video-frame-auto" id="${frameId}"><iframe src="https://drive.google.com/file/d/${driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>`;
     return "";
+  }
+
+  async function ajustarProporcaoVideos(){
+    document.querySelectorAll(".video-frame-auto[data-youtube-id]").forEach(async el => {
+      if(el.dataset.resolvido) return;
+      el.dataset.resolvido = "1";
+      const youtubeId = el.dataset.youtubeId;
+      try{
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://youtu.be/${youtubeId}&format=json`);
+        if(!res.ok) return;
+        const info = await res.json();
+        if(info.width && info.height) el.style.aspectRatio = `${info.width} / ${info.height}`;
+      }catch(err){
+        console.error("Erro ao detectar proporção do vídeo:", err);
+      }
+    });
   }
 
   function renderDevocionais(){
@@ -1361,7 +1394,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         ${d.publicadoEm ? `<div class="agenda-tag" style="display:inline-block;margin-bottom:6px;">${new Date(d.publicadoEm).toLocaleDateString("pt-BR")}</div>` : ""}
         <div style="font-weight:700;font-size:calc(15px * var(--font-scale, 1));">${escapeHtml(d.titulo)}</div>
         ${open ? `
-          ${renderVideoLink(d.videoLink)}
+          ${renderVideoLink(d.videoLink, `video-devocional-${d.id}`)}
           <div class="lyrics-text" style="margin-top:10px;">${formatLyrics(d.texto || "")}</div>
         ` : `
           <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">Toque para ler</div>

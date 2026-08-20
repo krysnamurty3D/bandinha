@@ -709,6 +709,22 @@
     width:100%; height:100%;
     border:none;
   }
+  .video-frame-auto{
+    position:relative;
+    width:100%;
+    max-width:480px;
+    margin:0 auto 14px;
+    aspect-ratio:16/9;
+    border-radius:10px;
+    overflow:hidden;
+    background:#000;
+  }
+  .video-frame-auto iframe{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    border:none;
+  }
   .audio-frame{
     width:100%;
     height:80px;
@@ -1072,13 +1088,29 @@ const functionsApp = getFunctions(firebaseApp);
     const match = limpo.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([a-zA-Z0-9_-]{11})/);
     return match ? match[1] : null;
   }
-  function renderVideoLink(link){
+  function renderVideoLink(link, frameId){
     if(!link) return "";
     const youtubeId = extrairYoutubeId(link);
-    if(youtubeId) return `<div class="video-frame"><iframe src="https://www.youtube.com/embed/${youtubeId}" allow="autoplay" allowfullscreen></iframe></div>`;
+    if(youtubeId) return `<div class="video-frame-auto" id="${frameId}" data-youtube-id="${youtubeId}"><iframe src="https://www.youtube.com/embed/${youtubeId}" allow="autoplay" allowfullscreen></iframe></div>`;
     const driveId = extrairDriveId(link);
-    if(driveId) return `<div class="video-frame"><iframe src="https://drive.google.com/file/d/${driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>`;
+    if(driveId) return `<div class="video-frame-auto" id="${frameId}"><iframe src="https://drive.google.com/file/d/${driveId}/preview" allow="autoplay" allowfullscreen></iframe></div>`;
     return "";
+  }
+
+  async function ajustarProporcaoVideos(){
+    document.querySelectorAll(".video-frame-auto[data-youtube-id]").forEach(async el => {
+      if(el.dataset.resolvido) return;
+      el.dataset.resolvido = "1";
+      const youtubeId = el.dataset.youtubeId;
+      try{
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://youtu.be/${youtubeId}&format=json`);
+        if(!res.ok) return;
+        const info = await res.json();
+        if(info.width && info.height) el.style.aspectRatio = `${info.width} / ${info.height}`;
+      }catch(err){
+        console.error("Erro ao detectar proporção do vídeo:", err);
+      }
+    });
   }
   function renderAudioPlayer(m){
     if(m.audioUrl) return `<audio controls preload="none" data-audio-id="${m.id}" style="width:100%;margin-bottom:14px;" src="${escapeHtml(m.audioUrl)}"></audio>`;
@@ -1459,6 +1491,7 @@ const functionsApp = getFunctions(firebaseApp);
     attachHandlers();
     restaurarAudioTocando(audioState);
     restaurarFocoInput(focoState);
+    ajustarProporcaoVideos();
     window.scrollTo(0, scrollY);
   }
 
@@ -1626,7 +1659,7 @@ const functionsApp = getFunctions(firebaseApp);
               <input type="text" class="edit-nome-input" id="input-edit-devocional-video" data-id="${d.id}" value="${escapeHtml(d.videoLink || "")}" placeholder="Link de vídeo (YouTube ou Drive) — opcional" style="margin-top:8px;"/>
               <button class="btn-import" style="margin-top:10px;" data-action="save-devocional" data-id="${d.id}">Salvar</button>
             ` : `
-              ${renderVideoLink(d.videoLink)}
+              ${renderVideoLink(d.videoLink, `video-devocional-${d.id}`)}
               <div class="lyrics-text">${formatLyrics(d.texto || "")}</div>
             `}
           </div>
