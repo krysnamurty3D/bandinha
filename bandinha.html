@@ -1107,6 +1107,11 @@ const functionsApp = getFunctions(firebaseApp);
     return (b.nova?1:0) - (a.nova?1:0) || splitMusica(a.nome).titulo.localeCompare(splitMusica(b.nome).titulo, "pt-BR", { sensitivity: "base" });
   }
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
+  function agruparMusicas(lista){
+    const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: lista.filter(m => categoriaDaMusica(m) === c.key).sort(compararMusicas) }));
+    const semCategoria = lista.filter(m => !categoriaDaMusica(m)).sort(compararMusicas);
+    return [...grupos.filter(g => g.itens.length > 0), ...(semCategoria.length > 0 ? [{ key: "Sem categoria", cor: "var(--muted)", itens: semCategoria }] : [])];
+  }
   function extrairDriveId(texto){
     const limpo = String(texto).trim();
     const match = limpo.match(/\/d\/([a-zA-Z0-9_-]+)/) || limpo.match(/[?&]id=([a-zA-Z0-9_-]+)/);
@@ -2513,29 +2518,35 @@ const functionsApp = getFunctions(firebaseApp);
       ` : ""}
       <button type="button" id="btn-enviar-setlist" class="btn-import" style="margin-bottom:16px;background:var(--gold);color:#241200;" ${(plano.length === 0 || enviandoSetlist) ? "disabled" : ""}>${enviandoSetlist ? "Enviando..." : `<span class="ico">${ICONS.upload}</span>Enviar setlist para a Equipe`}</button>
       <div class="section-title" style="margin-top:0;">Músicas do dia</div>
-      ${plano.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música definida pra essa data ainda.</div>` : plano.map(mm => {
-        const { titulo, artista } = splitMusica(mm.nome);
-        const ensaiada = ensaiadas.includes(mm.id);
-        return `
-        <div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
-          <label class="check-row" style="flex:1;min-width:0;gap:10px;">
-            <input type="checkbox" data-action="toggle-ensaiada" data-id="${mm.id}" ${ensaiada ? "checked" : ""} />
-            <span style="display:flex;flex-direction:column;min-width:0;">
-              <span style="${ensaiada ? "color:var(--green);" : ""}">${escapeHtml(titulo)}</span>
-              ${artista ? `<span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${escapeHtml(artista)}</span>` : ""}
-            </span>
-          </label>
-          <button class="del-x" data-action="remover-do-plano" data-id="${mm.id}" title="Remover dessa data">✕</button>
-        </div>
-      `;
-      }).join("")}
+      ${plano.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música definida pra essa data ainda.</div>` : agruparMusicas(plano).map(g => `
+        <div class="section-title" style="margin-top:0;font-size:calc(13px * var(--font-scale, 1));"><span class="note-dot" style="background:${g.cor}"></span>${escapeHtml(g.key)}</div>
+        ${g.itens.map(mm => {
+          const { titulo, artista } = splitMusica(mm.nome);
+          const ensaiada = ensaiadas.includes(mm.id);
+          return `
+          <div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px;">
+            <label class="check-row" style="flex:1;min-width:0;gap:10px;">
+              <input type="checkbox" data-action="toggle-ensaiada" data-id="${mm.id}" ${ensaiada ? "checked" : ""} />
+              <span style="display:flex;flex-direction:column;min-width:0;">
+                <span style="${ensaiada ? "color:var(--green);" : ""}">${escapeHtml(titulo)}</span>
+                ${artista ? `<span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">${escapeHtml(artista)}</span>` : ""}
+              </span>
+            </label>
+            <button class="del-x" data-action="remover-do-plano" data-id="${mm.id}" title="Remover dessa data">✕</button>
+          </div>
+        `;
+        }).join("")}
+      `).join("")}
       ${abrindoAdicionarMusicaEnsaio ? `
         <div class="section-title">Adicionar música</div>
-        ${disponiveis.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Todas as músicas visíveis já estão nessa data.</div>` : disponiveis.map(mm => `
-          <label class="check-row" style="justify-content:space-between;">
-            <span>${escapeHtml(splitMusica(mm.nome).titulo)}</span>
-            <input type="checkbox" data-action="adicionar-ao-plano" data-id="${mm.id}" />
-          </label>
+        ${disponiveis.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Todas as músicas visíveis já estão nessa data.</div>` : agruparMusicas(disponiveis).map(g => `
+          <div class="section-title" style="margin-top:0;font-size:calc(13px * var(--font-scale, 1));"><span class="note-dot" style="background:${g.cor}"></span>${escapeHtml(g.key)}</div>
+          ${g.itens.map(mm => `
+            <label class="check-row" style="justify-content:space-between;">
+              <span>${escapeHtml(splitMusica(mm.nome).titulo)}</span>
+              <input type="checkbox" data-action="adicionar-ao-plano" data-id="${mm.id}" />
+            </label>
+          `).join("")}
         `).join("")}
         <button type="button" class="link-btn" style="padding-top:10px;" data-action="fechar-adicionar-musica-ensaio">Fechar</button>
       ` : `
