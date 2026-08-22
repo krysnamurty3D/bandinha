@@ -1994,7 +1994,10 @@ const functionsApp = getFunctions(firebaseApp);
         <span style="display:flex;align-items:center;gap:6px;"><span class="confirm-dot confirmed" style="cursor:default;"></span>Confirmado (${totalConfirmados})</span>
         <span style="display:flex;align-items:center;gap:6px;"><span class="confirm-dot" style="cursor:default;"></span>A convidar (${total - totalConfirmados})</span>
       </div>
-      <button type="button" id="btn-relatorio-pdf" class="link-btn"><span class="ico">${ICONS.printer}</span>Gerar relatório em PDF</button>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;">
+        <button type="button" id="btn-relatorio-pdf" class="link-btn"><span class="ico">${ICONS.printer}</span>Gerar relatório em PDF</button>
+        <button type="button" id="btn-relatorio-excel" class="link-btn"><span class="ico">${ICONS.cloud}</span>Gerar relatório em Excel</button>
+      </div>
       <form class="inline-add" id="form-integrante">
         <input type="text" id="input-integrante-nome" placeholder="Nome do integrante" required />
         <select id="input-integrante-genero" class="gender-select" required>
@@ -3946,6 +3949,7 @@ const functionsApp = getFunctions(firebaseApp);
         <tr>
           <td>${escapeHtml(i.nome)}</td>
           <td>${genLabel[i.genero] || "—"}</td>
+          <td>${i.confirmado ? "Confirmado" : "A convidar"}</td>
           <td>${i.instrumental ? "Sim" : "—"}</td>
           <td>${respostaCamisa ? escapeHtml(respostaCamisa.tamanho) : "—"}</td>
           <td>${i.inscricao ? "Pago" : "Em aberto"}</td>
@@ -3958,11 +3962,42 @@ const functionsApp = getFunctions(firebaseApp);
         <h1>Relatório de Integrantes — ${escapeHtml(data.config.titulo || "Bandinha")}</h1>
         <div class="print-meta">Gerado em ${new Date().toLocaleDateString("pt-BR")} · ${data.integrantes.length} integrantes</div>
         <table>
-          <thead><tr><th>Nome</th><th>Sexo</th><th>Instrumental</th><th>Camisa</th><th>Inscrição</th><th>Taxa Equipe</th><th>Oferta</th></tr></thead>
+          <thead><tr><th>Nome</th><th>Sexo</th><th>Status</th><th>Instrumental</th><th>Camisa</th><th>Inscrição</th><th>Taxa Equipe</th><th>Oferta</th></tr></thead>
           <tbody>${linhas}</tbody>
         </table>
       `;
       window.print();
+    });
+
+    const btnRelatorioExcel = document.getElementById("btn-relatorio-excel");
+    if(btnRelatorioExcel) btnRelatorioExcel.addEventListener("click", () => {
+      const genLabel = { M: "Homem", F: "Mulher" };
+      const csvEscape = v => `"${String(v).replace(/"/g, '""')}"`;
+      const cabecalho = ["Nome", "Sexo", "Status", "Instrumental", "Camisa", "Inscrição", "Taxa Equipe", "Oferta"];
+      const linhas = [...data.integrantes].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })).map(i => {
+        const respostaCamisa = data.camisas.find(c => c.id === slugify(i.nome));
+        return [
+          i.nome,
+          genLabel[i.genero] || "—",
+          i.confirmado ? "Confirmado" : "A convidar",
+          i.instrumental ? "Sim" : "—",
+          respostaCamisa ? respostaCamisa.tamanho : "—",
+          i.inscricao ? "Pago" : "Em aberto",
+          i.taxaEquipe ? "Pago" : "Em aberto",
+          i.oferta > 0 ? formatMoeda(i.oferta) : "—"
+        ].map(csvEscape).join(";");
+      });
+      const csv = "﻿" + [cabecalho.map(csvEscape).join(";"), ...linhas].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `integrantes-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("Relatório Excel baixado");
     });
 
     const btnToggleImport = document.getElementById("btn-toggle-import");
