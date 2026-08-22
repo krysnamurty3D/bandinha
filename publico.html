@@ -689,6 +689,14 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
+  const CATEGORIAS_MUSICA = [
+    { key: "Especial", cor: "#7C9CF0" },
+    { key: "Plenário e Condução", cor: "var(--gold)" },
+    { key: "Adoração e Contrição", cor: "var(--green)" }
+  ];
+  function categoriaDaMusica(m){
+    return m.categoria || (m.especial ? "Especial" : "");
+  }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1159,30 +1167,32 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         </div>`;
       }
       const termo = normalizarBusca(buscaMusicas.trim());
-      const ordenadas = [...musicasVisiveis]
+      const filtradas = [...musicasVisiveis]
         .filter(m => !filtroProgresso || meuProgresso[m.id] === filtroProgresso)
-        .filter(m => !termo || normalizarBusca(m.nome).includes(termo))
-        .sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0));
-      if(ordenadas.length === 0){
+        .filter(m => !termo || normalizarBusca(m.nome).includes(termo));
+      if(filtradas.length === 0){
         html += termo
           ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
           : `<div class="empty"><div class="note-dot"></div><br>Nenhuma música com esse status ainda.</div>`;
       }
-      const especiais = ordenadas.filter(m => m.especial);
-      const normais = ordenadas.filter(m => !m.especial);
-      if(especiais.length > 0){
-        const collapsed = !!collapsedGroups["musicas-especiais"];
+      const porTitulo = (a,b) => splitMusica(a.nome).titulo.localeCompare(splitMusica(b.nome).titulo, "pt-BR", { sensitivity: "base" });
+      const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: filtradas.filter(m => categoriaDaMusica(m) === c.key).sort(porTitulo) }));
+      const semCategoria = filtradas.filter(m => !categoriaDaMusica(m)).sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || porTitulo(a,b));
+      grupos.forEach(g => {
+        if(g.itens.length === 0) return;
+        const groupKey = "musicas-" + slugify(g.key);
+        const collapsed = !!collapsedGroups[groupKey];
         html += `
-          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="musicas-especiais">
-            <span class="note-dot" style="background:#7C9CF0"></span>Músicas Especiais <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${especiais.length})</span>
+          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="${groupKey}">
+            <span class="note-dot" style="background:${g.cor}"></span>${escapeHtml(g.key)} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${g.itens.length})</span>
             <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
           <div class="${collapsed ? "hidden" : ""}">
-            ${especiais.map((m, idx) => renderCardMusicaPublico(m, idx)).join("")}
+            ${g.itens.map((m, idx) => renderCardMusicaPublico(m, idx)).join("")}
           </div>
         `;
-      }
-      html += normais.map((m, idx) => renderCardMusicaPublico(m, idx)).join("");
+      });
+      html += semCategoria.map((m, idx) => renderCardMusicaPublico(m, idx)).join("");
     }
     return html;
   }
@@ -1191,12 +1201,13 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const open = openMusicaId === m.id;
     const meuStatus = meuProgresso[m.id];
     const { titulo, artista } = splitMusica(m.nome);
+    const categoria = categoriaDaMusica(m);
     return `
-    <div class="card ${m.especial ? "card-especial" : m.nova ? "card-nova" : ""}">
+    <div class="card ${categoria === "Especial" ? "card-especial" : m.nova ? "card-nova" : ""}">
       <div class="song-row">
         <div class="song-num">${idx + 1}</div>
         <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-          <div class="song-title">${m.especial ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
+          <div class="song-title">${categoria === "Especial" ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
           ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
         </div>
       </div>

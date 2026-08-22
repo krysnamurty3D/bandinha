@@ -1091,6 +1091,14 @@ const functionsApp = getFunctions(firebaseApp);
   let editingSessaoData = null;
 
   const CATEGORIA_CORES = { "Femininas": "var(--rose)", "Masculinas": "var(--blue)", "Mista": "var(--gold)" };
+  const CATEGORIAS_MUSICA = [
+    { key: "Especial", cor: "#7C9CF0" },
+    { key: "Plenário e Condução", cor: "var(--gold)" },
+    { key: "Adoração e Contrição", cor: "var(--green)" }
+  ];
+  function categoriaDaMusica(m){
+    return m.categoria || (m.especial ? "Especial" : "");
+  }
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
   function extrairDriveId(texto){
     const limpo = String(texto).trim();
@@ -2160,10 +2168,10 @@ const functionsApp = getFunctions(firebaseApp);
           <input type="checkbox" id="input-musica-nova" />
           Nova
         </label>
-        <label class="check-row" style="flex:0 0 auto;gap:6px;">
-          <input type="checkbox" id="input-musica-especial" />
-          Especial
-        </label>
+        <select id="input-musica-categoria" style="flex:1 1 180px;">
+          <option value="">Sem categoria</option>
+          ${CATEGORIAS_MUSICA.map(c => `<option value="${escapeHtml(c.key)}">${escapeHtml(c.key)}</option>`).join("")}
+        </select>
         <label class="check-row" style="flex:0 0 auto;gap:6px;">
           <input type="checkbox" id="input-musica-oculta" />
           Adicionar oculta
@@ -2182,54 +2190,65 @@ const functionsApp = getFunctions(firebaseApp);
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const termo = normalizarBusca(buscaMusicas.trim());
-      const ordenadas = [...data.musicas].sort((a,b) => (b.nova?1:0) - (a.nova?1:0) || (a.ordem ?? 0) - (b.ordem ?? 0))
+      const porTitulo = (a,b) => splitMusica(a.nome).titulo.localeCompare(splitMusica(b.nome).titulo, "pt-BR", { sensitivity: "base" });
+      const filtradas = data.musicas
         .filter(m => mostrarOcultasMusicas || m.visivel !== false)
         .filter(m => !termo || normalizarBusca(m.nome).includes(termo));
-      if(ordenadas.length === 0){
+      if(filtradas.length === 0){
         html += termo
           ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
           : `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
       }
-      const especiais = ordenadas.filter(m => m.especial);
-      const normais = ordenadas.filter(m => !m.especial);
-      if(especiais.length > 0){
-        const collapsed = !!collapsedGroups["musicas-especiais"];
+      const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: filtradas.filter(m => categoriaDaMusica(m) === c.key).sort(porTitulo) }));
+      const semCategoria = filtradas.filter(m => !categoriaDaMusica(m)).sort(porTitulo);
+      grupos.forEach(g => {
+        if(g.itens.length === 0) return;
+        const groupKey = "musicas-" + slugify(g.key);
+        const collapsed = !!collapsedGroups[groupKey];
         html += `
-          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="musicas-especiais">
-            <span class="note-dot" style="background:#7C9CF0"></span>Músicas Especiais <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${especiais.length})</span>
+          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="${groupKey}">
+            <span class="note-dot" style="background:${g.cor}"></span>${escapeHtml(g.key)} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${g.itens.length})</span>
             <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
           <div class="${collapsed ? "hidden" : ""}">
-            ${especiais.map((m, idx) => renderCardMusica(m, idx, especiais)).join("")}
+            ${g.itens.map((m, idx) => renderCardMusica(m, idx)).join("")}
+          </div>
+        `;
+      });
+      if(semCategoria.length > 0){
+        const collapsed = !!collapsedGroups["musicas-sem-categoria"];
+        html += `
+          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="musicas-sem-categoria">
+            <span class="note-dot" style="background:var(--muted)"></span>Sem categoria <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${semCategoria.length})</span>
+            <span class="chevron ${collapsed?"":"open"}">▶</span>
+          </div>
+          <div class="${collapsed ? "hidden" : ""}">
+            ${semCategoria.map((m, idx) => renderCardMusica(m, idx)).join("")}
           </div>
         `;
       }
-      html += normais.map((m, idx) => renderCardMusica(m, idx, normais)).join("");
     }
     return html;
   }
 
-  function renderCardMusica(m, idx, lista){
+  function renderCardMusica(m, idx){
     const open = openMusicaId === m.id;
     const editingLetra = editingLetraId === m.id;
     const editingAudio = editingAudioId === m.id;
     const editingNome = editingMusicaNomeId === m.id;
     const { titulo, artista } = splitMusica(m.nome);
     const oculta = m.visivel === false;
+    const categoria = categoriaDaMusica(m);
     return `
-    <div class="card ${oculta ? "item-hidden" : ""} ${m.especial ? "card-especial" : m.nova ? "card-nova" : ""}" data-id="${m.id}">
+    <div class="card ${oculta ? "item-hidden" : ""} ${categoria === "Especial" ? "card-especial" : m.nova ? "card-nova" : ""}" data-id="${m.id}">
       <div class="song-row">
-        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
-          <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="up" ${idx===0 ? "disabled" : ""}>▲</button>
-          <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="down" ${idx===lista.length-1 ? "disabled" : ""}>▼</button>
-        </div>
         ${editingNome ? `
           <input type="text" class="edit-nome-input" id="input-edit-musica-nome" data-id="${m.id}" value="${escapeHtml(m.nome)}" placeholder="Nome da música" />
           <button class="btn-save-nome" data-action="save-musica-nome" data-id="${m.id}">✓</button>
         ` : `
           <div class="song-num">${idx + 1}</div>
           <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-            <div class="song-title">${m.especial ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
+            <div class="song-title">${categoria === "Especial" ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
             ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
           </div>
           <button class="eye-x ${m.status === "pronta" ? "" : "hidden-item"}" style="${m.status === "pronta" ? "color:var(--green);" : ""}" data-action="toggle-pronta-musica" data-id="${m.id}" title="${m.status === "pronta" ? "Pronta — toque para voltar a ensaiando" : "Marcar como pronta"}">${ICONS.presenca}</button>
@@ -2241,14 +2260,17 @@ const functionsApp = getFunctions(firebaseApp);
       ${open ? `
         <div class="lyrics-box">
           ${renderVisualizacoesBadge("musica", m.id)}
-          <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;">
+          <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:12px;">
             <label class="check-row">
               <input type="checkbox" data-action="toggle-nova-musica" data-id="${m.id}" ${m.nova ? "checked" : ""} />
               Música nova
             </label>
-            <label class="check-row">
-              <input type="checkbox" data-action="toggle-especial-musica" data-id="${m.id}" ${m.especial ? "checked" : ""} />
-              Música especial
+            <label style="display:flex;align-items:center;gap:8px;">
+              Categoria
+              <select data-action="mudar-categoria-musica" data-id="${m.id}">
+                <option value="" ${!categoria ? "selected" : ""}>Sem categoria</option>
+                ${CATEGORIAS_MUSICA.map(c => `<option value="${escapeHtml(c.key)}" ${categoria === c.key ? "selected" : ""}>${escapeHtml(c.key)}</option>`).join("")}
+              </select>
             </label>
           </div>
           ${editingAudio ? `
@@ -3122,33 +3144,18 @@ const functionsApp = getFunctions(firebaseApp);
       e.preventDefault();
       const input = document.getElementById("input-musica-nome");
       const inputNova = document.getElementById("input-musica-nova");
-      const inputEspecial = document.getElementById("input-musica-especial");
+      const inputCategoria = document.getElementById("input-musica-categoria");
       const inputOculta = document.getElementById("input-musica-oculta");
       const nome = input.value.trim();
       if(!nome) return;
       const marcarNova = !!inputNova?.checked;
-      const marcarEspecial = !!inputEspecial?.checked;
+      const categoriaSelecionada = inputCategoria?.value || "";
       const marcarOculta = !!inputOculta?.checked;
-      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, especial: marcarEspecial, ...(marcarNova ? { novaDesde: Date.now() } : {}), ...(marcarOculta ? { visivel: false } : {}) };
+      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, ...(categoriaSelecionada ? { categoria: categoriaSelecionada } : {}), ...(marcarNova ? { novaDesde: Date.now() } : {}), ...(marcarOculta ? { visivel: false } : {}) };
       await setDoc(doc(musicasCol, novaMus.id), novaMus);
       inputOculta.checked = false;
-      inputEspecial.checked = false;
+      if(inputCategoria) inputCategoria.value = "";
       showToast(marcarOculta ? "Música adicionada (oculta)" : "Música adicionada");
-    });
-
-    document.querySelectorAll('[data-action="move-musica"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const ordenadas = [...data.musicas].sort((a,b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-        const idx = ordenadas.findIndex(m => m.id === el.dataset.id);
-        const dir = el.dataset.dir === "up" ? -1 : 1;
-        const alvo = ordenadas[idx + dir];
-        if(!alvo) return;
-        const atual = ordenadas[idx];
-        await Promise.all([
-          updateDoc(doc(musicasCol, atual.id), { ordem: alvo.ordem ?? 0 }),
-          updateDoc(doc(musicasCol, alvo.id), { ordem: atual.ordem ?? 0 })
-        ]);
-      });
     });
 
     const formRot = document.getElementById("form-roteiro");
@@ -4389,12 +4396,11 @@ const functionsApp = getFunctions(firebaseApp);
       });
     });
 
-    document.querySelectorAll('[data-action="toggle-especial-musica"]').forEach(el => {
-      el.addEventListener("click", async () => {
-        const especial = el.checked;
+    document.querySelectorAll('[data-action="mudar-categoria-musica"]').forEach(el => {
+      el.addEventListener("change", async () => {
         try{
-          await updateDoc(doc(musicasCol, el.dataset.id), { especial });
-          showToast(especial ? "Marcada como especial" : "Removida a marca de especial");
+          await updateDoc(doc(musicasCol, el.dataset.id), { categoria: el.value });
+          showToast("Categoria atualizada");
         }catch(err){
           console.error(err);
           showToast("Erro ao atualizar");
