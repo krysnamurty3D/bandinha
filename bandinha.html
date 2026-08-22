@@ -2199,8 +2199,9 @@ const functionsApp = getFunctions(firebaseApp);
           ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
           : `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
       }
-      const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: filtradas.filter(m => categoriaDaMusica(m) === c.key).sort(porTitulo) }));
-      const semCategoria = filtradas.filter(m => !categoriaDaMusica(m)).sort(porTitulo);
+      const porNovaETitulo = (a,b) => (b.nova?1:0) - (a.nova?1:0) || porTitulo(a,b);
+      const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: filtradas.filter(m => categoriaDaMusica(m) === c.key).sort(porNovaETitulo) }));
+      const semCategoria = filtradas.filter(m => !categoriaDaMusica(m)).sort(porNovaETitulo);
       grupos.forEach(g => {
         if(g.itens.length === 0) return;
         const groupKey = "musicas-" + slugify(g.key);
