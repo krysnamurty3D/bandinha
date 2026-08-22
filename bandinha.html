@@ -1099,6 +1099,13 @@ const functionsApp = getFunctions(firebaseApp);
   function categoriaDaMusica(m){
     return m.categoria || (m.especial ? "Especial" : "");
   }
+  function compararMusicas(a,b){
+    const ao = a.ordemCategoria, bo = b.ordemCategoria;
+    if(ao != null && bo != null) return ao - bo;
+    if(ao != null) return -1;
+    if(bo != null) return 1;
+    return (b.nova?1:0) - (a.nova?1:0) || splitMusica(a.nome).titulo.localeCompare(splitMusica(b.nome).titulo, "pt-BR", { sensitivity: "base" });
+  }
   function corCategoria(cat){ return CATEGORIA_CORES[cat] || "var(--muted)"; }
   function extrairDriveId(texto){
     const limpo = String(texto).trim();
@@ -2190,7 +2197,6 @@ const functionsApp = getFunctions(firebaseApp);
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma música na lista.<br>Adicione as músicas para ensaiar.</div>`;
     } else {
       const termo = normalizarBusca(buscaMusicas.trim());
-      const porTitulo = (a,b) => splitMusica(a.nome).titulo.localeCompare(splitMusica(b.nome).titulo, "pt-BR", { sensitivity: "base" });
       const filtradas = data.musicas
         .filter(m => mostrarOcultasMusicas || m.visivel !== false)
         .filter(m => !termo || normalizarBusca(m.nome).includes(termo));
@@ -2199,9 +2205,8 @@ const functionsApp = getFunctions(firebaseApp);
           ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
           : `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
       }
-      const porNovaETitulo = (a,b) => (b.nova?1:0) - (a.nova?1:0) || porTitulo(a,b);
-      const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: filtradas.filter(m => categoriaDaMusica(m) === c.key).sort(porNovaETitulo) }));
-      const semCategoria = filtradas.filter(m => !categoriaDaMusica(m)).sort(porNovaETitulo);
+      const grupos = CATEGORIAS_MUSICA.map(c => ({ ...c, itens: filtradas.filter(m => categoriaDaMusica(m) === c.key).sort(compararMusicas) }));
+      const semCategoria = filtradas.filter(m => !categoriaDaMusica(m)).sort(compararMusicas);
       grupos.forEach(g => {
         if(g.itens.length === 0) return;
         const groupKey = "musicas-" + slugify(g.key);
@@ -2212,7 +2217,7 @@ const functionsApp = getFunctions(firebaseApp);
             <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
           <div class="${collapsed ? "hidden" : ""}">
-            ${g.itens.map((m, idx) => renderCardMusica(m, idx)).join("")}
+            ${g.itens.map((m, idx) => renderCardMusica(m, idx, g.itens.length)).join("")}
           </div>
         `;
       });
@@ -2224,7 +2229,7 @@ const functionsApp = getFunctions(firebaseApp);
             <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
           <div class="${collapsed ? "hidden" : ""}">
-            ${semCategoria.map((m, idx) => renderCardMusica(m, idx)).join("")}
+            ${semCategoria.map((m, idx) => renderCardMusica(m, idx, semCategoria.length)).join("")}
           </div>
         `;
       }
@@ -2232,7 +2237,7 @@ const functionsApp = getFunctions(firebaseApp);
     return html;
   }
 
-  function renderCardMusica(m, idx){
+  function renderCardMusica(m, idx, total){
     const open = openMusicaId === m.id;
     const editingLetra = editingLetraId === m.id;
     const editingAudio = editingAudioId === m.id;
@@ -2248,6 +2253,10 @@ const functionsApp = getFunctions(firebaseApp);
           <button class="btn-save-nome" data-action="save-musica-nome" data-id="${m.id}">✓</button>
         ` : `
           <div class="song-num">${idx + 1}</div>
+          <div style="display:flex;flex-direction:column;flex-shrink:0;">
+            <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="up" ${idx === 0 ? "disabled" : ""} title="Mover para cima">▲</button>
+            <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="down" ${idx === total - 1 ? "disabled" : ""} title="Mover para baixo">▼</button>
+          </div>
           <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
             <div class="song-title">${categoria === "Especial" ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
             ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
@@ -4405,6 +4414,26 @@ const functionsApp = getFunctions(firebaseApp);
         }catch(err){
           console.error(err);
           showToast("Erro ao atualizar");
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-action="move-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.musicas.find(m => m.id === el.dataset.id);
+        if(!item) return;
+        const cat = categoriaDaMusica(item);
+        const grupo = data.musicas.filter(m => categoriaDaMusica(m) === cat).sort(compararMusicas);
+        const idx = grupo.findIndex(m => m.id === item.id);
+        const dir = el.dataset.dir === "up" ? -1 : 1;
+        const alvoIdx = idx + dir;
+        if(alvoIdx < 0 || alvoIdx >= grupo.length) return;
+        [grupo[idx], grupo[alvoIdx]] = [grupo[alvoIdx], grupo[idx]];
+        try{
+          await Promise.all(grupo.map((m, i) => updateDoc(doc(musicasCol, m.id), { ordemCategoria: i })));
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao reordenar");
         }
       });
     });
