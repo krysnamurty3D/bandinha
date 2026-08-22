@@ -213,6 +213,10 @@
     background:rgba(232,166,60,0.08);
     border-color:var(--gold);
   }
+  .card-especial{
+    background:rgba(124,156,240,0.1);
+    border-color:#7C9CF0;
+  }
   .empty{
     text-align:center;
     padding:36px 16px;
@@ -642,6 +646,18 @@
     display:inline-block;
     background:linear-gradient(135deg, var(--gold), #d97a24);
     color:#241200;
+    font-size:calc(9.5px * var(--font-scale, 1));
+    font-weight:800;
+    letter-spacing:0.5px;
+    border-radius:6px;
+    padding:2px 6px;
+    vertical-align:middle;
+    margin-right:2px;
+  }
+  .badge-especial{
+    display:inline-block;
+    background:linear-gradient(135deg, #7C9CF0, #5570d1);
+    color:#0d1440;
     font-size:calc(9.5px * var(--font-scale, 1));
     font-weight:800;
     letter-spacing:0.5px;
@@ -2145,6 +2161,10 @@ const functionsApp = getFunctions(firebaseApp);
           Nova
         </label>
         <label class="check-row" style="flex:0 0 auto;gap:6px;">
+          <input type="checkbox" id="input-musica-especial" />
+          Especial
+        </label>
+        <label class="check-row" style="flex:0 0 auto;gap:6px;">
           <input type="checkbox" id="input-musica-oculta" />
           Adicionar oculta
         </label>
@@ -2170,71 +2190,93 @@ const functionsApp = getFunctions(firebaseApp);
           ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
           : `<div class="empty"><div class="note-dot"></div><br>Todas as músicas estão ocultas.<br>Marque "Mostrar músicas ocultas" acima pra vê-las.</div>`;
       }
-      html += ordenadas.map((m, idx) => {
-        const open = openMusicaId === m.id;
-        const editingLetra = editingLetraId === m.id;
-        const editingAudio = editingAudioId === m.id;
-        const editingNome = editingMusicaNomeId === m.id;
-        const { titulo, artista } = splitMusica(m.nome);
-        const oculta = m.visivel === false;
-        return `
-        <div class="card ${oculta ? "item-hidden" : ""} ${m.nova ? "card-nova" : ""}" data-id="${m.id}">
-          <div class="song-row">
-            <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
-              <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="up" ${idx===0 ? "disabled" : ""}>▲</button>
-              <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="down" ${idx===ordenadas.length-1 ? "disabled" : ""}>▼</button>
-            </div>
-            ${editingNome ? `
-              <input type="text" class="edit-nome-input" id="input-edit-musica-nome" data-id="${m.id}" value="${escapeHtml(m.nome)}" placeholder="Nome da música" />
-              <button class="btn-save-nome" data-action="save-musica-nome" data-id="${m.id}">✓</button>
-            ` : `
-              <div class="song-num">${idx + 1}</div>
-              <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-                <div class="song-title">${m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
-                ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
-              </div>
-              <button class="eye-x ${m.status === "pronta" ? "" : "hidden-item"}" style="${m.status === "pronta" ? "color:var(--green);" : ""}" data-action="toggle-pronta-musica" data-id="${m.id}" title="${m.status === "pronta" ? "Pronta — toque para voltar a ensaiando" : "Marcar como pronta"}">${ICONS.presenca}</button>
-              <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
-              <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? ICONS.eyeOff : ICONS.eye}</button>
-              <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
-            `}
+      const especiais = ordenadas.filter(m => m.especial);
+      const normais = ordenadas.filter(m => !m.especial);
+      if(especiais.length > 0){
+        const collapsed = !!collapsedGroups["musicas-especiais"];
+        html += `
+          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="musicas-especiais">
+            <span class="note-dot" style="background:#7C9CF0"></span>Músicas Especiais <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${especiais.length})</span>
+            <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
-          ${open ? `
-            <div class="lyrics-box">
-              ${renderVisualizacoesBadge("musica", m.id)}
-              <label class="check-row" style="margin-bottom:12px;">
-                <input type="checkbox" data-action="toggle-nova-musica" data-id="${m.id}" ${m.nova ? "checked" : ""} />
-                Música nova
-              </label>
-              ${editingAudio ? `
-                ${enviandoAudioId === m.id ? `
-                  <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">Enviando áudio...</div>
-                ` : `
-                  <input type="file" accept="audio/*" id="input-audio-file" data-id="${m.id}" style="margin-bottom:8px;width:100%;" />
-                  <div style="display:flex;gap:10px;margin-bottom:14px;">
-                    ${(m.audioUrl || m.audioId) ? `<button type="button" class="link-btn" style="padding:0;color:var(--rose);" data-action="remover-audio" data-id="${m.id}">Remover áudio</button>` : ""}
-                    <button type="button" class="link-btn" style="padding:0;margin-left:auto;" data-action="cancelar-edit-audio">Cancelar</button>
-                  </div>
-                `}
-              ` : `
-                ${renderAudioPlayer(m)}
-                <button type="button" class="link-btn" style="padding-bottom:10px;" data-action="edit-audio" data-id="${m.id}">${(m.audioUrl || m.audioId) ? "Trocar áudio" : "Adicionar áudio"}</button>
-              `}
-              ${editingLetra ? `
-                <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
-                <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:-4px 0 10px 0;">Use **texto** para negrito e *texto* para itálico</div>
-                <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
-              ` : `
-                ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Sem letra cadastrada.</div>`}
-                <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-letra" data-id="${m.id}">${m.letra ? "Editar letra" : "Adicionar letra"}</button>
-              `}
-            </div>
-          ` : ""}
-        </div>
-      `;
-      }).join("");
+          <div class="${collapsed ? "hidden" : ""}">
+            ${especiais.map((m, idx) => renderCardMusica(m, idx, especiais)).join("")}
+          </div>
+        `;
+      }
+      html += normais.map((m, idx) => renderCardMusica(m, idx, normais)).join("");
     }
     return html;
+  }
+
+  function renderCardMusica(m, idx, lista){
+    const open = openMusicaId === m.id;
+    const editingLetra = editingLetraId === m.id;
+    const editingAudio = editingAudioId === m.id;
+    const editingNome = editingMusicaNomeId === m.id;
+    const { titulo, artista } = splitMusica(m.nome);
+    const oculta = m.visivel === false;
+    return `
+    <div class="card ${oculta ? "item-hidden" : ""} ${m.especial ? "card-especial" : m.nova ? "card-nova" : ""}" data-id="${m.id}">
+      <div class="song-row">
+        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+          <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="up" ${idx===0 ? "disabled" : ""}>▲</button>
+          <button class="reorder-btn" data-action="move-musica" data-id="${m.id}" data-dir="down" ${idx===lista.length-1 ? "disabled" : ""}>▼</button>
+        </div>
+        ${editingNome ? `
+          <input type="text" class="edit-nome-input" id="input-edit-musica-nome" data-id="${m.id}" value="${escapeHtml(m.nome)}" placeholder="Nome da música" />
+          <button class="btn-save-nome" data-action="save-musica-nome" data-id="${m.id}">✓</button>
+        ` : `
+          <div class="song-num">${idx + 1}</div>
+          <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
+            <div class="song-title">${m.especial ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
+            ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
+          </div>
+          <button class="eye-x ${m.status === "pronta" ? "" : "hidden-item"}" style="${m.status === "pronta" ? "color:var(--green);" : ""}" data-action="toggle-pronta-musica" data-id="${m.id}" title="${m.status === "pronta" ? "Pronta — toque para voltar a ensaiando" : "Marcar como pronta"}">${ICONS.presenca}</button>
+          <button class="edit-x" data-action="edit-musica-nome" data-id="${m.id}" title="Editar nome">✎</button>
+          <button class="eye-x ${oculta ? "hidden-item" : ""}" data-action="toggle-visivel-musica" data-id="${m.id}" title="${oculta ? "Oculta na página pública — toque para mostrar" : "Visível na página pública — toque para ocultar"}">${oculta ? ICONS.eyeOff : ICONS.eye}</button>
+          <button class="del-x" data-action="del-musica" data-id="${m.id}">✕</button>
+        `}
+      </div>
+      ${open ? `
+        <div class="lyrics-box">
+          ${renderVisualizacoesBadge("musica", m.id)}
+          <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;">
+            <label class="check-row">
+              <input type="checkbox" data-action="toggle-nova-musica" data-id="${m.id}" ${m.nova ? "checked" : ""} />
+              Música nova
+            </label>
+            <label class="check-row">
+              <input type="checkbox" data-action="toggle-especial-musica" data-id="${m.id}" ${m.especial ? "checked" : ""} />
+              Música especial
+            </label>
+          </div>
+          ${editingAudio ? `
+            ${enviandoAudioId === m.id ? `
+              <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:14px;">Enviando áudio...</div>
+            ` : `
+              <input type="file" accept="audio/*" id="input-audio-file" data-id="${m.id}" style="margin-bottom:8px;width:100%;" />
+              <div style="display:flex;gap:10px;margin-bottom:14px;">
+                ${(m.audioUrl || m.audioId) ? `<button type="button" class="link-btn" style="padding:0;color:var(--rose);" data-action="remover-audio" data-id="${m.id}">Remover áudio</button>` : ""}
+                <button type="button" class="link-btn" style="padding:0;margin-left:auto;" data-action="cancelar-edit-audio">Cancelar</button>
+              </div>
+            `}
+          ` : `
+            ${renderAudioPlayer(m)}
+            <button type="button" class="link-btn" style="padding-bottom:10px;" data-action="edit-audio" data-id="${m.id}">${(m.audioUrl || m.audioId) ? "Trocar áudio" : "Adicionar áudio"}</button>
+          `}
+          ${editingLetra ? `
+            <textarea class="lyrics-textarea" data-id="${m.id}">${escapeHtml(m.letra || "")}</textarea>
+            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:-4px 0 10px 0;">Use **texto** para negrito e *texto* para itálico</div>
+            <button class="btn-import" data-action="save-letra" data-id="${m.id}">Salvar letra</button>
+          ` : `
+            ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Sem letra cadastrada.</div>`}
+            <button type="button" class="link-btn" style="padding-top:10px;" data-action="edit-letra" data-id="${m.id}">${m.letra ? "Editar letra" : "Adicionar letra"}</button>
+          `}
+        </div>
+      ` : ""}
+    </div>
+  `;
   }
 
   function renderRoteiros(){
@@ -3080,14 +3122,17 @@ const functionsApp = getFunctions(firebaseApp);
       e.preventDefault();
       const input = document.getElementById("input-musica-nome");
       const inputNova = document.getElementById("input-musica-nova");
+      const inputEspecial = document.getElementById("input-musica-especial");
       const inputOculta = document.getElementById("input-musica-oculta");
       const nome = input.value.trim();
       if(!nome) return;
       const marcarNova = !!inputNova?.checked;
+      const marcarEspecial = !!inputEspecial?.checked;
       const marcarOculta = !!inputOculta?.checked;
-      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, ...(marcarNova ? { novaDesde: Date.now() } : {}), ...(marcarOculta ? { visivel: false } : {}) };
+      const novaMus = { id: uid(), nome, status: "ensaiando", letra: "", ordem: computeOrdemAlfabetica(nome), nova: marcarNova, especial: marcarEspecial, ...(marcarNova ? { novaDesde: Date.now() } : {}), ...(marcarOculta ? { visivel: false } : {}) };
       await setDoc(doc(musicasCol, novaMus.id), novaMus);
       inputOculta.checked = false;
+      inputEspecial.checked = false;
       showToast(marcarOculta ? "Música adicionada (oculta)" : "Música adicionada");
     });
 
@@ -4337,6 +4382,19 @@ const functionsApp = getFunctions(firebaseApp);
         try{
           await updateDoc(doc(musicasCol, el.dataset.id), nova ? { nova: true, novaDesde: Date.now() } : { nova: false, novaDesde: deleteField() });
           showToast(nova ? "Marcada como nova" : "Removida a marca de nova");
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao atualizar");
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-especial-musica"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const especial = el.checked;
+        try{
+          await updateDoc(doc(musicasCol, el.dataset.id), { especial });
+          showToast(especial ? "Marcada como especial" : "Removida a marca de especial");
         }catch(err){
           console.error(err);
           showToast("Erro ao atualizar");

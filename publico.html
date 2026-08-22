@@ -104,6 +104,10 @@
     background:rgba(232,166,60,0.08);
     border-color:var(--gold);
   }
+  .card-especial{
+    background:rgba(124,156,240,0.1);
+    border-color:#7C9CF0;
+  }
   .empty{
     text-align:center;
     padding:36px 16px;
@@ -354,6 +358,18 @@
     display:inline-block;
     background:linear-gradient(135deg, var(--gold), #d97a24);
     color:#241200;
+    font-size:calc(9.5px * var(--font-scale, 1));
+    font-weight:800;
+    letter-spacing:0.5px;
+    border-radius:6px;
+    padding:2px 6px;
+    vertical-align:middle;
+    margin-right:2px;
+  }
+  .badge-especial{
+    display:inline-block;
+    background:linear-gradient(135deg, #7C9CF0, #5570d1);
+    color:#0d1440;
     font-size:calc(9.5px * var(--font-scale, 1));
     font-weight:800;
     letter-spacing:0.5px;
@@ -1152,37 +1168,53 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma música encontrada para "${escapeHtml(buscaMusicas)}".</div>`
           : `<div class="empty"><div class="note-dot"></div><br>Nenhuma música com esse status ainda.</div>`;
       }
-      html += ordenadas.map((m, idx) => {
-        const open = openMusicaId === m.id;
-        const meuStatus = meuProgresso[m.id];
-        const { titulo, artista } = splitMusica(m.nome);
-        return `
-        <div class="card ${m.nova ? "card-nova" : ""}">
-          <div class="song-row">
-            <div class="song-num">${idx + 1}</div>
-            <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
-              <div class="song-title">${m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
-              ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
-            </div>
+      const especiais = ordenadas.filter(m => m.especial);
+      const normais = ordenadas.filter(m => !m.especial);
+      if(especiais.length > 0){
+        const collapsed = !!collapsedGroups["musicas-especiais"];
+        html += `
+          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="musicas-especiais">
+            <span class="note-dot" style="background:#7C9CF0"></span>Músicas Especiais <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${especiais.length})</span>
+            <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
-          ${meuNome ? `
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-              ${MEU_PROGRESSO_OPTS.map(o => `
-                <button type="button" class="status-pill ${meuStatus===o.key ? o.cls : ''}" style="${meuStatus===o.key ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-progresso" data-id="${m.id}" data-status="${o.key}">${o.label}${meuStatus===o.key ? ' ✓' : ''}</button>
-              `).join("")}
-            </div>
-          ` : ""}
-          ${open ? `
-            <div class="lyrics-box">
-              ${renderAudioPlayer(m)}
-              ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
-            </div>
-          ` : ""}
-        </div>
-      `;
-      }).join("");
+          <div class="${collapsed ? "hidden" : ""}">
+            ${especiais.map((m, idx) => renderCardMusicaPublico(m, idx)).join("")}
+          </div>
+        `;
+      }
+      html += normais.map((m, idx) => renderCardMusicaPublico(m, idx)).join("");
     }
     return html;
+  }
+
+  function renderCardMusicaPublico(m, idx){
+    const open = openMusicaId === m.id;
+    const meuStatus = meuProgresso[m.id];
+    const { titulo, artista } = splitMusica(m.nome);
+    return `
+    <div class="card ${m.especial ? "card-especial" : m.nova ? "card-nova" : ""}">
+      <div class="song-row">
+        <div class="song-num">${idx + 1}</div>
+        <div class="song-name" data-action="toggle-musica" data-id="${m.id}">
+          <div class="song-title">${m.especial ? `<span class="badge-especial">ESPECIAL</span> ` : m.nova ? `<span class="badge-nova">NOVA</span> ` : ""}${escapeHtml(titulo)}</div>
+          ${artista ? `<div class="song-artist">${escapeHtml(artista)}</div>` : ""}
+        </div>
+      </div>
+      ${meuNome ? `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+          ${MEU_PROGRESSO_OPTS.map(o => `
+            <button type="button" class="status-pill ${meuStatus===o.key ? o.cls : ''}" style="${meuStatus===o.key ? '' : 'background:var(--surface-2);color:var(--muted);'}" data-action="set-progresso" data-id="${m.id}" data-status="${o.key}">${o.label}${meuStatus===o.key ? ' ✓' : ''}</button>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${open ? `
+        <div class="lyrics-box">
+          ${renderAudioPlayer(m)}
+          ${m.letra ? `<div class="lyrics-text">${formatLyrics(m.letra)}</div>` : `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Letra ainda não cadastrada.</div>`}
+        </div>
+      ` : ""}
+    </div>
+  `;
   }
 
   function renderRoteiros(){
