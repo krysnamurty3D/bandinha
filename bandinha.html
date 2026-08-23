@@ -2542,9 +2542,9 @@ const functionsApp = getFunctions(firebaseApp);
         ${disponiveis.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Todas as músicas visíveis já estão nessa data.</div>` : agruparMusicas(disponiveis).map(g => `
           <div class="section-title" style="margin-top:0;font-size:calc(13px * var(--font-scale, 1));"><span class="note-dot" style="background:${g.cor}"></span>${escapeHtml(g.key)}</div>
           ${g.itens.map(mm => `
-            <label class="check-row" style="justify-content:space-between;">
-              <span>${escapeHtml(splitMusica(mm.nome).titulo)}</span>
+            <label class="check-row">
               <input type="checkbox" data-action="adicionar-ao-plano" data-id="${mm.id}" />
+              <span>${escapeHtml(splitMusica(mm.nome).titulo)}</span>
             </label>
           `).join("")}
         `).join("")}
@@ -3023,9 +3023,9 @@ const functionsApp = getFunctions(firebaseApp);
             <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-agenda-obs" data-id="${a.id}">Salvar</button>
             <div class="section-title" style="margin-top:12px;"><span class="ico">${ICONS.musicas}</span>Músicas do dia</div>
             ${[...data.musicas].filter(m => m.visivel !== false).sort((x,y) => x.nome.localeCompare(y.nome, "pt-BR", { sensitivity: "base" })).map(m => `
-              <label class="check-row" style="justify-content:space-between;">
-                <span>${escapeHtml(splitMusica(m.nome).titulo)}</span>
+              <label class="check-row">
                 <input type="checkbox" data-action="toggle-agenda-musica" data-agenda-id="${a.id}" data-musica-id="${m.id}" ${(a.musicaIds || []).includes(m.id) ? "checked" : ""} />
+                <span>${escapeHtml(splitMusica(m.nome).titulo)}</span>
               </label>
             `).join("")}
           ` : `
