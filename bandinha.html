@@ -1068,6 +1068,7 @@ const functionsApp = getFunctions(firebaseApp);
   let ofertasExpandido = false;
   let filtroTaxaIntegrantes = null;
   let filtroCamisaIntegrantes = null;
+  let filtroSexoCamisa = null;
   let editingRespostaCamisaId = null;
   let filtroTamanhoCamisa = null;
   let editingFinanceiroId = null;
@@ -1160,6 +1161,14 @@ const functionsApp = getFunctions(firebaseApp);
   }
   function normalizarBusca(s){
     return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+  function camisaDoIntegrante(nome){
+    const alvo = normalizarBusca(nome);
+    return data.camisas.find(c => normalizarBusca(c.nome) === alvo);
+  }
+  function integranteDaCamisa(nome){
+    const alvo = normalizarBusca(nome);
+    return data.integrantes.find(i => normalizarBusca(i.nome) === alvo);
   }
   function computeOrdemAlfabetica(nome){
     const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -1834,6 +1843,14 @@ ${corpo}
         <button type="submit" class="btn-add">+</button>
       </form>
 
+      <div class="section-title" style="margin-top:0;">Filtrar por sexo</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <button type="button" class="pay-toggle ${!filtroSexoCamisa ? "paid" : ""}" data-action="filtrar-sexo-camisa" data-valor="">Todos</button>
+        <button type="button" class="pay-toggle ${filtroSexoCamisa === "M" ? "paid" : ""}" data-action="filtrar-sexo-camisa" data-valor="M">Homens</button>
+        <button type="button" class="pay-toggle ${filtroSexoCamisa === "F" ? "paid" : ""}" data-action="filtrar-sexo-camisa" data-valor="F">Mulheres</button>
+        <button type="button" class="pay-toggle ${filtroSexoCamisa === "?" ? "paid" : ""}" data-action="filtrar-sexo-camisa" data-valor="?">Sem vínculo</button>
+      </div>
+
       <div class="section-title" style="display:flex;align-items:center;gap:8px;">
         <span>Respostas (${filtroTamanhoCamisa ? contagem[filtroTamanhoCamisa] || 0 : data.camisas.length})${filtroTamanhoCamisa ? ` — ${escapeHtml(filtroTamanhoCamisa)}` : ""}</span>
         ${filtroTamanhoCamisa ? `<button type="button" class="link-btn" style="padding:0;font-size:calc(12px * var(--font-scale, 1));" data-action="limpar-filtro-tamanho-camisa">limpar filtro</button>` : ""}
@@ -1845,15 +1862,25 @@ ${corpo}
       return html;
     }
 
-    const filtradas = filtroTamanhoCamisa ? data.camisas.filter(c => c.tamanho === filtroTamanhoCamisa) : data.camisas;
+    const filtradas = data.camisas.filter(c => {
+      if(filtroTamanhoCamisa && c.tamanho !== filtroTamanhoCamisa) return false;
+      if(filtroSexoCamisa){
+        const integrante = integranteDaCamisa(c.nome);
+        if(filtroSexoCamisa === "?" && integrante) return false;
+        if((filtroSexoCamisa === "M" || filtroSexoCamisa === "F") && integrante?.genero !== filtroSexoCamisa) return false;
+      }
+      return true;
+    });
     if(filtradas.length === 0){
-      html += `<div class="empty"><div class="note-dot"></div><br>Ninguém escolheu esse tamanho ainda.</div>`;
+      html += `<div class="empty"><div class="note-dot"></div><br>Ninguém nesse filtro ainda.</div>`;
       return html;
     }
 
     const ordenadas = [...filtradas].sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR", { sensitivity: "base" }));
     html += ordenadas.map(c => {
       const editing = editingRespostaCamisaId === c.id;
+      const integrante = integranteDaCamisa(c.nome);
+      const generoLabel = integrante?.genero === "M" ? "Homem" : integrante?.genero === "F" ? "Mulher" : null;
       return `
       <div class="card" style="padding:10px 14px;">
         ${editing ? `
@@ -1871,6 +1898,7 @@ ${corpo}
               <div class="song-title">${escapeHtml(c.nome)}</div>
               ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
             </div>
+            ${generoLabel ? `<span class="agenda-tag" style="margin-right:6px;">${generoLabel}</span>` : ""}
             <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}</span>
             <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar">✎</button>
             <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
@@ -2208,6 +2236,7 @@ ${corpo}
     html += lista.map(i => {
       const presencas = sessoesRealizadas.filter(s => (s.presentes || []).includes(i.nome)).length;
       const faltas = totalSessoes - presencas;
+      const camisa = camisaDoIntegrante(i.nome);
       return `
       <div class="card" data-id="${i.id}" style="border-left:3px solid ${color};">
         <div class="member-row">
@@ -2218,6 +2247,7 @@ ${corpo}
           ` : `
             <div class="member-name" data-action="toggle-membro" data-id="${i.id}" title="Toque para ver detalhes">
               ${escapeHtml(i.nome)}${i.instrumental ? ` <span class="inst-tag"><span class="ico" style="margin-right:3px;">${ICONS.instrument}</span>Instrumental</span>` : ""}
+              ${camisa ? ` <span class="agenda-tag" title="Camisa escolhida">${escapeHtml(camisa.tamanho)}</span>` : ""}
               ${totalSessoes > 0 ? `<span style="font-family:var(--font);color:${faltas > 0 ? "var(--rose)" : "var(--green)"};font-size:calc(14.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;">${presencas}/${totalSessoes}</span>` : ""}
             </div>
           `}
@@ -4033,6 +4063,13 @@ ${corpo}
     document.querySelectorAll('[data-action="limpar-filtro-tamanho-camisa"]').forEach(el => {
       el.addEventListener("click", () => {
         filtroTamanhoCamisa = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="filtrar-sexo-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroSexoCamisa = el.dataset.valor || null;
         render();
       });
     });
