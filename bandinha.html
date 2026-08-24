@@ -2162,6 +2162,9 @@ const functionsApp = getFunctions(firebaseApp);
               <option value="F" ${i.genero==="F"?"selected":""}>Mulher</option>
             </select>
           </span>
+          <label class="check-row-inline">
+            <input type="checkbox" data-action="toggle-camisa-definida" data-id="${i.id}" ${i.camisaDefinida?"checked":""} /> Já definiu a camisa
+          </label>
         </div>
       </div>`;
     }).join("");
@@ -4226,6 +4229,13 @@ const functionsApp = getFunctions(firebaseApp);
       el.addEventListener("change", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(item){ await updateDoc(doc(integrantesCol, item.id), { instrumental: el.checked }); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-camisa-definida"]').forEach(el => {
+      el.addEventListener("change", async () => {
+        const item = data.integrantes.find(i => i.id === el.dataset.id);
+        if(item){ await updateDoc(doc(integrantesCol, item.id), { camisaDefinida: el.checked }); }
       });
     });
 
