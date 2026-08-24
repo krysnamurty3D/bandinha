@@ -2137,6 +2137,7 @@ const functionsApp = getFunctions(firebaseApp);
               ${totalSessoes > 0 ? `<span style="font-family:var(--font);color:${faltas > 0 ? "var(--rose)" : "var(--green)"};font-size:calc(14.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;">${presencas}/${totalSessoes}</span>` : ""}
             </div>
           `}
+          ${editingNameId === i.id ? "" : `<button class="eye-x" style="${i.camisaDefinida ? "color:var(--green);" : ""}" data-action="toggle-camisa-definida" data-id="${i.id}" title="${i.camisaDefinida ? "Camisa definida — toque para desmarcar" : "Toque quando definir a camisa"}">${ICONS.camisa}</button>`}
           ${editingNameId === i.id ? "" : `<button class="edit-x" data-action="edit-nome" data-id="${i.id}" title="Editar nome">✎</button>`}
           <button class="del-x" data-action="del-integrante" data-id="${i.id}">✕</button>
         </div>
@@ -2162,9 +2163,6 @@ const functionsApp = getFunctions(firebaseApp);
               <option value="F" ${i.genero==="F"?"selected":""}>Mulher</option>
             </select>
           </span>
-          <label class="check-row-inline">
-            <input type="checkbox" data-action="toggle-camisa-definida" data-id="${i.id}" ${i.camisaDefinida?"checked":""} /> Já definiu a camisa
-          </label>
         </div>
       </div>`;
     }).join("");
@@ -4233,9 +4231,9 @@ const functionsApp = getFunctions(firebaseApp);
     });
 
     document.querySelectorAll('[data-action="toggle-camisa-definida"]').forEach(el => {
-      el.addEventListener("change", async () => {
+      el.addEventListener("click", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
-        if(item){ await updateDoc(doc(integrantesCol, item.id), { camisaDefinida: el.checked }); }
+        if(item){ await updateDoc(doc(integrantesCol, item.id), { camisaDefinida: !item.camisaDefinida }); }
       });
     });
 
