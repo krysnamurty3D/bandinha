@@ -1788,7 +1788,7 @@ ${corpo}
     const cfg = data.configCamisas;
     const contagem = {};
     (cfg.tamanhos || []).forEach(t => contagem[t] = 0);
-    data.camisas.forEach(c => { contagem[c.tamanho] = (contagem[c.tamanho] || 0) + 1; });
+    data.camisas.forEach(c => { contagem[c.tamanho] = (contagem[c.tamanho] || 0) + (c.quantidade || 1); });
 
     let html = `
       <div class="card" style="text-align:center;margin-bottom:16px;${cfg.ativo ? "border-color:var(--gold);" : ""}">
@@ -1840,6 +1840,7 @@ ${corpo}
         <select id="input-add-camisa-tamanho" style="flex:1 1 90px;">
           ${(cfg.tamanhos || []).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("")}
         </select>
+        <input type="number" id="input-add-camisa-quantidade" value="1" min="1" max="10" style="flex:0 0 60px;" title="Quantidade" />
         <button type="submit" class="btn-add">+</button>
       </form>
 
@@ -1889,6 +1890,7 @@ ${corpo}
             <select id="input-edit-tamanho-camisa" data-id="${c.id}" style="flex:1 1 auto;min-width:0;">
               ${(cfg.tamanhos || []).map(t => `<option value="${escapeHtml(t)}" ${c.tamanho === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
             </select>
+            <input type="number" id="input-edit-quantidade-camisa" data-id="${c.id}" value="${c.quantidade || 1}" min="1" max="10" style="flex:0 0 60px;" title="Quantidade" />
             <button class="btn-save-nome" style="width:auto;padding:0 10px;flex-shrink:0;" data-action="save-resposta-camisa" data-id="${c.id}">✓</button>
             <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
           </div>
@@ -1899,7 +1901,7 @@ ${corpo}
               ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
             </div>
             ${generoLabel ? `<span class="agenda-tag" style="margin-right:6px;">${generoLabel}</span>` : ""}
-            <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}</span>
+            <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}${c.quantidade > 1 ? ` ×${c.quantidade}` : ""}</span>
             <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar">✎</button>
             <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
           </div>
@@ -2247,7 +2249,7 @@ ${corpo}
           ` : `
             <div class="member-name" data-action="toggle-membro" data-id="${i.id}" title="Toque para ver detalhes">
               ${escapeHtml(i.nome)}${i.instrumental ? ` <span class="inst-tag"><span class="ico" style="margin-right:3px;">${ICONS.instrument}</span>Instrumental</span>` : ""}
-              ${camisa ? ` <span class="agenda-tag" title="Camisa escolhida">${escapeHtml(camisa.tamanho)}</span>` : ""}
+              ${camisa ? ` <span class="agenda-tag" title="Camisa escolhida">${escapeHtml(camisa.tamanho)}${camisa.quantidade > 1 ? ` ×${camisa.quantidade}` : ""}</span>` : ""}
               ${totalSessoes > 0 ? `<span style="font-family:var(--font);color:${faltas > 0 ? "var(--rose)" : "var(--green)"};font-size:calc(14.5px * var(--font-scale, 1));font-weight:600;margin-left:6px;">${presencas}/${totalSessoes}</span>` : ""}
             </div>
           `}
@@ -2962,10 +2964,11 @@ ${corpo}
     const cfg = data.configCamisas;
     const contagem = {};
     (cfg.tamanhos || []).forEach(t => contagem[t] = 0);
-    data.camisas.forEach(c => { contagem[c.tamanho] = (contagem[c.tamanho] || 0) + 1; });
+    data.camisas.forEach(c => { contagem[c.tamanho] = (contagem[c.tamanho] || 0) + (c.quantidade || 1); });
     let texto = `👕 *Camisas — Resumo por tamanho*\n\n`;
     texto += (cfg.tamanhos || []).map(t => `${t}: ${contagem[t] || 0}`).join("\n");
-    texto += `\n\nTotal: ${data.camisas.length}`;
+    const totalGeral = data.camisas.reduce((acc, c) => acc + (c.quantidade || 1), 0);
+    texto += `\n\nTotal: ${totalGeral}`;
     return texto;
   }
 
@@ -2975,9 +2978,11 @@ ${corpo}
     (cfg.tamanhos || []).forEach(t => {
       const pessoas = data.camisas.filter(c => c.tamanho === t).sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR", { sensitivity: "base" }));
       if(pessoas.length === 0) return;
-      texto += `\n*${t}* (${pessoas.length})\n${pessoas.map(c => `- ${c.nome}`).join("\n")}\n`;
+      const subtotal = pessoas.reduce((acc, c) => acc + (c.quantidade || 1), 0);
+      texto += `\n*${t}* (${subtotal})\n${pessoas.map(c => `- ${c.nome}${c.quantidade > 1 ? ` (x${c.quantidade})` : ""}`).join("\n")}\n`;
     });
-    texto += `\nTotal: ${data.camisas.length}`;
+    const totalGeral = data.camisas.reduce((acc, c) => acc + (c.quantidade || 1), 0);
+    texto += `\nTotal: ${totalGeral}`;
     return texto;
   }
 
@@ -4095,12 +4100,15 @@ ${corpo}
       e.preventDefault();
       const nomeInput = document.getElementById("input-add-camisa-nome");
       const tamanhoSelect = document.getElementById("input-add-camisa-tamanho");
+      const quantidadeInput = document.getElementById("input-add-camisa-quantidade");
       const nome = nomeInput.value.trim();
+      const quantidade = Math.min(10, Math.max(1, Number(quantidadeInput?.value) || 1));
       if(!nome || !tamanhoSelect || !tamanhoSelect.value) return;
       try{
-        await setDoc(doc(camisasCol, uid()), { nome, tamanho: tamanhoSelect.value, confirmadoEm: Date.now() });
+        await setDoc(doc(camisasCol, uid()), { nome, tamanho: tamanhoSelect.value, quantidade, confirmadoEm: Date.now() });
         showToast("Camisa adicionada");
         nomeInput.value = "";
+        if(quantidadeInput) quantidadeInput.value = "1";
       }catch(err){
         console.error(err);
         showToast("Erro ao adicionar");
@@ -4118,9 +4126,11 @@ ${corpo}
       el.addEventListener("click", async () => {
         const nomeInput = document.getElementById("input-edit-nome-camisa");
         const select = document.getElementById("input-edit-tamanho-camisa");
+        const quantidadeInput = document.getElementById("input-edit-quantidade-camisa");
         const nome = nomeInput ? nomeInput.value.trim() : "";
         if(select && nome){
-          await updateDoc(doc(camisasCol, el.dataset.id), { nome, tamanho: select.value });
+          const quantidade = Math.min(10, Math.max(1, Number(quantidadeInput?.value) || 1));
+          await updateDoc(doc(camisasCol, el.dataset.id), { nome, tamanho: select.value, quantidade });
           showToast("Resposta atualizada");
         }
         editingRespostaCamisaId = null;

@@ -677,6 +677,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   let agendaMusicasAbertas = {};
   let openDevocionalId = null;
   let tamanhoCamisaSelecionado = null;
+  let quantidadeCamisaSelecionada = 1;
   let openCoreografiaId = null;
   let collapsedGroups = {};
   let loaded = false;
@@ -1471,10 +1472,11 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const meuId = slugify(meuNome);
     const minhaResposta = data.camisas.find(c => c.id === meuId);
     if(minhaResposta){
+      const qtd = minhaResposta.quantidade || 1;
       return `
         <div class="card" style="text-align:center;">
           <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Seu tamanho</div>
-          <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:var(--gold);">${escapeHtml(minhaResposta.tamanho)}</div>
+          <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:var(--gold);">${escapeHtml(minhaResposta.tamanho)}${qtd > 1 ? ` <span style="font-size:calc(18px * var(--font-scale, 1));">× ${qtd}</span>` : ""}</div>
           <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:8px;">✓ Confirmado — só o coordenador pode alterar agora.</div>
         </div>
       `;
@@ -1487,8 +1489,14 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         `).join("")}
       </div>
       ${tamanhoCamisaSelecionado ? `
+        <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px;">
+          <span style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Quantas camisas?</span>
+          <button type="button" class="status-pill" style="padding:6px 14px;font-weight:700;" data-action="ajustar-qtd-camisa" data-delta="-1">−</button>
+          <span style="font-size:calc(18px * var(--font-scale, 1));font-weight:800;min-width:20px;text-align:center;">${quantidadeCamisaSelecionada}</span>
+          <button type="button" class="status-pill" style="padding:6px 14px;font-weight:700;" data-action="ajustar-qtd-camisa" data-delta="1">+</button>
+        </div>
         <button type="button" style="width:100%;border:none;cursor:pointer;font-family:inherit;background:var(--gold);color:#241200;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:18px 16px;border-radius:16px;" data-action="confirmar-tamanho-camisa">
-          <span style="font-size:calc(22px * var(--font-scale, 1));font-weight:800;">Tamanho ${escapeHtml(tamanhoCamisaSelecionado)}</span>
+          <span style="font-size:calc(22px * var(--font-scale, 1));font-weight:800;">Tamanho ${escapeHtml(tamanhoCamisaSelecionado)}${quantidadeCamisaSelecionada > 1 ? ` × ${quantidadeCamisaSelecionada}` : ""}</span>
           <span style="font-size:calc(13px * var(--font-scale, 1));font-weight:600;">Toque aqui para confirmar</span>
         </button>
       ` : ""}
@@ -1613,6 +1621,15 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     document.querySelectorAll('[data-action="selecionar-tamanho-camisa"]').forEach(el => {
       el.addEventListener("click", () => {
         tamanhoCamisaSelecionado = el.dataset.tamanho;
+        quantidadeCamisaSelecionada = 1;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="ajustar-qtd-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        const delta = Number(el.dataset.delta);
+        quantidadeCamisaSelecionada = Math.min(10, Math.max(1, quantidadeCamisaSelecionada + delta));
         render();
       });
     });
@@ -1620,10 +1637,12 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     document.querySelectorAll('[data-action="confirmar-tamanho-camisa"]').forEach(el => {
       el.addEventListener("click", async () => {
         if(!meuNome || !tamanhoCamisaSelecionado) return;
-        if(!confirm(`Confirmar o tamanho ${tamanhoCamisaSelecionado}? Depois de confirmar, só o coordenador vai poder alterar.`)) return;
+        const qtdTexto = quantidadeCamisaSelecionada > 1 ? ` (${quantidadeCamisaSelecionada} unidades)` : "";
+        if(!confirm(`Confirmar o tamanho ${tamanhoCamisaSelecionado}${qtdTexto}? Depois de confirmar, só o coordenador vai poder alterar.`)) return;
         try{
-          await setDoc(doc(camisasCol, slugify(meuNome)), { nome: meuNome, tamanho: tamanhoCamisaSelecionado, confirmadoEm: Date.now() });
+          await setDoc(doc(camisasCol, slugify(meuNome)), { nome: meuNome, tamanho: tamanhoCamisaSelecionado, quantidade: quantidadeCamisaSelecionada, confirmadoEm: Date.now() });
           tamanhoCamisaSelecionado = null;
+          quantidadeCamisaSelecionada = 1;
           showToast("Tamanho confirmado!");
         }catch(err){
           console.error(err);

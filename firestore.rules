@@ -76,9 +76,10 @@ service cloud.firestore {
     match /camisas/{docId} {
       allow read: if true;
       allow create: if isCoordenador() || (
-        request.resource.data.keys().hasOnly(['nome','tamanho','confirmadoEm']) &&
+        request.resource.data.keys().hasOnly(['nome','tamanho','confirmadoEm','quantidade']) &&
         request.resource.data.nome is string &&
-        request.resource.data.tamanho is string
+        request.resource.data.tamanho is string &&
+        (!('quantidade' in request.resource.data) || (request.resource.data.quantidade is int && request.resource.data.quantidade >= 1 && request.resource.data.quantidade <= 10))
       );
       allow update, delete: if isCoordenador();
     }
