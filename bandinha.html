@@ -1066,6 +1066,7 @@ const functionsApp = getFunctions(firebaseApp);
   let editandoTamanhosCamisas = false;
   let ofertasExpandido = false;
   let filtroTaxaIntegrantes = null;
+  let filtroCamisaIntegrantes = null;
   let editingRespostaCamisaId = null;
   let filtroTamanhoCamisa = null;
   let editingFinanceiroId = null;
@@ -2076,6 +2077,7 @@ const functionsApp = getFunctions(firebaseApp);
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhum integrante ainda.<br>Adicione o primeiro nome acima.</div>`;
     } else {
       const totalTaxaPaga = data.integrantes.filter(i => i.taxaEquipe).length;
+      const totalCamisaDefinida = data.integrantes.filter(i => i.camisaDefinida).length;
       html += `
         <div class="section-title" style="margin-top:0;display:flex;align-items:center;gap:8px;">
           <span>Filtrar por Taxa da Equipe</span>
@@ -2085,11 +2087,21 @@ const functionsApp = getFunctions(firebaseApp);
           <button type="button" class="pay-toggle ${filtroTaxaIntegrantes === "pago" ? "paid" : ""}" data-action="filtrar-taxa-integrantes" data-valor="pago">Pagou (${totalTaxaPaga})</button>
           <button type="button" class="pay-toggle ${filtroTaxaIntegrantes === "pendente" ? "paid" : ""}" data-action="filtrar-taxa-integrantes" data-valor="pendente">Não pagou (${total - totalTaxaPaga})</button>
         </div>
+        <div class="section-title" style="margin-top:0;display:flex;align-items:center;gap:8px;">
+          <span>Filtrar por Camisa</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button type="button" class="pay-toggle ${!filtroCamisaIntegrantes ? "paid" : ""}" data-action="filtrar-camisa-integrantes" data-valor="">Todos (${total})</button>
+          <button type="button" class="pay-toggle ${filtroCamisaIntegrantes === "definida" ? "paid" : ""}" data-action="filtrar-camisa-integrantes" data-valor="definida">Definiu (${totalCamisaDefinida})</button>
+          <button type="button" class="pay-toggle ${filtroCamisaIntegrantes === "pendente" ? "paid" : ""}" data-action="filtrar-camisa-integrantes" data-valor="pendente">Não definiu (${total - totalCamisaDefinida})</button>
+        </div>
       `;
       const porNome = (a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
       const filtrados = data.integrantes.filter(i => {
-        if(filtroTaxaIntegrantes === "pago") return !!i.taxaEquipe;
-        if(filtroTaxaIntegrantes === "pendente") return !i.taxaEquipe;
+        if(filtroTaxaIntegrantes === "pago" && !i.taxaEquipe) return false;
+        if(filtroTaxaIntegrantes === "pendente" && i.taxaEquipe) return false;
+        if(filtroCamisaIntegrantes === "definida" && !i.camisaDefinida) return false;
+        if(filtroCamisaIntegrantes === "pendente" && i.camisaDefinida) return false;
         return true;
       });
       const homens = filtrados.filter(i => i.genero === "M").sort(porNome);
@@ -3877,6 +3889,13 @@ const functionsApp = getFunctions(firebaseApp);
     document.querySelectorAll('[data-action="filtrar-taxa-integrantes"]').forEach(el => {
       el.addEventListener("click", () => {
         filtroTaxaIntegrantes = el.dataset.valor || null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="filtrar-camisa-integrantes"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroCamisaIntegrantes = el.dataset.valor || null;
         render();
       });
     });
