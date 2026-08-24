@@ -1183,6 +1183,74 @@ const functionsApp = getFunctions(firebaseApp);
       .replace(/\*\*([\s\S]+?)\*\*/g, "<strong>$1</strong>")
       .replace(/(?<!\*)\*(?!\*)([\s\S]+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
   }
+  function letraParaHtmlWord(s){
+    return escapeHtml(String(s || ""))
+      .replace(/\*\*([\s\S]+?)\*\*/g, "<b>$1</b>")
+      .replace(/(?<!\*)\*(?!\*)([\s\S]+?)(?<!\*)\*(?!\*)/g, "<i>$1</i>")
+      .split("\n").join("<br/>\n");
+  }
+
+  function gerarLivretoWord(){
+    const musicas = data.musicas.filter(m => m.visivel !== false && categoriaDaMusica(m) !== "Especial");
+    if(musicas.length === 0){ showToast("Nenhuma música pra incluir no livreto"); return; }
+    const grupos = agruparMusicas(musicas).filter(g => g.key !== "Especial");
+
+    let corpo = "";
+    grupos.forEach(g => {
+      corpo += `<h2 class="category-title" style="mso-style-name:'heading 1';font-size:13pt;font-weight:bold;page-break-before:always;">${escapeHtml(g.key)}</h2>\n`;
+      g.itens.forEach(m => {
+        const { titulo, artista } = splitMusica(m.nome);
+        corpo += `<h1 class="song-title" style="mso-style-name:'heading 1';font-size:16pt;font-weight:bold;page-break-before:always;margin-bottom:8pt;">${escapeHtml(titulo)}</h1>\n`;
+        if(artista) corpo += `<p style="font-size:11pt;font-style:italic;margin:0 0 10pt 0;">${escapeHtml(artista)}</p>\n`;
+        corpo += `<p style="font-size:11pt;margin:0 0 6pt 0;">${letraParaHtmlWord(m.letra || "")}</p>\n`;
+      });
+    });
+
+    const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Livreto de Músicas</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page WordSection1 { size: 10cm 15cm; margin: 1cm; mso-page-orientation: portrait; }
+div.WordSection1 { page: WordSection1; }
+body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
+</style>
+</head>
+<body>
+<div class="WordSection1">
+<h1 style="font-size:16pt;font-weight:bold;text-align:center;">Livreto de Músicas</h1>
+<h2 style="font-size:13pt;font-weight:bold;">Sumário</h2>
+<p style='mso-hide:all'></p>
+<span style='mso-element:field-begin'></span>
+<span style='mso-spacerun:yes'>&#160;</span>TOC \\o "1-1" \\h \\z \\u
+<span style='mso-element:field-separator'></span>
+<p style="font-size:11pt;color:#666;">Sumário gerado pelo Word — se as páginas não aparecerem, selecione tudo (Ctrl+A) e pressione F9.</p>
+<span style='mso-element:field-end'></span>
+<p style="page-break-before:always;"></p>
+${corpo}
+</div>
+</body>
+</html>`;
+
+    const blob = new Blob(["﻿" + html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "livreto-musicas.doc";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function splitMusica(nome){
     const m = String(nome).match(/^(.*?)\s*[-–—]\s*(.+)$/);
     return m ? { titulo: m[1].trim(), artista: m[2].trim() } : { titulo: String(nome).trim(), artista: "" };
@@ -2197,6 +2265,7 @@ const functionsApp = getFunctions(firebaseApp);
         <div class="stat"><div class="num">${total}</div><div class="lbl">Músicas</div></div>
         <div class="stat"><div class="num">${prontas}/${total}</div><div class="lbl">Prontas</div></div>
       </div>
+      <button type="button" id="btn-gerar-livreto" class="link-btn" style="margin-bottom:14px;"><span class="ico">${ICONS.printer}</span>Gerar livreto (Word, 10x15)</button>
       ${pendentesDrive > 0 ? `
         <button type="button" id="btn-migrar-audios" class="btn-import" style="margin-bottom:16px;background:var(--gold);color:#241200;" ${migrandoAudios ? "disabled" : ""}>${migrandoAudios ? "Migrando..." : `<span class="ico">${ICONS.cloud}</span>Migrar ${pendentesDrive} áudio${pendentesDrive === 1 ? "" : "s"} do Drive para o Storage`}</button>
       ` : ""}
@@ -3740,6 +3809,11 @@ const functionsApp = getFunctions(firebaseApp);
       }
       enviandoSetlist = false;
       render();
+    });
+
+    const btnGerarLivreto = document.getElementById("btn-gerar-livreto");
+    if(btnGerarLivreto) btnGerarLivreto.addEventListener("click", () => {
+      gerarLivretoWord();
     });
 
     const btnMigrarAudios = document.getElementById("btn-migrar-audios");
