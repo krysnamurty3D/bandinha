@@ -2091,11 +2091,14 @@ const functionsApp = getFunctions(firebaseApp);
         <div class="section-title" style="margin-top:0;display:flex;align-items:center;gap:8px;">
           <span>Filtrar por Camisa</span>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${filtroCamisaIntegrantes ? "10px" : "16px"};">
           <button type="button" class="pay-toggle ${!filtroCamisaIntegrantes ? "paid" : ""}" data-action="filtrar-camisa-integrantes" data-valor="">Todos (${total})</button>
           <button type="button" class="pay-toggle ${filtroCamisaIntegrantes === "definida" ? "paid" : ""}" data-action="filtrar-camisa-integrantes" data-valor="definida">Definiu (${totalCamisaDefinida})</button>
           <button type="button" class="pay-toggle ${filtroCamisaIntegrantes === "pendente" ? "paid" : ""}" data-action="filtrar-camisa-integrantes" data-valor="pendente">Não definiu (${total - totalCamisaDefinida})</button>
         </div>
+        ${filtroCamisaIntegrantes ? `
+          <button type="button" class="link-btn" style="padding:0;margin-bottom:16px;color:#25D366;display:flex;align-items:center;gap:5px;" data-action="compartilhar-lista-camisa"><span class="ico" style="margin:0;">${ICONS.whatsapp}</span>Enviar lista pelo WhatsApp</button>
+        ` : ""}
       `;
       const porNome = (a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
       const filtrados = data.integrantes.filter(i => {
@@ -2844,6 +2847,18 @@ const functionsApp = getFunctions(firebaseApp);
     return texto;
   }
 
+  function montarTextoListaCamisaIntegrantes(){
+    const filtrados = data.integrantes.filter(i => {
+      if(filtroCamisaIntegrantes === "definida" && !i.camisaDefinida) return false;
+      if(filtroCamisaIntegrantes === "pendente" && i.camisaDefinida) return false;
+      return true;
+    }).sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+    const titulo = filtroCamisaIntegrantes === "definida" ? "Já definiram a camisa" : "Ainda não definiram a camisa";
+    let texto = `👕 *${titulo}* (${filtrados.length})\n\n`;
+    texto += filtrados.map(i => `- ${i.nome}`).join("\n");
+    return texto;
+  }
+
   function montarTextoCamisasCompacto(){
     const cfg = data.configCamisas;
     const contagem = {};
@@ -3431,6 +3446,12 @@ const functionsApp = getFunctions(firebaseApp);
         if(!evento) return;
         const texto = montarTextoAgendaWhatsapp(evento);
         window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+      });
+    });
+
+    document.querySelectorAll('[data-action="compartilhar-lista-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(montarTextoListaCamisaIntegrantes())}`, "_blank");
       });
     });
 
