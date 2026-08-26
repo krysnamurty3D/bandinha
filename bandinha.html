@@ -2152,26 +2152,21 @@ ${corpo}
 
       const taxaAuto = transacoes.filter(t => t.origem === "taxa-equipe");
       const manuais = transacoes.filter(t => t.origem !== "taxa-equipe");
-
-      const meses = [];
-      manuais.forEach(t => {
-        const chave = t.data.slice(0,7);
-        let grupo = meses.find(g => g.chave === chave);
-        if(!grupo){ grupo = { chave, itens: [] }; meses.push(grupo); }
-        grupo.itens.push(t);
-      });
+      const receitasManuais = manuais.filter(t => t.tipo === "receita");
+      const despesasManuais = manuais.filter(t => t.tipo === "despesa");
 
       html += `<div class="section-title" style="margin-top:0;">Extrato</div>`;
 
-      meses.forEach((g, idx) => {
-        const [ano, mes] = g.chave.split("-");
-        const label = `${AGENDA_MESES[Number(mes) - 1]} ${ano}`;
-        const subtotal = g.itens.reduce((acc,t) => acc + (t.tipo === "receita" ? t.valor : -t.valor), 0);
-        const groupKey = "fin-mes-" + g.chave;
-        const collapsed = collapsedGroups[groupKey] === undefined ? idx > 0 : !!collapsedGroups[groupKey];
+      [
+        { key: "fin-receitas-totais", label: "Receitas totais", itens: receitasManuais, cor: "var(--green)" },
+        { key: "fin-despesas-totais", label: "Despesas totais", itens: despesasManuais, cor: "var(--rose)" }
+      ].forEach(g => {
+        if(g.itens.length === 0) return;
+        const subtotal = g.itens.reduce((acc,t) => acc + t.valor, 0);
+        const collapsed = !!collapsedGroups[g.key];
         html += `
-          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="${groupKey}">
-            <span>${label} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${g.itens.length}) · <span style="color:${subtotal >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(subtotal)}</span></span></span>
+          <div class="section-title" style="margin-top:0;" data-action="toggle-group" data-group="${g.key}">
+            <span>${g.label} <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${g.itens.length}) · <span style="color:${g.cor};">${formatMoeda(subtotal)}</span></span></span>
             <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
           <div class="${collapsed ? "hidden" : ""}">
@@ -2194,7 +2189,7 @@ ${corpo}
         `;
       }
 
-      if(meses.length === 0 && taxaAuto.length === 0){
+      if(manuais.length === 0 && taxaAuto.length === 0){
         html += `<div class="empty" style="font-size:calc(18px * var(--font-scale, 1));"><div class="note-dot"></div><br>Nenhuma movimentação registrada ainda.</div>`;
       }
     }
