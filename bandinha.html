@@ -1642,10 +1642,7 @@ ${corpo}
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
     const totalConfirmados = data.integrantes.filter(i => i.confirmado).length;
-    const valorTaxaCompletoHome = (data.configFinanceiro?.valorTaxa || 0) + (data.configFinanceiro?.valorCamisa || 0);
-    const receitaTaxasHome = data.integrantes.filter(i => i.taxaEquipe).length * valorTaxaCompletoHome;
-    const totalOfertasHome = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
-    const saldoFin = data.financeiro.reduce((acc,t) => acc + (t.tipo === "receita" ? (t.valor||0) : -(t.valor||0)), 0) + receitaTaxasHome + totalOfertasHome;
+    const saldoFin = data.financeiro.reduce((acc,t) => acc + (t.tipo === "receita" ? (t.valor||0) : -(t.valor||0)), 0);
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const hojeIso = hoje.toISOString().slice(0,10);
     const proximaAgenda = [...data.agenda].filter(a => a.data >= hojeIso).sort((a,b) => a.data.localeCompare(b.data))[0];
