@@ -1166,6 +1166,25 @@ const functionsApp = getFunctions(firebaseApp);
     const alvo = normalizarBusca(nome);
     return data.camisas.find(c => normalizarBusca(c.nome) === alvo);
   }
+  function transacaoTaxaId(integranteId){ return `taxa-${integranteId}`; }
+  async function gerarTransacaoTaxa(integrante){
+    const cf = data.configFinanceiro || {};
+    const valorBase = (cf.valorTaxa || 0) + (cf.valorCamisa || 0);
+    const camisa = camisaDoIntegrante(integrante.nome);
+    const extras = Math.max(0, (camisa?.quantidade || 1) - 1);
+    const valor = valorBase + extras * (cf.valorCamisa || 0);
+    if(valor <= 0) return;
+    const id = transacaoTaxaId(integrante.id);
+    await setDoc(doc(financeiroCol, id), {
+      id, tipo: "receita",
+      descricao: `Taxa da Equipe — ${integrante.nome}`,
+      valor, data: new Date().toISOString().slice(0,10),
+      criadoEm: Date.now(), origem: "taxa-equipe", integranteId: integrante.id
+    });
+  }
+  async function removerTransacaoTaxa(integranteId){
+    await deleteDoc(doc(financeiroCol, transacaoTaxaId(integranteId))).catch(() => {});
+  }
   function integranteDaCamisa(nome){
     const alvo = normalizarBusca(nome);
     return data.integrantes.find(i => normalizarBusca(i.nome) === alvo);
@@ -1984,17 +2003,12 @@ ${corpo}
     const despesaPorPessoa = totalIntegrantes > 0 ? totalDespesas / totalIntegrantes : null;
     const totalTaxaPaga = data.integrantes.filter(i => i.taxaEquipe).length;
     const valorTaxaCompleto = (data.configFinanceiro?.valorTaxa || 0) + (data.configFinanceiro?.valorCamisa || 0);
-    const receitaTaxas = totalTaxaPaga * valorTaxaCompleto;
-    const valorCamisaUnitario = data.configFinanceiro?.valorCamisa || 0;
-    const camisasExtras = data.integrantes.filter(i => i.taxaEquipe).reduce((acc,i) => {
-      const camisa = camisaDoIntegrante(i.nome);
-      const qtd = camisa ? (camisa.quantidade || 1) : 1;
-      return acc + Math.max(0, qtd - 1);
-    }, 0);
-    const receitaCamisasExtras = camisasExtras * valorCamisaUnitario;
+    const transacoesTaxa = data.financeiro.filter(t => t.origem === "taxa-equipe");
+    const receitaTaxas = transacoesTaxa.reduce((acc,t) => acc + (t.valor || 0), 0);
+    const semLancamento = data.integrantes.filter(i => i.taxaEquipe && !data.financeiro.some(t => t.id === transacaoTaxaId(i.id)));
     const totalOfertas = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
-    const totalReceitas = totalReceitasLancadas + receitaTaxas + receitaCamisasExtras + totalOfertas;
-    const saldo = (totalReceitasLancadas + receitaTaxas + receitaCamisasExtras) - totalDespesas;
+    const totalReceitas = totalReceitasLancadas + totalOfertas;
+    const saldo = totalReceitasLancadas - totalDespesas;
     const totalCamisasEstimadas = data.integrantes.reduce((acc,i) => acc + (camisaDoIntegrante(i.nome)?.quantidade || 1), 0);
     const cf = data.configFinanceiro || { valorCamisa: 0, valorTaxa: 0 };
 
@@ -2033,7 +2047,7 @@ ${corpo}
         <div class="stat">
           <div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalReceitas)}</div>
           <div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Receitas</div>
-          ${(receitaTaxas > 0 || receitaCamisasExtras > 0 || totalOfertas > 0) ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Inclui ${formatMoeda(receitaTaxas)} de taxas${receitaCamisasExtras > 0 ? ` + ${formatMoeda(receitaCamisasExtras)} de camisas extras` : ""}${totalOfertas > 0 ? ` + ${formatMoeda(totalOfertas)} de ofertas` : ""}</div>` : ""}
+          ${(receitaTaxas > 0 || totalOfertas > 0) ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Inclui ${formatMoeda(receitaTaxas)} de taxas${totalOfertas > 0 ? ` (ofertas somadas aqui, não no saldo: ${formatMoeda(totalOfertas)})` : ""}</div>` : ""}
         </div>
         <div class="stat">
           <div class="num" style="color:var(--rose);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalDespesas)}</div>
@@ -2046,11 +2060,18 @@ ${corpo}
         <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
         ${totalOfertas > 0 ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">Não inclui ${formatMoeda(totalOfertas)} de ofertas — essas são extras</div>` : ""}
       </div>
-      ${valorTaxaCompleto > 0 ? `
+      ${(valorTaxaCompleto > 0 || transacoesTaxa.length > 0) ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Receita da Taxa da Equipe</div>
-          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaTaxas + receitaCamisasExtras)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(valorTaxaCompleto)} (taxa ${formatMoeda(data.configFinanceiro.valorTaxa)} + camisa ${formatMoeda(data.configFinanceiro.valorCamisa)}) — contabiliza sozinho conforme você marca em Pagamentos${camisasExtras > 0 ? ` · + ${formatMoeda(receitaCamisasExtras)} de ${camisasExtras} camisa${camisasExtras === 1 ? "" : "s"} extra${camisasExtras === 1 ? "" : "s"} (${formatMoeda(valorCamisaUnitario)} cada)` : ""}</div>
+          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaTaxas)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram — cada lançamento fica com o valor (taxa + camisa) de quando foi marcado, não muda se você reajustar os valores depois</div>
+        </div>
+      ` : ""}
+      ${semLancamento.length > 0 ? `
+        <div class="card" style="margin-bottom:16px;border-color:var(--rose);">
+          <div style="color:var(--rose);font-weight:600;margin-bottom:6px;">${semLancamento.length} pessoa${semLancamento.length === 1 ? "" : "s"} marcada${semLancamento.length === 1 ? "" : "s"} como "pagou" sem lançamento no caixa</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">${semLancamento.map(i => escapeHtml(i.nome)).join(", ")} — provavelmente marcados antes dessa atualização. Gerar agora usa os valores atuais de taxa/camisa.</div>
+          <button type="button" class="btn-import" data-action="migrar-transacoes-taxa">Gerar lançamentos retroativos</button>
         </div>
       ` : ""}
       <div class="card" style="text-align:center;margin-bottom:16px;cursor:pointer;" data-action="toggle-ofertas-expandido">
@@ -3278,8 +3299,13 @@ ${corpo}
 
     document.querySelectorAll('[data-action="del-financeiro"]').forEach(el => {
       el.addEventListener("click", async () => {
-        if(!confirm("Remover esta movimentação?")) return;
+        const transacao = data.financeiro.find(t => t.id === el.dataset.id);
+        const avisoTaxa = transacao?.origem === "taxa-equipe" ? " Isso também vai desmarcar a Taxa da Equipe dessa pessoa em Integrantes." : "";
+        if(!confirm(`Remover esta movimentação?${avisoTaxa}`)) return;
         await deleteDoc(doc(financeiroCol, el.dataset.id));
+        if(transacao?.origem === "taxa-equipe" && transacao.integranteId){
+          await updateDoc(doc(integrantesCol, transacao.integranteId), { taxaEquipe: false }).catch(() => {});
+        }
       });
     });
 
@@ -4358,11 +4384,31 @@ ${corpo}
       });
     });
 
+    const btnMigrarTransacoesTaxa = document.getElementById("btn-migrar-transacoes-taxa") || document.querySelector('[data-action="migrar-transacoes-taxa"]');
+    if(btnMigrarTransacoesTaxa) btnMigrarTransacoesTaxa.addEventListener("click", async () => {
+      const semLancamento = data.integrantes.filter(i => i.taxaEquipe && !data.financeiro.some(t => t.id === transacaoTaxaId(i.id)));
+      if(semLancamento.length === 0) return;
+      if(!confirm(`Gerar ${semLancamento.length} lançamento(s) retroativo(s) usando os valores atuais de taxa/camisa?`)) return;
+      try{
+        await Promise.all(semLancamento.map(i => gerarTransacaoTaxa(i)));
+        showToast("Lançamentos gerados");
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao gerar lançamentos");
+      }
+    });
+
     document.querySelectorAll('[data-action="toggle-taxa"]').forEach(el => {
       el.addEventListener("click", async () => {
         const item = data.integrantes.find(i => i.id === el.dataset.id);
         if(!item) return;
-        await updateDoc(doc(integrantesCol, item.id), { taxaEquipe: !item.taxaEquipe });
+        const novoValor = !item.taxaEquipe;
+        await updateDoc(doc(integrantesCol, item.id), { taxaEquipe: novoValor });
+        if(novoValor){
+          await gerarTransacaoTaxa(item);
+        } else {
+          await removerTransacaoTaxa(item.id);
+        }
       });
     });
 
