@@ -1985,9 +1985,16 @@ ${corpo}
     const totalTaxaPaga = data.integrantes.filter(i => i.taxaEquipe).length;
     const valorTaxaCompleto = (data.configFinanceiro?.valorTaxa || 0) + (data.configFinanceiro?.valorCamisa || 0);
     const receitaTaxas = totalTaxaPaga * valorTaxaCompleto;
+    const valorCamisaUnitario = data.configFinanceiro?.valorCamisa || 0;
+    const camisasExtras = data.integrantes.filter(i => i.taxaEquipe).reduce((acc,i) => {
+      const camisa = camisaDoIntegrante(i.nome);
+      const qtd = camisa ? (camisa.quantidade || 1) : 1;
+      return acc + Math.max(0, qtd - 1);
+    }, 0);
+    const receitaCamisasExtras = camisasExtras * valorCamisaUnitario;
     const totalOfertas = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
-    const totalReceitas = totalReceitasLancadas + receitaTaxas + totalOfertas;
-    const saldo = (totalReceitasLancadas + receitaTaxas) - totalDespesas;
+    const totalReceitas = totalReceitasLancadas + receitaTaxas + receitaCamisasExtras + totalOfertas;
+    const saldo = (totalReceitasLancadas + receitaTaxas + receitaCamisasExtras) - totalDespesas;
     const cf = data.configFinanceiro || { valorCamisa: 0, valorTaxa: 0 };
 
     let valoresHtml = "";
@@ -2025,7 +2032,7 @@ ${corpo}
         <div class="stat">
           <div class="num" style="color:var(--green);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalReceitas)}</div>
           <div class="lbl" style="font-size:calc(15px * var(--font-scale, 1));">Receitas</div>
-          ${(receitaTaxas > 0 || totalOfertas > 0) ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Inclui ${formatMoeda(receitaTaxas)} de taxas${totalOfertas > 0 ? ` + ${formatMoeda(totalOfertas)} de ofertas` : ""}</div>` : ""}
+          ${(receitaTaxas > 0 || receitaCamisasExtras > 0 || totalOfertas > 0) ? `<div style="color:var(--muted);font-size:calc(13.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;">Inclui ${formatMoeda(receitaTaxas)} de taxas${receitaCamisasExtras > 0 ? ` + ${formatMoeda(receitaCamisasExtras)} de camisas extras` : ""}${totalOfertas > 0 ? ` + ${formatMoeda(totalOfertas)} de ofertas` : ""}</div>` : ""}
         </div>
         <div class="stat">
           <div class="num" style="color:var(--rose);font-size:calc(26px * var(--font-scale, 1));">${formatMoeda(totalDespesas)}</div>
@@ -2043,6 +2050,13 @@ ${corpo}
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Receita da Taxa da Equipe</div>
           <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaTaxas)}</div>
           <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(valorTaxaCompleto)} (taxa ${formatMoeda(data.configFinanceiro.valorTaxa)} + camisa ${formatMoeda(data.configFinanceiro.valorCamisa)}) — contabiliza sozinho conforme você marca em Pagamentos</div>
+        </div>
+      ` : ""}
+      ${camisasExtras > 0 ? `
+        <div class="card" style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Camisas extras (quem pediu mais de uma)</div>
+          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaCamisasExtras)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${camisasExtras} camisa${camisasExtras === 1 ? "" : "s"} extra${camisasExtras === 1 ? "" : "s"} × ${formatMoeda(valorCamisaUnitario)} — só contado de quem pagou a Taxa da Equipe</div>
         </div>
       ` : ""}
       <div class="card" style="text-align:center;margin-bottom:16px;cursor:pointer;" data-action="toggle-ofertas-expandido">
