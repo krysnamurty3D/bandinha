@@ -2048,15 +2048,8 @@ ${corpo}
       ${valorTaxaCompleto > 0 ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Receita da Taxa da Equipe</div>
-          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaTaxas)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(valorTaxaCompleto)} (taxa ${formatMoeda(data.configFinanceiro.valorTaxa)} + camisa ${formatMoeda(data.configFinanceiro.valorCamisa)}) — contabiliza sozinho conforme você marca em Pagamentos</div>
-        </div>
-      ` : ""}
-      ${camisasExtras > 0 ? `
-        <div class="card" style="text-align:center;margin-bottom:16px;">
-          <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Camisas extras (quem pediu mais de uma)</div>
-          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaCamisasExtras)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${camisasExtras} camisa${camisasExtras === 1 ? "" : "s"} extra${camisasExtras === 1 ? "" : "s"} × ${formatMoeda(valorCamisaUnitario)} — só contado de quem pagou a Taxa da Equipe</div>
+          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--green);">${formatMoeda(receitaTaxas + receitaCamisasExtras)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalTaxaPaga} de ${totalIntegrantes} pagaram × ${formatMoeda(valorTaxaCompleto)} (taxa ${formatMoeda(data.configFinanceiro.valorTaxa)} + camisa ${formatMoeda(data.configFinanceiro.valorCamisa)}) — contabiliza sozinho conforme você marca em Pagamentos${camisasExtras > 0 ? ` · + ${formatMoeda(receitaCamisasExtras)} de ${camisasExtras} camisa${camisasExtras === 1 ? "" : "s"} extra${camisasExtras === 1 ? "" : "s"} (${formatMoeda(valorCamisaUnitario)} cada)` : ""}</div>
         </div>
       ` : ""}
       <div class="card" style="text-align:center;margin-bottom:16px;cursor:pointer;" data-action="toggle-ofertas-expandido">
