@@ -1995,6 +1995,7 @@ ${corpo}
     const totalOfertas = data.integrantes.reduce((acc,i) => acc + (i.oferta || 0), 0);
     const totalReceitas = totalReceitasLancadas + receitaTaxas + receitaCamisasExtras + totalOfertas;
     const saldo = (totalReceitasLancadas + receitaTaxas + receitaCamisasExtras) - totalDespesas;
+    const totalCamisasEstimadas = data.integrantes.reduce((acc,i) => acc + (camisaDoIntegrante(i.nome)?.quantidade || 1), 0);
     const cf = data.configFinanceiro || { valorCamisa: 0, valorTaxa: 0 };
 
     let valoresHtml = "";
@@ -2070,8 +2071,8 @@ ${corpo}
       ${data.configFinanceiro?.valorCamisa > 0 ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;"><span class="ico">${ICONS.camisa}</span>Despesa com camisas (estimativa)</div>
-          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--rose);">${formatMoeda(totalIntegrantes * data.configFinanceiro.valorCamisa)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalIntegrantes} integrantes × ${formatMoeda(data.configFinanceiro.valorCamisa)} — atualiza sozinho conforme a equipe muda</div>
+          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--rose);">${formatMoeda(totalCamisasEstimadas * data.configFinanceiro.valorCamisa)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${totalCamisasEstimadas} camisa${totalCamisasEstimadas === 1 ? "" : "s"} × ${formatMoeda(data.configFinanceiro.valorCamisa)} — 1 por integrante sem resposta ainda, ou a quantidade pedida em Camisas — atualiza sozinho conforme a equipe muda</div>
         </div>
       ` : ""}
       <form class="inline-add" id="form-financeiro" style="flex-wrap:wrap;">
