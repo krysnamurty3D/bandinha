@@ -2007,6 +2007,12 @@ ${corpo}
     const totalReceitas = totalReceitasLancadas + totalOfertas;
     const saldo = totalReceitasLancadas - totalDespesas;
     const totalCamisasEstimadas = data.integrantes.reduce((acc,i) => acc + (camisaDoIntegrante(i.nome)?.quantidade || 1), 0);
+    const pendentesTaxa = data.integrantes.filter(i => !i.taxaEquipe);
+    const receitaEsperada = pendentesTaxa.reduce((acc,i) => {
+      const camisa = camisaDoIntegrante(i.nome);
+      const extras = Math.max(0, (camisa?.quantidade || 1) - 1);
+      return acc + valorTaxaCompleto + extras * (data.configFinanceiro?.valorCamisa || 0);
+    }, 0);
     const cf = data.configFinanceiro || { valorCamisa: 0, valorTaxa: 0 };
 
     let valoresHtml = "";
@@ -2057,6 +2063,13 @@ ${corpo}
         <div style="font-size:calc(28px * var(--font-scale, 1));font-weight:800;color:${saldo >= 0 ? "var(--green)" : "var(--rose)"};">${formatMoeda(saldo)}</div>
         ${totalOfertas > 0 ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">Não inclui ${formatMoeda(totalOfertas)} de ofertas — essas são extras</div>` : ""}
       </div>
+      ${(valorTaxaCompleto > 0 && pendentesTaxa.length > 0) ? `
+        <div class="card" style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Receita esperada (quem falta pagar)</div>
+          <div style="font-size:calc(24px * var(--font-scale, 1));font-weight:800;color:var(--gold);">${formatMoeda(receitaEsperada)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">${pendentesTaxa.length} pessoa${pendentesTaxa.length === 1 ? "" : "s"} ainda não pagou — isso ainda não está no Saldo atual, só entra quando você marcar "Taxa da Equipe"</div>
+        </div>
+      ` : ""}
       ${(valorTaxaCompleto > 0 || transacoesTaxa.length > 0) ? `
         <div class="card" style="text-align:center;margin-bottom:16px;">
           <div style="font-size:calc(12px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Receita da Taxa da Equipe</div>
