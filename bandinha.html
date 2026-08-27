@@ -3295,7 +3295,7 @@ ${corpo}
       const nome = input.value.trim();
       const genero = generoSelect.value;
       if(!nome || !genero) { showToast("Preencha nome e sexo"); return; }
-      const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false, confirmado: false };
+      const novoInt = { id: uid(), nome, genero, instrumental: instrumentalCheck.checked, inscricao: false, taxaEquipe: false, confirmado: false };
       instrumentalCheck.checked = false;
       await setDoc(doc(integrantesCol, novoInt.id), novoInt); showToast("Integrante adicionado");
     });
@@ -4222,8 +4222,14 @@ ${corpo}
       const quantidade = Math.min(10, Math.max(1, Number(quantidadeInput?.value) || 1));
       if(!nome || !tamanhoSelect || !tamanhoSelect.value) return;
       try{
-        await setDoc(doc(camisasCol, uid()), { nome, tamanho: tamanhoSelect.value, quantidade, confirmadoEm: Date.now() });
-        showToast("Camisa adicionada");
+        const existente = camisaDoIntegrante(nome) || data.camisas.find(c => normalizarBusca(c.nome) === normalizarBusca(nome));
+        if(existente){
+          await updateDoc(doc(camisasCol, existente.id), { nome, tamanho: tamanhoSelect.value, quantidade });
+          showToast("Já existia uma resposta pra esse nome — atualizada em vez de duplicada");
+        } else {
+          await setDoc(doc(camisasCol, uid()), { nome, tamanho: tamanhoSelect.value, quantidade, confirmadoEm: Date.now() });
+          showToast("Camisa adicionada");
+        }
         nomeInput.value = "";
         if(quantidadeInput) quantidadeInput.value = "1";
       }catch(err){
@@ -4404,7 +4410,7 @@ ${corpo}
       const novos = [];
       nomes.forEach(nome => {
         if(!existentes.has(nome.toLowerCase())){
-          novos.push({ id: uid(), nome, genero, instrumental, camisa: "", inscricao: false, pagamentoCamisa: false, taxaEquipe: false, confirmado: false });
+          novos.push({ id: uid(), nome, genero, instrumental, inscricao: false, taxaEquipe: false, confirmado: false });
           existentes.add(nome.toLowerCase());
         }
       });
