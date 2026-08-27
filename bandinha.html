@@ -3855,8 +3855,15 @@ ${corpo}
         const nomesAtuais = new Set(data.integrantes.map(i => i.nome));
         const presentesLimpos = [...new Set(sessao.presentes || [])].filter(nome => nomesAtuais.has(nome));
         if(!confirm("Remover da chamada os nomes que não correspondem a nenhum integrante atual?")) return;
-        await updateDoc(doc(historicoCol, dataId), { presentes: presentesLimpos });
-        showToast("Lista de presença atualizada");
+        sessao.presentes = presentesLimpos;
+        render();
+        try{
+          await updateDoc(doc(historicoCol, dataId), { presentes: presentesLimpos });
+          showToast("Lista de presença atualizada");
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao atualizar — verifique sua conexão e tente de novo");
+        }
       });
     });
 
@@ -4429,7 +4436,21 @@ ${corpo}
     async function commitNomeEdit(id, input){
       const item = data.integrantes.find(i => i.id === id);
       const novoNome = input.value.trim();
-      if(item && novoNome){ await updateDoc(doc(integrantesCol, id), { nome: novoNome }); }
+      if(item && novoNome && novoNome !== item.nome){
+        const nomeAntigo = item.nome;
+        await updateDoc(doc(integrantesCol, id), { nome: novoNome });
+        const camisa = camisaDoIntegrante(nomeAntigo);
+        if(camisa) await updateDoc(doc(camisasCol, camisa.id), { nome: novoNome }).catch(() => {});
+        const sessoesLigadas = data.historico.filter(s => (s.presentes || []).includes(nomeAntigo));
+        await Promise.all(sessoesLigadas.map(s =>
+          updateDoc(doc(historicoCol, s.data), { presentes: arrayRemove(nomeAntigo) })
+            .then(() => updateDoc(doc(historicoCol, s.data), { presentes: arrayUnion(novoNome) }))
+            .catch(() => {})
+        ));
+        const transacaoTaxa = data.financeiro.find(t => t.origem === "taxa-equipe" && t.integranteId === id);
+        if(transacaoTaxa) await updateDoc(doc(financeiroCol, transacaoTaxa.id), { descricao: `Taxa da Equipe — ${novoNome}` }).catch(() => {});
+        showToast("Nome atualizado — camisa, presença e taxa vinculadas também foram atualizadas");
+      }
       editingNameId = null;
       render();
     }
