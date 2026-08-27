@@ -2855,8 +2855,17 @@ ${corpo}
               { label: "Mulheres", lista: data.integrantes.filter(i => i.genero === "F").sort(porNome) },
               { label: "Outros", lista: data.integrantes.filter(i => i.genero !== "M" && i.genero !== "F").sort(porNome) }
             ].filter(g => g.lista.length > 0);
+            const nomesAtuais = new Set(data.integrantes.map(i => i.nome));
+            const orfaos = [...new Set(presentes)].filter(nome => !nomesAtuais.has(nome));
             return `
               <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+                ${orfaos.length > 0 ? `
+                  <div class="card" style="border-color:var(--rose);margin-bottom:14px;">
+                    <div style="color:var(--rose);font-weight:600;margin-bottom:6px;">${orfaos.length} nome${orfaos.length === 1 ? "" : "s"} na lista de presença sem integrante correspondente</div>
+                    <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">${orfaos.map(escapeHtml).join(", ")} — provavelmente renomeados ou removidos depois dessa chamada. Eles contam no total de "${presentes.length} presentes" mas não aparecem na lista abaixo pra desmarcar.</div>
+                    <button type="button" class="btn-import" style="background:var(--rose);color:#fff;" data-action="remover-orfaos-presenca" data-data="${s.data}">Remover esses nomes da chamada</button>
+                  </div>
+                ` : ""}
                 ${grupos.map(g => `
                   <div style="font-size:calc(11px * var(--font-scale, 1));font-weight:700;letter-spacing:0.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">${g.label}</div>
                   <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
@@ -3835,6 +3844,19 @@ ${corpo}
         sessao.presentes = presente ? presentes.filter(n => n !== nome) : [...presentes, nome];
         render();
         await updateDoc(doc(historicoCol, dataId), { presentes: presente ? arrayRemove(nome) : arrayUnion(nome) });
+      });
+    });
+
+    document.querySelectorAll('[data-action="remover-orfaos-presenca"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const dataId = el.dataset.data;
+        const sessao = data.historico.find(s => s.data === dataId);
+        if(!sessao) return;
+        const nomesAtuais = new Set(data.integrantes.map(i => i.nome));
+        const presentesLimpos = [...new Set(sessao.presentes || [])].filter(nome => nomesAtuais.has(nome));
+        if(!confirm("Remover da chamada os nomes que não correspondem a nenhum integrante atual?")) return;
+        await updateDoc(doc(historicoCol, dataId), { presentes: presentesLimpos });
+        showToast("Lista de presença atualizada");
       });
     });
 
