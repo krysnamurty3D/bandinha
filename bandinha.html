@@ -1069,6 +1069,7 @@ const functionsApp = getFunctions(firebaseApp);
   let filtroTaxaIntegrantes = null;
   let filtroCamisaIntegrantes = null;
   let filtroSexoCamisa = null;
+  let filtroEntregaCamisa = null;
   let editingRespostaCamisaId = null;
   let filtroTamanhoCamisa = null;
   let editingFinanceiroId = null;
@@ -1868,6 +1869,13 @@ ${corpo}
         <button type="button" class="pay-toggle ${filtroSexoCamisa === "?" ? "paid" : ""}" data-action="filtrar-sexo-camisa" data-valor="?">Sem vínculo</button>
       </div>
 
+      <div class="section-title" style="margin-top:0;">Filtrar por entrega</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <button type="button" class="pay-toggle ${!filtroEntregaCamisa ? "paid" : ""}" data-action="filtrar-entrega-camisa" data-valor="">Todos</button>
+        <button type="button" class="pay-toggle ${filtroEntregaCamisa === "entregue" ? "paid" : ""}" data-action="filtrar-entrega-camisa" data-valor="entregue">Entregues (${data.camisas.filter(c => c.entregue).length})</button>
+        <button type="button" class="pay-toggle ${filtroEntregaCamisa === "pendente" ? "paid" : ""}" data-action="filtrar-entrega-camisa" data-valor="pendente">Pendentes (${data.camisas.filter(c => !c.entregue).length})</button>
+      </div>
+
       <div class="section-title" style="display:flex;align-items:center;gap:8px;">
         <span>Respostas (${filtroTamanhoCamisa ? contagem[filtroTamanhoCamisa] || 0 : data.camisas.length})${filtroTamanhoCamisa ? ` — ${escapeHtml(filtroTamanhoCamisa)}` : ""}</span>
         ${filtroTamanhoCamisa ? `<button type="button" class="link-btn" style="padding:0;font-size:calc(12px * var(--font-scale, 1));" data-action="limpar-filtro-tamanho-camisa">limpar filtro</button>` : ""}
@@ -1886,6 +1894,8 @@ ${corpo}
         if(filtroSexoCamisa === "?" && integrante) return false;
         if((filtroSexoCamisa === "M" || filtroSexoCamisa === "F") && integrante?.genero !== filtroSexoCamisa) return false;
       }
+      if(filtroEntregaCamisa === "entregue" && !c.entregue) return false;
+      if(filtroEntregaCamisa === "pendente" && c.entregue) return false;
       return true;
     });
     if(filtradas.length === 0){
@@ -1899,7 +1909,7 @@ ${corpo}
       const integrante = integranteDaCamisa(c.nome);
       const generoLabel = integrante?.genero === "M" ? "Homem" : integrante?.genero === "F" ? "Mulher" : null;
       return `
-      <div class="card" style="padding:10px 14px;">
+      <div class="card" style="padding:10px 14px;${c.entregue ? "border-color:var(--green);" : ""}">
         ${editing ? `
           <input type="text" class="edit-nome-input" id="input-edit-nome-camisa" data-id="${c.id}" value="${escapeHtml(c.nome)}" placeholder="Nome" style="width:100%;margin-bottom:8px;"/>
           <div class="song-row">
@@ -1914,10 +1924,11 @@ ${corpo}
           <div class="song-row">
             <div class="song-name">
               <div class="song-title">${escapeHtml(c.nome)}</div>
-              ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}</div>` : ""}
+              ${c.confirmadoEm ? `<div class="song-artist">Confirmado em ${formatDateHora(c.confirmadoEm)}${c.entregue ? " · Entregue" : ""}</div>` : c.entregue ? `<div class="song-artist" style="color:var(--green);">Entregue</div>` : ""}
             </div>
             ${generoLabel ? `<span class="agenda-tag" style="margin-right:6px;">${generoLabel}</span>` : ""}
             <span class="agenda-tag" style="margin-right:6px;">${escapeHtml(c.tamanho)}${c.quantidade > 1 ? ` ×${c.quantidade}` : ""}</span>
+            <button class="eye-x" style="color:${c.entregue ? "var(--green)" : "var(--muted)"};" data-action="toggle-entrega-camisa" data-id="${c.id}" title="${c.entregue ? "Entregue — toque para desmarcar" : "Toque quando entregar"}">${c.entregue ? "✓" : "☐"}</button>
             <button class="edit-x" data-action="edit-resposta-camisa" data-id="${c.id}" title="Editar">✎</button>
             <button class="del-x" data-action="del-resposta-camisa" data-id="${c.id}">✕</button>
           </div>
@@ -4193,6 +4204,26 @@ ${corpo}
       el.addEventListener("click", () => {
         filtroSexoCamisa = el.dataset.valor || null;
         render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="filtrar-entrega-camisa"]').forEach(el => {
+      el.addEventListener("click", () => {
+        filtroEntregaCamisa = el.dataset.valor || null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-entrega-camisa"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const item = data.camisas.find(c => c.id === el.dataset.id);
+        if(!item) return;
+        try{
+          await updateDoc(doc(camisasCol, item.id), { entregue: !item.entregue });
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao atualizar");
+        }
       });
     });
 
