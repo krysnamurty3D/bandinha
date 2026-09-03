@@ -1082,6 +1082,8 @@ const functionsApp = getFunctions(firebaseApp);
   let editingOfertaId = null;
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
+  let importandoRoteiro = false;
+  let editingItemKey = null;
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
   let enviandoUrgente = false;
@@ -2537,6 +2539,97 @@ ${corpo}
   `;
   }
 
+  function agruparItensRoteiro(itens){
+    const grupos = [];
+    itens.forEach(it => {
+      const chave = it.dia || "";
+      let g = grupos.find(g => g.dia === chave);
+      if(!g){ g = { dia: chave, itens: [] }; grupos.push(g); }
+      g.itens.push(it);
+    });
+    grupos.forEach(g => g.itens.sort((a,b) => a.horario.localeCompare(b.horario)));
+    return grupos;
+  }
+
+  function renderItemRoteiro(r, it){
+    const key = `${r.id}:${it.id}`;
+    if(editingItemKey === key){
+      return `
+        <div class="card" style="padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <input type="text" class="edit-nome-input" id="input-edit-item-dia" placeholder="Dia (opcional, ex: Sexta-feira)" value="${escapeHtml(it.dia || "")}" style="flex:1 1 160px;"/>
+            <input type="text" class="edit-nome-input" id="input-edit-item-horario" placeholder="Horário" value="${escapeHtml(it.horario)}" style="flex:0 0 90px;"/>
+            <input type="text" class="edit-nome-input" id="input-edit-item-tempo" placeholder="Tempo (ex: 00:20)" value="${escapeHtml(it.tempo || "")}" style="flex:0 0 100px;"/>
+          </div>
+          <input type="text" class="edit-nome-input" id="input-edit-item-local" placeholder="Local (opcional)" value="${escapeHtml(it.local || "")}" style="margin-bottom:8px;"/>
+          <input type="text" class="edit-nome-input" id="input-edit-item-atividade" placeholder="Evento/atividade" value="${escapeHtml(it.atividade)}" style="margin-bottom:8px;"/>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-save-nome" style="width:auto;flex:1;padding:0 14px;" data-action="save-item" data-roteiro="${r.id}" data-item="${it.id}">Salvar</button>
+            <button class="del-x" style="width:auto;padding:0 14px;border:1px solid var(--line);border-radius:10px;" data-action="cancel-edit-item">Cancelar</button>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="item-row">
+        <div class="item-time">${escapeHtml(it.horario)}${it.tempo ? ` <span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">(${escapeHtml(it.tempo)})</span>` : ""}</div>
+        <div class="item-activity">${escapeHtml(it.atividade)}${it.local ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));"><span class="ico">${ICONS.pin}</span>${escapeHtml(it.local)}</div>` : ""}</div>
+        <button class="edit-x" data-action="edit-item" data-roteiro="${r.id}" data-item="${it.id}" title="Editar">✎</button>
+        <button class="del-x" data-action="del-item" data-roteiro="${r.id}" data-item="${it.id}">✕</button>
+      </div>
+    `;
+  }
+
+  function renderRoteiroCard(r){
+    const open = openRoteiroId === r.id;
+    const editingInfo = editingRoteiroInfoId === r.id;
+    const grupos = agruparItensRoteiro(r.itens);
+    const countdown = roteiroCountdown(r);
+    const oculto = r.visivel === false;
+    return `
+    <div class="card roteiro-card">
+      <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
+        <div>
+          <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
+          ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}${r.hora ? ` às ${r.hora}` : ""}</div>` : ""}
+          ${countdown ? `<div class="roteiro-countdown">⏱ ${countdown}</div>` : ""}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="eye-x ${oculto ? "hidden-item" : ""}" data-action="toggle-visivel-roteiro" data-id="${r.id}" title="${oculto ? "Oculto na página pública — toque para publicar" : "Publicado na página pública — toque para ocultar"}">${oculto ? ICONS.eyeOff : ICONS.eye}</button>
+          <button class="del-x" data-action="del-roteiro" data-id="${r.id}">✕</button>
+          <span class="chevron ${open?"open":""}">▶</span>
+        </div>
+      </div>
+      <div class="roteiro-body ${open?"":"hidden"}">
+        ${editingInfo ? `
+          <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">
+            <input type="text" class="edit-nome-input" id="input-edit-roteiro-titulo" data-id="${r.id}" value="${escapeHtml(r.titulo)}" placeholder="Título" style="margin-bottom:8px;"/>
+            <input type="date" class="edit-nome-input" id="input-edit-roteiro-data" data-id="${r.id}" value="${r.data || ''}" style="margin-bottom:8px;"/>
+            <input type="time" class="edit-nome-input" id="input-edit-roteiro-hora" data-id="${r.id}" value="${r.hora || ''}" style="margin-bottom:8px;"/>
+            <input type="text" class="edit-nome-input" id="input-edit-roteiro-local" data-id="${r.id}" value="${escapeHtml(r.local || '')}" placeholder="Local de encontro" style="margin-bottom:8px;"/>
+            <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-roteiro-info" data-id="${r.id}">Salvar</button>
+          </div>
+        ` : `
+          <div class="roteiro-info-row" data-action="edit-roteiro-info" data-id="${r.id}">
+            <span><span class="ico">${ICONS.clock}</span>${r.hora ? r.hora : "Definir hora"}</span>
+            <span><span class="ico">${ICONS.pin}</span>${r.local ? escapeHtml(r.local) : "Adicionar local de encontro"}</span>
+          </div>
+        `}
+        ${r.itens.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : grupos.map(g => `
+          ${g.dia ? `<div class="section-title" style="margin-top:0;font-size:calc(13px * var(--font-scale, 1));">${escapeHtml(g.dia)}</div>` : ""}
+          ${g.itens.map(it => renderItemRoteiro(r, it)).join("")}
+        `).join("")}
+        <form class="add-item-form" data-action="form-add-item" data-roteiro="${r.id}">
+          <input type="text" placeholder="Dia (opcional)" class="item-dia-input" style="flex:1 1 120px;" />
+          <input type="text" placeholder="19h" class="item-horario-input" required style="flex:0 0 70px;" />
+          <input type="text" placeholder="Local (opcional)" class="item-local-input" style="flex:1 1 120px;" />
+          <input type="text" placeholder="Atividade (ex: Abertura, louvor...)" class="item-atividade-input" required style="flex:2 1 160px;" />
+          <button type="submit" class="btn-add">+</button>
+        </form>
+      </div>
+    </div>`;
+  }
+
   function renderRoteiros(){
     let html = `
       <form class="inline-add" id="form-roteiro" style="flex-wrap:wrap;">
@@ -2546,57 +2639,42 @@ ${corpo}
         <input type="text" id="input-roteiro-local" placeholder="Local de encontro (opcional)" style="flex:1 1 200px;"/>
         <button type="submit" class="btn-add">+</button>
       </form>
+      <button type="button" id="btn-toggle-importar-roteiro" class="link-btn" style="padding:0 0 14px;">${importandoRoteiro ? "Cancelar importação" : "Importar roteiro de um arquivo"}</button>
+      ${importandoRoteiro ? `
+        <form class="inline-add" id="form-importar-roteiro" style="flex-wrap:wrap;flex-direction:column;align-items:stretch;margin-bottom:16px;">
+          <input type="text" id="input-importar-titulo" placeholder="Título do encontro" required style="margin-bottom:8px;"/>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input type="date" id="input-importar-data" style="flex:1;"/>
+            <input type="text" id="input-importar-local" placeholder="Local de encontro (opcional)" style="flex:1;"/>
+          </div>
+          <textarea id="input-importar-itens" placeholder="Um item por linha, separado por ponto e vírgula:&#10;Dia; Horário; Local; Tempo; Evento&#10;&#10;Ex: Sexta-feira; 20h00; Pátio; 00:20; Recepção" style="min-height:160px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;color:var(--cream);padding:10px 12px;font-family:inherit;font-size:calc(13px * var(--font-scale, 1));margin-bottom:8px;"></textarea>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Cada linha vira um item. Dia, Local e Tempo podem ficar vazios (ex: "; 20h00; ; ; Recepção").</div>
+          <button type="submit" class="btn-import">Importar roteiro</button>
+        </form>
+      ` : ""}
     `;
     if(data.roteiros.length === 0){
-      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro criado.<br>Crie o roteiro do próximo encontro.</div>`;
+      html += `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro criado.<br>Crie o roteiro do próximo encontro, ou importe um arquivo.</div>`;
     } else {
+      const hojeIso = new Date().toISOString().slice(0,10);
       const ordered = [...data.roteiros].sort((a,b) => (a.data||"").localeCompare(b.data||""));
-      html += ordered.map(r => {
-        const open = openRoteiroId === r.id;
-        const editingInfo = editingRoteiroInfoId === r.id;
-        const itensOrdenados = [...r.itens].sort((a,b) => a.horario.localeCompare(b.horario));
-        const countdown = roteiroCountdown(r);
-        return `
-        <div class="card roteiro-card">
-          <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
-            <div>
-              <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
-              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}${r.hora ? ` às ${r.hora}` : ""}</div>` : ""}
-              ${countdown ? `<div class="roteiro-countdown">⏱ ${countdown}</div>` : ""}
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <button class="del-x" data-action="del-roteiro" data-id="${r.id}">✕</button>
-              <span class="chevron ${open?"open":""}">▶</span>
-            </div>
+      const atuais = ordered.filter(r => !r.data || r.data >= hojeIso);
+      const historico = ordered.filter(r => r.data && r.data < hojeIso).reverse();
+      html += atuais.length === 0
+        ? `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro futuro. Crie um acima.</div>`
+        : atuais.map(renderRoteiroCard).join("");
+      if(historico.length > 0){
+        const collapsed = collapsedGroups["roteiros-historico"] === undefined ? true : !!collapsedGroups["roteiros-historico"];
+        html += `
+          <div class="section-title" data-action="toggle-group" data-group="roteiros-historico">
+            <span>Roteiros anteriores <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${historico.length})</span></span>
+            <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
-          <div class="roteiro-body ${open?"":"hidden"}">
-            ${editingInfo ? `
-              <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line);">
-                <input type="time" class="edit-nome-input" id="input-edit-roteiro-hora" data-id="${r.id}" value="${r.hora || ''}" style="margin-bottom:8px;"/>
-                <input type="text" class="edit-nome-input" id="input-edit-roteiro-local" data-id="${r.id}" value="${escapeHtml(r.local || '')}" placeholder="Local de encontro" style="margin-bottom:8px;"/>
-                <button class="btn-save-nome" style="width:auto;padding:0 14px;" data-action="save-roteiro-info" data-id="${r.id}">Salvar</button>
-              </div>
-            ` : `
-              <div class="roteiro-info-row" data-action="edit-roteiro-info" data-id="${r.id}">
-                <span><span class="ico">${ICONS.clock}</span>${r.hora ? r.hora : "Definir hora"}</span>
-                <span><span class="ico">${ICONS.pin}</span>${r.local ? escapeHtml(r.local) : "Adicionar local de encontro"}</span>
-              </div>
-            `}
-            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
-              <div class="item-row">
-                <div class="item-time">${escapeHtml(it.horario)}</div>
-                <div class="item-activity">${escapeHtml(it.atividade)}</div>
-                <button class="del-x" data-action="del-item" data-roteiro="${r.id}" data-item="${it.id}">✕</button>
-              </div>
-            `).join("")}
-            <form class="add-item-form" data-action="form-add-item" data-roteiro="${r.id}">
-              <input type="text" placeholder="19h" class="item-horario-input" required />
-              <input type="text" placeholder="Atividade (ex: Abertura, louvor...)" class="item-atividade-input" required />
-              <button type="submit" class="btn-add">+</button>
-            </form>
+          <div class="${collapsed ? "hidden" : ""}">
+            ${historico.map(renderRoteiroCard).join("")}
           </div>
-        </div>`;
-      }).join("");
+        `;
+      }
     }
     return html;
   }
@@ -3451,12 +3529,96 @@ ${corpo}
 
     document.querySelectorAll('[data-action="save-roteiro-info"]').forEach(el => {
       el.addEventListener("click", async () => {
+        const tituloInput = document.getElementById("input-edit-roteiro-titulo");
+        const dataInput = document.getElementById("input-edit-roteiro-data");
         const horaInput = document.getElementById("input-edit-roteiro-hora");
         const localInput = document.getElementById("input-edit-roteiro-local");
-        if(horaInput && localInput){
-          await updateDoc(doc(roteirosCol, el.dataset.id), { hora: horaInput.value, local: localInput.value.trim() });
+        const titulo = tituloInput ? tituloInput.value.trim() : "";
+        if(titulo && horaInput && dataInput && localInput){
+          await updateDoc(doc(roteirosCol, el.dataset.id), { titulo, data: dataInput.value, hora: horaInput.value, local: localInput.value.trim() });
         }
         editingRoteiroInfoId = null;
+        render();
+      });
+    });
+
+    const btnToggleImportarRoteiro = document.getElementById("btn-toggle-importar-roteiro");
+    if(btnToggleImportarRoteiro) btnToggleImportarRoteiro.addEventListener("click", () => {
+      importandoRoteiro = !importandoRoteiro;
+      render();
+    });
+
+    const formImportarRoteiro = document.getElementById("form-importar-roteiro");
+    if(formImportarRoteiro) formImportarRoteiro.addEventListener("submit", async e => {
+      e.preventDefault();
+      const titulo = document.getElementById("input-importar-titulo").value.trim();
+      const dataVal = document.getElementById("input-importar-data").value;
+      const local = document.getElementById("input-importar-local").value.trim();
+      const texto = document.getElementById("input-importar-itens").value;
+      if(!titulo) return;
+      const itens = texto.split("\n").map(linha => linha.trim()).filter(Boolean).map(linha => {
+        const partes = linha.split(";").map(p => p.trim());
+        const [dia, horario, itemLocal, tempo, atividade] = partes;
+        if(!horario || !atividade) return null;
+        return { id: uid(), dia: dia || "", horario, local: itemLocal || "", tempo: tempo || "", atividade };
+      }).filter(Boolean);
+      if(itens.length === 0){ showToast("Nenhum item válido encontrado no texto"); return; }
+      const novo = { id: uid(), titulo, data: dataVal, hora: "", local, itens };
+      try{
+        await setDoc(doc(roteirosCol, novo.id), novo);
+        importandoRoteiro = false;
+        openRoteiroId = novo.id;
+        showToast(`Roteiro importado com ${itens.length} itens`);
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao importar roteiro");
+      }
+      render();
+    });
+
+    document.querySelectorAll('[data-action="toggle-visivel-roteiro"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const r = data.roteiros.find(r => r.id === el.dataset.id);
+        if(!r) return;
+        try{
+          await updateDoc(doc(roteirosCol, r.id), { visivel: r.visivel === false });
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao atualizar");
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-action="edit-item"]').forEach(el => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        editingItemKey = `${el.dataset.roteiro}:${el.dataset.item}`;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="cancel-edit-item"]').forEach(el => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        editingItemKey = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-action="save-item"]').forEach(el => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const r = data.roteiros.find(r => r.id === el.dataset.roteiro);
+        if(!r) return;
+        const dia = document.getElementById("input-edit-item-dia")?.value.trim() || "";
+        const horario = document.getElementById("input-edit-item-horario")?.value.trim() || "";
+        const local = document.getElementById("input-edit-item-local")?.value.trim() || "";
+        const tempo = document.getElementById("input-edit-item-tempo")?.value.trim() || "";
+        const atividade = document.getElementById("input-edit-item-atividade")?.value.trim() || "";
+        if(!horario || !atividade) return;
+        const novosItens = r.itens.map(it => it.id === el.dataset.item ? { ...it, dia, horario, local, tempo, atividade } : it);
+        editingItemKey = null;
+        await updateDoc(doc(roteirosCol, r.id), { itens: novosItens });
         render();
       });
     });
@@ -4886,11 +5048,13 @@ ${corpo}
         e.stopPropagation();
         const r = data.roteiros.find(r => r.id === form.dataset.roteiro);
         if(!r) return;
+        const dia = form.querySelector(".item-dia-input").value.trim();
         const horario = form.querySelector(".item-horario-input").value.trim();
+        const local = form.querySelector(".item-local-input").value.trim();
         const atividade = form.querySelector(".item-atividade-input").value.trim();
         if(!horario || !atividade) return;
         openRoteiroId = r.id;
-        const novosItens = [...r.itens, { id: uid(), horario, atividade }];
+        const novosItens = [...r.itens, { id: uid(), dia, horario, local, tempo: "", atividade }];
         await updateDoc(doc(roteirosCol, r.id), { itens: novosItens });
       });
     });

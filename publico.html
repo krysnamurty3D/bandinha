@@ -1235,42 +1235,77 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
   `;
   }
 
+  function agruparItensRoteiro(itens){
+    const grupos = [];
+    itens.forEach(it => {
+      const chave = it.dia || "";
+      let g = grupos.find(g => g.dia === chave);
+      if(!g){ g = { dia: chave, itens: [] }; grupos.push(g); }
+      g.itens.push(it);
+    });
+    grupos.forEach(g => g.itens.sort((a,b) => a.horario.localeCompare(b.horario)));
+    return grupos;
+  }
+
+  function renderRoteiroCard(r){
+    const open = openRoteiroId === r.id;
+    const grupos = agruparItensRoteiro(r.itens);
+    const countdown = roteiroCountdown(r);
+    return `
+    <div class="card roteiro-card">
+      <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
+        <div>
+          <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
+          ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}${r.hora ? ` às ${r.hora}` : ""}</div>` : ""}
+          ${countdown ? `<div class="roteiro-countdown">⏱ ${countdown}</div>` : ""}
+        </div>
+        <span class="chevron ${open?"open":""}">▶</span>
+      </div>
+      <div class="roteiro-body ${open?"":"hidden"}">
+        ${(r.hora || r.local) ? `
+          <div class="roteiro-info-row">
+            ${r.hora ? `<span><span class="ico">${ICONS.clock}</span>${r.hora}</span>` : ""}
+            ${r.local ? `<span><span class="ico">${ICONS.pin}</span>${escapeHtml(r.local)}</span>` : ""}
+          </div>
+        ` : ""}
+        ${r.itens.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : grupos.map(g => `
+          ${g.dia ? `<div class="section-title" style="margin-top:0;font-size:calc(13px * var(--font-scale, 1));">${escapeHtml(g.dia)}</div>` : ""}
+          ${g.itens.map(it => `
+            <div class="item-row">
+              <div class="item-time">${escapeHtml(it.horario)}${it.tempo ? ` <span style="color:var(--muted);font-size:calc(11px * var(--font-scale, 1));">(${escapeHtml(it.tempo)})</span>` : ""}</div>
+              <div class="item-activity">${escapeHtml(it.atividade)}${it.local ? `<div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));"><span class="ico">${ICONS.pin}</span>${escapeHtml(it.local)}</div>` : ""}</div>
+            </div>
+          `).join("")}
+        `).join("")}
+      </div>
+    </div>`;
+  }
+
   function renderRoteiros(){
     let html = "";
-    if(data.roteiros.length === 0){
+    const roteirosVisiveis = data.roteiros.filter(r => r.visivel !== false);
+    if(roteirosVisiveis.length === 0){
       html += `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro publicado ainda.</div>`;
     } else {
-      const ordered = [...data.roteiros].sort((a,b) => (a.data||"").localeCompare(b.data||""));
-      html += ordered.map(r => {
-        const open = openRoteiroId === r.id;
-        const itensOrdenados = [...r.itens].sort((a,b) => a.horario.localeCompare(b.horario));
-        const countdown = roteiroCountdown(r);
-        return `
-        <div class="card roteiro-card">
-          <div class="roteiro-head" data-action="toggle-roteiro" data-id="${r.id}">
-            <div>
-              <div class="roteiro-title">${escapeHtml(r.titulo)}</div>
-              ${r.data ? `<div class="roteiro-date">${formatDate(r.data)}${r.hora ? ` às ${r.hora}` : ""}</div>` : ""}
-              ${countdown ? `<div class="roteiro-countdown">⏱ ${countdown}</div>` : ""}
-            </div>
-            <span class="chevron ${open?"open":""}">▶</span>
+      const hojeIso = new Date().toISOString().slice(0,10);
+      const ordered = [...roteirosVisiveis].sort((a,b) => (a.data||"").localeCompare(b.data||""));
+      const atuais = ordered.filter(r => !r.data || r.data >= hojeIso);
+      const historico = ordered.filter(r => r.data && r.data < hojeIso).reverse();
+      html += atuais.length === 0
+        ? `<div class="empty"><div class="note-dot"></div><br>Nenhum roteiro futuro no momento.</div>`
+        : atuais.map(renderRoteiroCard).join("");
+      if(historico.length > 0){
+        const collapsed = collapsedGroups["roteiros-historico"] === undefined ? true : !!collapsedGroups["roteiros-historico"];
+        html += `
+          <div class="section-title" data-action="toggle-group" data-group="roteiros-historico">
+            <span>Roteiros anteriores <span style="color:var(--muted);font-weight:400;font-size:calc(14px * var(--font-scale, 1));">(${historico.length})</span></span>
+            <span class="chevron ${collapsed?"":"open"}">▶</span>
           </div>
-          <div class="roteiro-body ${open?"":"hidden"}">
-            ${(r.hora || r.local) ? `
-              <div class="roteiro-info-row">
-                ${r.hora ? `<span><span class="ico">${ICONS.clock}</span>${r.hora}</span>` : ""}
-                ${r.local ? `<span><span class="ico">${ICONS.pin}</span>${escapeHtml(r.local)}</span>` : ""}
-              </div>
-            ` : ""}
-            ${itensOrdenados.length === 0 ? '<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));padding:10px 0;">Nenhum horário adicionado ainda.</div>' : itensOrdenados.map(it => `
-              <div class="item-row">
-                <div class="item-time">${escapeHtml(it.horario)}</div>
-                <div class="item-activity">${escapeHtml(it.atividade)}</div>
-              </div>
-            `).join("")}
+          <div class="${collapsed ? "hidden" : ""}">
+            ${historico.map(renderRoteiroCard).join("")}
           </div>
-        </div>`;
-      }).join("");
+        `;
+      }
     }
     return html;
   }
