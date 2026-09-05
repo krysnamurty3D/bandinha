@@ -156,6 +156,17 @@ exports.avisoAntesFim = onSchedule("* * * * *", async () => {
   }
 });
 
+exports.limparAoVivoExpirado = onSchedule("* * * * *", async () => {
+  const ref = db.collection("aoVivo").doc("atual");
+  const snap = await ref.get();
+  if (!snap.exists) return;
+  const a = snap.data();
+  const fimMs = (a.disparadoEm || 0) + (a.minutos || 0) * 60000;
+  if (Date.now() - fimMs >= 5 * 60000) {
+    await ref.delete();
+  }
+});
+
 const LIMIARES = [
   { chave: "24h", minutos: 24 * 60 },
   { chave: "3h", minutos: 3 * 60 },
