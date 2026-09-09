@@ -2077,15 +2077,15 @@ ${corpo}
         <button type="button" id="btn-clonar-equipe" class="btn-import" ${clonandoEquipe ? "disabled" : ""}>${clonandoEquipe ? "Clonando..." : "Clonar selecionado"}</button>
       </div>
 
-      <div class="section-title" style="color:var(--rose);">Apagar dados de uma equipe</div>
-      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Remove tudo que estiver nas coleções migráveis dessa equipe (não afeta a equipe atual nem outras equipes). Use pra limpar uma equipe cadastrada por engano ou testada. Digite o id da equipe pra confirmar.</div>
+      <div class="section-title" style="color:var(--rose);">Apagar uma equipe</div>
+      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Remove tudo que estiver nas coleções migráveis e a própria equipe (ela some da lista abaixo e o coordenador não consegue mais logar). Não afeta a equipe atual nem outras equipes. Use pra limpar uma equipe cadastrada por engano ou testada. Digite o id da equipe pra confirmar.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
         <select id="input-apagar-equipe-alvo" style="flex:1 1 200px;">
           <option value="">Escolha a equipe...</option>
           ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
         </select>
         <input type="text" id="input-apagar-equipe-confirmacao" placeholder="Digite o id pra confirmar" style="flex:1 1 200px;" />
-        <button type="button" id="btn-apagar-equipe" class="btn-import" style="background:var(--rose);color:#fff;" ${apagandoEquipe ? "disabled" : ""}>${apagandoEquipe ? "Apagando..." : "Apagar dados"}</button>
+        <button type="button" id="btn-apagar-equipe" class="btn-import" style="background:var(--rose);color:#fff;" ${apagandoEquipe ? "disabled" : ""}>${apagandoEquipe ? "Apagando..." : "Apagar equipe"}</button>
       </div>
 
       <div class="section-title">Equipes cadastradas (${data.equipes.length})</div>
@@ -4632,7 +4632,7 @@ ${corpo}
       const confirmacao = document.getElementById("input-apagar-equipe-confirmacao").value.trim();
       if(!equipeId){ showToast("Escolha a equipe"); return; }
       if(confirmacao !== equipeId){ showToast("Digite o id certo pra confirmar"); return; }
-      if(!confirm(`Apagar TODOS os dados migráveis da equipe "${equipeId}"? Isso não pode ser desfeito.`)) return;
+      if(!confirm(`Apagar a equipe "${equipeId}" e todos os seus dados? O coordenador não vai mais conseguir logar. Isso não pode ser desfeito.`)) return;
       apagandoEquipe = true;
       render();
       try{
@@ -4648,7 +4648,8 @@ ${corpo}
           }
           total += refs.length;
         }
-        showToast(`Dados apagados: ${total} documentos removidos`);
+        await deleteDoc(doc(equipesCol, equipeId));
+        showToast(`Equipe apagada: ${total} documentos removidos`);
       }catch(err){
         console.error(err);
         showToast("Erro ao apagar — veja o console");
