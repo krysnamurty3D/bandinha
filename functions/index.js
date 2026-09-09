@@ -236,6 +236,38 @@ exports.migrarAudiosDrive = onCall({ timeoutSeconds: 300 }, async request => {
   return { total: alvos.length, migradas, falhas };
 });
 
+const EXT_POR_CONTENT_TYPE = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+
+exports.uploadHeaderImagem = onCall({ timeoutSeconds: 60 }, async request => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Faça login para trocar a imagem.");
+  }
+  const { equipeId, base64, contentType } = request.data || {};
+  if (!base64 || !EXT_POR_CONTENT_TYPE[contentType]) {
+    throw new HttpsError("invalid-argument", "Envie uma imagem válida (PNG, JPEG, WEBP ou GIF).");
+  }
+  const email = request.auth.token.email;
+  const alvo = equipeId || "default";
+  let autorizado = email === COORDENADOR_EMAIL;
+  if (!autorizado && alvo !== "default") {
+    const eqSnap = await db.collection("equipes").doc(alvo).get();
+    autorizado = eqSnap.exists && (eqSnap.data().coordenadores || []).includes(email);
+  }
+  if (!autorizado) {
+    throw new HttpsError("permission-denied", "Você não é coordenador desta equipe.");
+  }
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.length > 5 * 1024 * 1024) {
+    throw new HttpsError("invalid-argument", "Imagem muito grande (máx. 5MB).");
+  }
+  const ext = EXT_POR_CONTENT_TYPE[contentType];
+  const path = `headers/${alvo}/header-${Date.now()}.${ext}`;
+  const bucket = getStorage().bucket();
+  await bucket.file(path).save(buffer, { metadata: { contentType } });
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media`;
+  return { url };
+});
+
 exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
   if (!(await notificacaoAtiva("lembretes"))) return;
   const agora = Date.now();

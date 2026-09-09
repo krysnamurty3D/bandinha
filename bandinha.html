@@ -2148,16 +2148,22 @@ ${corpo}
         enviandoHeader = true;
         render();
         try{
-          const ext = file.name.includes(".") ? file.name.split(".").pop() : "png";
-          const path = `headers/${currentEquipeId || "default"}/header-${Date.now()}.${ext}`;
-          const fileRef = storageRef(storage, path);
-          await uploadBytes(fileRef, file);
-          const url = await getDownloadURL(fileRef);
-          await setDoc(configDocRef, { headerUrl: url }, { merge: true });
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const res = await httpsCallable(functionsApp, "uploadHeaderImagem")({
+            equipeId: currentEquipeId || null,
+            base64,
+            contentType: file.type
+          });
+          await setDoc(configDocRef, { headerUrl: res.data.url }, { merge: true });
           showToast("Imagem do header atualizada!");
         }catch(err){
           console.error(err);
-          showToast(`Erro: ${err.code || err.message || err} | equipe=${currentEquipeId || "default"} | user=${currentUser?.email || "?"}`);
+          showToast(`Erro ao enviar imagem: ${err.message || err}`);
         }
         enviandoHeader = false;
         render();
