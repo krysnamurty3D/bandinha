@@ -87,7 +87,7 @@ service cloud.firestore {
     // ---- Multi-equipe (novo modelo, aditivo — não afeta as coleções acima) ----
     function isAdminPlataforma() {
       return request.auth != null && request.auth.token.email in [
-        'jasongoshi2@gmail.com'
+        'krysnamurty@gmail.com'
       ];
     }
     function isCoordenadorEquipe(equipeId) {

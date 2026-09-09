@@ -966,7 +966,7 @@ const storage = getStorage(firebaseApp);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
-const ADMIN_EMAILS = ["jasongoshi2@gmail.com"];
+const ADMIN_EMAILS = ["krysnamurty@gmail.com"];
 function isAdmin(){ return !!currentUser && ADMIN_EMAILS.includes(currentUser.email); }
 const integrantesCol = collection(db, "integrantes");
 const financeiroCol = collection(db, "financeiro");
