@@ -941,7 +941,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -966,6 +966,8 @@ const storage = getStorage(firebaseApp);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
+const ADMIN_EMAILS = ["jasongoshi2@gmail.com"];
+function isAdmin(){ return !!currentUser && ADMIN_EMAILS.includes(currentUser.email); }
 const integrantesCol = collection(db, "integrantes");
 const financeiroCol = collection(db, "financeiro");
 const musicasCol = collection(db, "musicas");
@@ -988,6 +990,7 @@ const devocionaisCol = collection(db, "devocionais");
 const camisasCol = collection(db, "camisas");
 const configCamisasDocRef = doc(db, "config", "camisas");
 const configNotificacoesDocRef = doc(db, "config", "notificacoes");
+const equipesCol = collection(db, "equipes");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 
@@ -1035,7 +1038,7 @@ const functionsApp = getFunctions(firebaseApp);
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configNotificacoes: { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configNotificacoes: { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" }, equipes: [] };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let editandoValoresFinanceiro = false;
@@ -1083,6 +1086,7 @@ const functionsApp = getFunctions(firebaseApp);
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
   let importandoRoteiro = false;
+  let migrandoEquipe = false;
   let editingItemKey = null;
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
@@ -1474,11 +1478,18 @@ ${corpo}
       data.avisosHistorico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSeRelevante(["aovivo"]);
     }, e => console.error("Erro ao sincronizar histórico de avisos:", e));
+
+    if(isAdmin()){
+      onSnapshot(equipesCol, snap => {
+        data.equipes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderSeRelevante(["admin"]);
+      }, e => console.error("Erro ao sincronizar equipes:", e));
+    }
   }
 
   function loadAuth(){
     onAuthStateChanged(auth, user => {
-      if(user && !EMAILS_PERMITIDOS.includes(user.email)){
+      if(user && !EMAILS_PERMITIDOS.includes(user.email) && !ADMIN_EMAILS.includes(user.email)){
         signOut(auth);
         authReady = true;
         currentUser = null;
@@ -1623,6 +1634,7 @@ ${corpo}
     else if(currentTab === "devocionais") main.innerHTML = renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais();
     else if(currentTab === "camisas") main.innerHTML = renderSectionHeader(ICONS.camisa, "Camisas") + renderCamisas();
     else if(currentTab === "notificacoes") main.innerHTML = renderSectionHeader(ICONS.bell, "Notificações") + renderNotificacoes();
+    else if(currentTab === "admin") main.innerHTML = renderSectionHeader(ICONS.temporada, "Admin") + renderAdmin();
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
@@ -1663,7 +1675,8 @@ ${corpo}
       { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" },
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` },
       { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo },
-      { key: "notificacoes", icon: ICONS.bell, label: "Notificações", stat: `${Object.values(data.configNotificacoes).filter(Boolean).length}/${Object.keys(data.configNotificacoes).length} ativas` }
+      { key: "notificacoes", icon: ICONS.bell, label: "Notificações", stat: `${Object.values(data.configNotificacoes).filter(Boolean).length}/${Object.keys(data.configNotificacoes).length} ativas` },
+      ...(isAdmin() ? [{ key: "admin", icon: ICONS.temporada, label: "Admin", stat: `${data.equipes.length} equipe${data.equipes.length === 1 ? "" : "s"}` }] : [])
     ];
 
     return `
@@ -1961,6 +1974,41 @@ ${corpo}
             <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${c.desc}</div>
           </div>
           <input type="checkbox" style="flex-shrink:0;width:22px;height:22px;" data-action="toggle-notificacao" data-chave="${c.key}" ${cfg[c.key] !== false ? "checked" : ""} />
+        </div>
+      `).join("")}
+    `;
+  }
+
+  const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","temporadas","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
+
+  function renderAdmin(){
+    return `
+      <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:16px;">Área restrita ao administrador da plataforma — gerencia as equipes que usam este app, isoladas umas das outras.</div>
+
+      <div class="section-title" style="margin-top:0;">Criar equipe</div>
+      <form class="inline-add" id="form-criar-equipe" style="flex-wrap:wrap;margin-bottom:20px;">
+        <input type="text" id="input-equipe-id" placeholder="id (ex: equipe-2icc-canto)" required style="flex:1 1 220px;" />
+        <input type="text" id="input-equipe-nome" placeholder="Nome da equipe" required style="flex:1 1 220px;" />
+        <input type="email" id="input-equipe-coordenador" placeholder="E-mail do coordenador" required style="flex:1 1 220px;" />
+        <button type="submit" class="btn-add">+</button>
+      </form>
+
+      <div class="section-title">Migrar dados desta instalação (equipe atual) para uma equipe</div>
+      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia integrantes, músicas, roteiros, coreografias, financeiro, agenda, histórico de ensaios, locais, avisos, devocionais e camisas de hoje pra dentro da equipe escolhida abaixo. Não apaga nem altera nada do que já existe — é só uma cópia de segurança.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+        <select id="input-migrar-equipe-alvo" style="flex:1 1 220px;">
+          <option value="">Escolha a equipe de destino...</option>
+          ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
+        </select>
+        <button type="button" id="btn-migrar-equipe" class="btn-import" ${migrandoEquipe ? "disabled" : ""}>${migrandoEquipe ? "Migrando..." : "Migrar dados atuais"}</button>
+      </div>
+
+      <div class="section-title">Equipes cadastradas (${data.equipes.length})</div>
+      ${data.equipes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma equipe criada ainda.</div>` : data.equipes.map(e => `
+        <div class="card" style="padding:12px 14px;">
+          <div style="font-weight:700;">${escapeHtml(e.nome || e.id)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">id: ${escapeHtml(e.id)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Coordenador(es): ${(e.coordenadores || []).map(escapeHtml).join(", ") || "—"}</div>
         </div>
       `).join("")}
     `;
@@ -4346,6 +4394,69 @@ ${corpo}
           showToast("Erro ao salvar");
         }
       });
+    });
+
+    const formCriarEquipe = document.getElementById("form-criar-equipe");
+    if(formCriarEquipe) formCriarEquipe.addEventListener("submit", async e => {
+      e.preventDefault();
+      const idInput = document.getElementById("input-equipe-id");
+      const nomeInput = document.getElementById("input-equipe-nome");
+      const coordInput = document.getElementById("input-equipe-coordenador");
+      const id = idInput.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+      const nome = nomeInput.value.trim();
+      const coordenador = coordInput.value.trim().toLowerCase();
+      if(!id || !nome || !coordenador) return;
+      try{
+        await setDoc(doc(equipesCol, id), { nome, coordenadores: [coordenador], criadaEm: Date.now() });
+        showToast("Equipe criada");
+        idInput.value = ""; nomeInput.value = ""; coordInput.value = "";
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao criar equipe");
+      }
+    });
+
+    const btnMigrarEquipe = document.getElementById("btn-migrar-equipe");
+    if(btnMigrarEquipe) btnMigrarEquipe.addEventListener("click", async () => {
+      const equipeId = document.getElementById("input-migrar-equipe-alvo").value;
+      if(!equipeId){ showToast("Escolha a equipe de destino"); return; }
+      if(!confirm(`Copiar todos os dados atuais para a equipe "${equipeId}"? Nada será apagado.`)) return;
+      migrandoEquipe = true;
+      render();
+      try{
+        const fontes = {
+          integrantes: data.integrantes, financeiro: data.financeiro, musicas: data.musicas,
+          roteiros: data.roteiros, coreografias: data.coreografias, temporadas: data.temporadas,
+          agenda: data.agenda, historicoEnsaios: data.historico, locais: data.locais,
+          avisosHistorico: data.avisosHistorico, devocionais: data.devocionais, camisas: data.camisas
+        };
+        const configs = [
+          ["config", "main", data.config], ["config", "financeiro", data.configFinanceiro],
+          ["config", "camisas", data.configCamisas], ["config", "notificacoes", data.configNotificacoes]
+        ];
+        let ops = [];
+        COLECOES_MIGRAVEIS.forEach(col => {
+          (fontes[col] || []).forEach(item => {
+            const docId = col === "historicoEnsaios" ? item.data : item.id;
+            if(!docId) return;
+            ops.push({ ref: doc(equipesCol, equipeId, col, docId), data: item });
+          });
+        });
+        configs.forEach(([col, id, val]) => {
+          if(val) ops.push({ ref: doc(equipesCol, equipeId, col, id), data: val });
+        });
+        for(let i = 0; i < ops.length; i += 400){
+          const batch = writeBatch(db);
+          ops.slice(i, i + 400).forEach(op => batch.set(op.ref, op.data));
+          await batch.commit();
+        }
+        showToast(`Migração concluída: ${ops.length} documentos copiados`);
+      }catch(err){
+        console.error(err);
+        showToast("Erro na migração — veja o console");
+      }
+      migrandoEquipe = false;
+      render();
     });
 
     document.querySelectorAll('[data-action="filtrar-tamanho-camisa"]').forEach(el => {

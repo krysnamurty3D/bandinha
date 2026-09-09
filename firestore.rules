@@ -83,5 +83,86 @@ service cloud.firestore {
       );
       allow update, delete: if isCoordenador();
     }
+
+    // ---- Multi-equipe (novo modelo, aditivo — não afeta as coleções acima) ----
+    function isAdminPlataforma() {
+      return request.auth != null && request.auth.token.email in [
+        'jasongoshi2@gmail.com'
+      ];
+    }
+    function isCoordenadorEquipe(equipeId) {
+      return request.auth != null && (
+        isAdminPlataforma() ||
+        request.auth.token.email in get(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadores
+      );
+    }
+    match /equipes/{equipeId} {
+      allow read: if isCoordenadorEquipe(equipeId);
+      allow create, delete: if isAdminPlataforma();
+      allow update: if isCoordenadorEquipe(equipeId);
+
+      match /integrantes/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
+      match /financeiro/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
+      match /temporadas/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
+      match /devocionais/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /musicas/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /roteiros/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /coreografias/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /config/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /progresso/{docId} { allow read, write: if true; }
+      match /visualizacoes/{docId} { allow read, write: if true; }
+      match /agenda/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /historicoEnsaios/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /locais/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
+      match /aoVivo/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /pushTokens/{docId} {
+        allow read: if false;
+        allow create, update: if request.resource.data.keys().hasOnly(['token','criadoEm','plataforma']) && request.resource.data.token == docId;
+        allow delete: if isCoordenadorEquipe(equipeId);
+      }
+      match /avisosHistorico/{docId} {
+        allow read: if true;
+        allow write: if isCoordenadorEquipe(equipeId);
+      }
+      match /avisoVistos/{docId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['nome','disparadoEm','vistoEm']);
+        allow update, delete: if false;
+      }
+      match /camisas/{docId} {
+        allow read: if true;
+        allow create: if isCoordenadorEquipe(equipeId) || (
+          request.resource.data.keys().hasOnly(['nome','tamanho','confirmadoEm','quantidade']) &&
+          request.resource.data.nome is string &&
+          request.resource.data.tamanho is string &&
+          (!('quantidade' in request.resource.data) || (request.resource.data.quantidade is int && request.resource.data.quantidade >= 1 && request.resource.data.quantidade <= 10))
+        );
+        allow update, delete: if isCoordenadorEquipe(equipeId);
+      }
+    }
   }
 }
