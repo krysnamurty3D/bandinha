@@ -88,6 +88,25 @@
   }
   header.top.header-plain::before{ display:none; }
   header.top.header-plain #brand{ display:none; }
+  #header-empty-slot{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:20px;
+    cursor:pointer;
+    background:var(--surface-2);
+    border:2px dashed var(--line);
+  }
+  #header-empty-slot span{
+    color:var(--muted);
+    font-family:var(--font);
+    font-size:calc(14px * var(--font-scale, 1));
+    font-weight:600;
+  }
   .btn-logout{
     position:absolute;
     top:14px; right:14px;
@@ -934,6 +953,10 @@
 <div id="auth-gate"></div>
 <div id="app" class="hidden">
   <header class="top">
+    <div id="header-empty-slot" class="hidden">
+      <span>Toque aqui para adicionar a logo da sua equipe</span>
+      <input type="file" id="input-header-quick-file" accept="image/*" style="display:none;" />
+    </div>
     <div id="brand"></div>
     <button type="button" id="btn-logout" class="btn-logout">Sair</button>
   </header>
@@ -1431,7 +1454,7 @@ ${corpo}
     }, e => { console.error("Erro ao sincronizar coreografias:", e); showToast("Erro ao sincronizar"); });
 
     sub(configDocRef, snap => {
-      data.config = snap.data() || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
+      data.config = snap.data() || (currentEquipeId === null ? { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } : { titulo: "NOME DA SUA EQUIPE", subtitulo: "NOME DA IGREJA" });
       document.body.dataset.theme = data.config.tema || "";
       markLoaded("config");
       safeRender();
@@ -2199,12 +2222,52 @@ ${corpo}
     `;
   }
 
+  async function enviarHeaderImagem(file){
+    if(!file) return;
+    if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
+    enviandoHeader = true;
+    render();
+    try{
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await httpsCallable(functionsApp, "uploadHeaderImagem")({
+        equipeId: currentEquipeId || null,
+        base64,
+        contentType: file.type
+      });
+      await setDoc(configDocRef, { headerUrl: res.data.url }, { merge: true });
+      showToast("Imagem do header atualizada!");
+    }catch(err){
+      console.error(err);
+      showToast(`Erro ao enviar imagem: ${err.message || err}`);
+    }
+    enviandoHeader = false;
+    render();
+  }
+
   function renderBrand(){
     const brand = document.getElementById("brand");
     if(!brand) return;
-    const cfg = data.config || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
+    const cfg = data.config || (currentEquipeId === null ? { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } : { titulo: "NOME DA SUA EQUIPE", subtitulo: "NOME DA IGREJA" });
     const headerEl = document.querySelector("header.top");
-    if(headerEl) headerEl.style.backgroundImage = (currentTab === "admin") ? "" : (cfg.headerUrl ? `url('${cfg.headerUrl}')` : "");
+    const semLogoPropria = currentEquipeId !== null && !cfg.headerUrl;
+    if(headerEl){
+      if(currentTab === "admin") headerEl.style.backgroundImage = "";
+      else if(cfg.headerUrl) headerEl.style.backgroundImage = `url('${cfg.headerUrl}')`;
+      else if(currentEquipeId === null) headerEl.style.backgroundImage = "";
+      else headerEl.style.backgroundImage = "none";
+    }
+    const slot = document.getElementById("header-empty-slot");
+    if(slot){
+      slot.classList.toggle("hidden", currentTab === "admin" || !semLogoPropria);
+      const quickInput = document.getElementById("input-header-quick-file");
+      slot.onclick = () => quickInput && quickInput.click();
+      if(quickInput) quickInput.onchange = () => enviarHeaderImagem(quickInput.files[0]);
+    }
     if(editingBrand){
       brand.onclick = null;
       brand.innerHTML = `
@@ -2241,33 +2304,7 @@ ${corpo}
         });
       });
       const inputHeaderFile = document.getElementById("input-header-file");
-      if(inputHeaderFile) inputHeaderFile.addEventListener("change", async () => {
-        const file = inputHeaderFile.files[0];
-        if(!file) return;
-        if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
-        enviandoHeader = true;
-        render();
-        try{
-          const base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(",")[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          const res = await httpsCallable(functionsApp, "uploadHeaderImagem")({
-            equipeId: currentEquipeId || null,
-            base64,
-            contentType: file.type
-          });
-          await setDoc(configDocRef, { headerUrl: res.data.url }, { merge: true });
-          showToast("Imagem do header atualizada!");
-        }catch(err){
-          console.error(err);
-          showToast(`Erro ao enviar imagem: ${err.message || err}`);
-        }
-        enviandoHeader = false;
-        render();
-      });
+      if(inputHeaderFile) inputHeaderFile.addEventListener("change", () => enviarHeaderImagem(inputHeaderFile.files[0]));
     } else {
       brand.className = "brand";
       brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
