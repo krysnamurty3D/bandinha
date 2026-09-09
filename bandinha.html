@@ -1071,7 +1071,6 @@ function montarReferenciasColecoes(equipeId){
     siren: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M4 20v-4.5A8 8 0 0 1 20 15.5V20"/><line x1="4" y1="20" x2="20" y2="20"/><line x1="12" y1="3" x2="12" y2="5.3"/><line x1="5.6" y1="6.6" x2="7" y2="8"/><line x1="18.4" y1="6.6" x2="17" y2="8"/></svg>`,
     megaphone: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 10.5v3a1.5 1.5 0 0 0 1.5 1.5h1l.8 4.5h2l-.6-4.5h1.6l8.2 4V6.5l-8.2 4H5a1.5 1.5 0 0 0-1.5 1.5Z"/></svg>`,
     instrument: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M3.5 12h2.2l2-5 2.6 10 2.4-7.5 1.8 3.5H20.5"/></svg>`,
-    temporada: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M4.5 8.5v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>`,
     devocional: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M12 6.5c-1.5-1.6-4.4-2-7.5-1.3v13c3.1-.7 6 -.3 7.5 1.3 1.5-1.6 4.4-2 7.5-1.3v-13c-3.1-.7-6-.3-7.5 1.3Z"/><line x1="12" y1="6.5" x2="12" y2="19.5"/></svg>`,
     camisa: `<svg viewBox="0 0 24 24" ${ICON_STROKE}><path d="M8 3.5 4.5 6.5 3 9.5l3 1.8V20h12v-8.7l3-1.8-1.5-3L16 3.5c0 1.8-1.8 3.2-4 3.2s-4-1.4-4-3.2Z"/></svg>`,
     camisaSolid: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 3.5 4.5 6.5 3 9.5l3 1.8V20h12v-8.7l3-1.8-1.5-3L16 3.5c0 1.8-1.8 3.2-4 3.2s-4-1.4-4-3.2Z"/></svg>`,
@@ -2038,7 +2037,7 @@ ${corpo}
     `;
   }
 
-  const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
+  const COLECOES_EQUIPE = ["integrantes","financeiro","musicas","roteiros","coreografias","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
 
   const CARDS_DISPONIVEIS = [
     { key: "integrantes", label: "Integrantes" },
@@ -2164,7 +2163,7 @@ ${corpo}
           </select>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
-          ${COLECOES_MIGRAVEIS.map(col => `
+          ${COLECOES_EQUIPE.map(col => `
             <label class="check-row-inline">
               <input type="checkbox" class="check-importar-colecao" value="${col}" ${["musicas","coreografias"].includes(col) ? "checked" : ""} />
               ${col}
@@ -2199,19 +2198,19 @@ ${corpo}
       <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:16px;">Área restrita ao administrador da plataforma — gerencia as equipes que usam este app, isoladas umas das outras.</div>
       <div class="home-grid">
         <button type="button" class="sec-card" data-action="admin-ir" data-view="ativas">
-          <div class="sec-card-icon">${ICONS.temporada}</div>
+          <div class="sec-card-icon">${ICONS.eye}</div>
           <div class="sec-card-label">Equipes ativas</div>
           <div class="sec-card-stat">${ativas.length} em atividade</div>
         </button>
         <button type="button" class="sec-card" data-action="admin-ir" data-view="inativas">
-          <div class="sec-card-icon">${ICONS.temporada}</div>
+          <div class="sec-card-icon">${ICONS.eyeOff}</div>
           <div class="sec-card-label">Equipes inativas</div>
           <div class="sec-card-stat">${inativas.length} encerradas</div>
         </button>
         <button type="button" class="sec-card" data-action="admin-ir" data-view="gerenciar">
-          <div class="sec-card-icon">${ICONS.temporada}</div>
+          <div class="sec-card-icon">${ICONS.progresso}</div>
           <div class="sec-card-label">Gerenciar equipes</div>
-          <div class="sec-card-stat">Criar, clonar, apagar</div>
+          <div class="sec-card-stat">Criar, importar, apagar</div>
         </button>
       </div>
     `;
@@ -2251,6 +2250,8 @@ ${corpo}
     if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
     const overlay = document.getElementById("header-crop-overlay");
     const img = document.getElementById("header-crop-img");
+    if(img.src) URL.revokeObjectURL(img.src);
+    if(cropperHeaderInstance){ cropperHeaderInstance.destroy(); cropperHeaderInstance = null; }
     img.src = URL.createObjectURL(file);
     overlay.classList.remove("hidden");
     img.onload = () => {
@@ -4838,7 +4839,7 @@ ${corpo}
       apagandoEquipe = true;
       render();
       try{
-        const todasColecoes = [...COLECOES_MIGRAVEIS, "config"];
+        const todasColecoes = [...COLECOES_EQUIPE, "config"];
         let total = 0;
         for(const col of todasColecoes){
           const snap = await getDocs(collection(db, "equipes", equipeId, col));
