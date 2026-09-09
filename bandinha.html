@@ -2083,7 +2083,7 @@ ${corpo}
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
           ${e.legado ? `<button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="abrir-painel-equipe">Abrir painel</button>` : ""}
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.ativa ? "var(--surface-2)" : "var(--green)"};" data-action="toggle-ativa-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativa="${e.ativa}">${e.ativa ? "Marcar como inativa" : "Reativar equipe"}</button>
-          <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.linkPublicoAtivo ? "var(--surface-2)" : "var(--rose)"};" data-action="toggle-link-publico-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativo="${e.linkPublicoAtivo}">Link público: ${e.linkPublicoAtivo ? "ativo" : "desativado"}</button>
+          <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.linkPublicoAtivo ? "var(--green)" : "var(--rose)"};color:#fff;" data-action="toggle-link-publico-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativo="${e.linkPublicoAtivo}">Link público: ${e.linkPublicoAtivo ? "ativo" : "desativado"}</button>
         </div>
       </div>
     `;
