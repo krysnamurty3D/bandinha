@@ -967,7 +967,6 @@ const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
 const ADMIN_EMAILS = ["krysnamurty@gmail.com"];
-function isAdmin(){ return !!currentUser && ADMIN_EMAILS.includes(currentUser.email); }
 const integrantesCol = collection(db, "integrantes");
 const financeiroCol = collection(db, "financeiro");
 const musicasCol = collection(db, "musicas");
@@ -1043,6 +1042,7 @@ const functionsApp = getFunctions(firebaseApp);
   let finTipoForm = "receita";
   let editandoValoresFinanceiro = false;
   let currentUser = null;
+  function isAdmin(){ return !!currentUser && ADMIN_EMAILS.includes(currentUser.email); }
   let authReady = false;
   let currentTab = "home";
   let openRoteiroId = null;
