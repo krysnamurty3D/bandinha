@@ -1006,7 +1006,7 @@ const equipesCol = collection(db, "equipes");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
 let integrantesCol, financeiroCol, musicasCol, roteirosCol, coreografiasCol,
-    configDocRef, configFinanceiroDocRef, setlistEquipeDocRef, temporadasCol, temporadaAtivaDocRef,
+    configDocRef, configFinanceiroDocRef, setlistEquipeDocRef,
     progressoCol, visualizacoesCol, agendaCol, historicoCol, pushTokensCol, locaisCol,
     aoVivoDocRef, avisosHistoricoCol, devocionaisCol, camisasCol, configCamisasDocRef, configNotificacoesDocRef;
 
@@ -1022,8 +1022,6 @@ function montarReferenciasColecoes(equipeId){
   configDocRef = dref("config", "main");
   configFinanceiroDocRef = dref("config", "financeiro");
   setlistEquipeDocRef = dref("config", "setlistEquipe");
-  temporadasCol = col("temporadas");
-  temporadaAtivaDocRef = dref("config", "temporadaAtiva");
   progressoCol = col("progresso");
   visualizacoesCol = col("visualizacoes");
   agendaCol = col("agenda");
@@ -1082,7 +1080,7 @@ function montarReferenciasColecoes(equipeId){
     }catch(e){ return null; }
   }
 
-  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], temporadas: [], temporadaAtiva: null, devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configNotificacoes: { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" }, equipes: [] };
+  let data = { integrantes: [], musicas: [], roteiros: [], coreografias: [], progresso: [], agenda: [], locais: [], aoVivo: null, historico: [], visualizacoes: [], avisosHistorico: [], financeiro: [], devocionais: [], camisas: [], configCamisas: { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] }, configNotificacoes: { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true }, configFinanceiro: { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 }, config: { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" }, equipes: [] };
   let loadedFlags = { integrantes: false, musicas: false, roteiros: false, coreografias: false, progresso: false, agenda: false, locais: false, aoVivo: false, historico: false, visualizacoes: false, config: false };
   let finTipoForm = "receita";
   let editandoValoresFinanceiro = false;
@@ -1110,7 +1108,6 @@ function montarReferenciasColecoes(equipeId){
   let abrindoAdicionarMusicaEnsaio = false;
   let enviandoSetlist = false;
   let migrandoAudios = false;
-  let abrindoNovaTemporada = false;
   let openDevocionalId = null;
   let editingDevocionalId = null;
   let abrindoNovoDevocional = false;
@@ -1465,16 +1462,6 @@ ${corpo}
       renderSeRelevante(["financeiro"]);
     }, e => console.error("Erro ao sincronizar valores financeiros:", e));
 
-    sub(temporadasCol, snap => {
-      data.temporadas = snap.docs.map(d => d.data());
-      renderSeRelevante(["temporadas"]);
-    }, e => console.error("Erro ao sincronizar temporadas:", e));
-
-    sub(temporadaAtivaDocRef, snap => {
-      data.temporadaAtiva = snap.data() || null;
-      renderSeRelevante(["temporadas"]);
-    }, e => console.error("Erro ao sincronizar temporada ativa:", e));
-
     sub(devocionaisCol, snap => {
       data.devocionais = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSeRelevante(["devocionais"]);
@@ -1720,7 +1707,6 @@ ${corpo}
     else if(currentTab === "progresso") main.innerHTML = renderSectionHeader(ICONS.progresso, "Progresso") + renderProgresso();
     else if(currentTab === "ensaio-menu") main.innerHTML = renderSectionHeader(ICONS.ensaio, "Ensaio") + renderEnsaioMenu();
     else if(currentTab === "agenda") main.innerHTML = renderSectionHeader(ICONS.agenda, "Agenda") + renderAgenda();
-    else if(currentTab === "temporadas") main.innerHTML = renderSectionHeader(ICONS.temporada, "Temporadas") + renderTemporadas();
     else if(currentTab === "devocionais") main.innerHTML = renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais();
     else if(currentTab === "camisas") main.innerHTML = renderSectionHeader(ICONS.camisa, "Camisas") + renderCamisas();
     else if(currentTab === "notificacoes") main.innerHTML = renderSectionHeader(ICONS.bell, "Notificações") + renderNotificacoes();
@@ -1819,49 +1805,6 @@ ${corpo}
 
   function formatDateHora(ts){
     return new Date(ts).toLocaleDateString("pt-BR");
-  }
-
-  function renderTemporadas(){
-    const ativa = data.temporadaAtiva;
-    const passadas = [...data.temporadas].filter(t => t.id !== ativa?.id).sort((a,b) => b.iniciadaEm - a.iniciadaEm);
-
-    let html = `
-      <div class="card" style="text-align:center;margin-bottom:16px;">
-        <div style="font-size:calc(11px * var(--font-scale, 1));color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Temporada ativa</div>
-        ${ativa ? `
-          <div style="font-size:calc(20px * var(--font-scale, 1));font-weight:800;color:var(--gold);">${escapeHtml(ativa.nome)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:4px;">Iniciada em ${formatDateHora(ativa.iniciadaEm)}</div>
-        ` : `
-          <div style="color:var(--muted);font-size:calc(14px * var(--font-scale, 1));">Nenhuma temporada iniciada ainda.<br>Os dados de hoje continuam valendo normalmente.</div>
-        `}
-      </div>
-      ${abrindoNovaTemporada ? `
-        <form class="inline-add" id="form-nova-temporada" style="flex-wrap:wrap;margin-bottom:16px;">
-          <input type="text" id="input-nome-temporada" placeholder="Nome da nova temporada (ex: 2027)" required style="flex:1 1 200px;" />
-          <button type="submit" class="btn-add">✓</button>
-          <button type="button" class="del-x" style="width:auto;padding:0 12px;border:1px solid var(--line);border-radius:10px;" data-action="cancelar-nova-temporada">Cancelar</button>
-        </form>
-      ` : `
-        <button type="button" class="btn-import" style="margin-bottom:16px;" data-action="abrir-nova-temporada">${ativa ? "Iniciar nova temporada" : "Iniciar primeira temporada"}</button>
-      `}
-      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));line-height:1.6;margin-bottom:16px;">
-        Iniciar uma nova temporada não apaga nada — os dados de hoje ficam guardados aqui pra consulta, e a partir de então tudo que for cadastrado passa a valer pra temporada nova.
-      </div>
-      <div class="section-title" style="margin-top:0;">Temporadas anteriores</div>
-    `;
-
-    if(passadas.length === 0){
-      html += `<div class="empty"><div class="note-dot"></div><br>Nenhuma temporada anterior ainda.</div>`;
-    } else {
-      html += passadas.map(t => `
-        <div class="card" style="padding:12px 14px;">
-          <div style="font-weight:700;">${escapeHtml(t.nome)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">${formatDateHora(t.iniciadaEm)}${t.encerradaEm ? ` – ${formatDateHora(t.encerradaEm)}` : ""}</div>
-        </div>
-      `).join("");
-    }
-
-    return html;
   }
 
   function renderDevocionais(){
@@ -2083,7 +2026,7 @@ ${corpo}
     `;
   }
 
-  const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","temporadas","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
+  const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
 
   function equipeLegadoEntry(){
     const cfg = data.config || {};
@@ -4024,7 +3967,7 @@ ${corpo}
       enviandoAviso = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ proximaEtapa: selectedProximaEtapa, minutos: avisoMinutosValor, avisoAntesMin });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ equipeId: currentEquipeId, proximaEtapa: selectedProximaEtapa, minutos: avisoMinutosValor, avisoAntesMin });
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
@@ -4040,7 +3983,7 @@ ${corpo}
       enviandoUrgente = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ proximaEtapa: selectedProximaEtapa, minutos: 0, urgente: true });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ equipeId: currentEquipeId, proximaEtapa: selectedProximaEtapa, minutos: 0, urgente: true });
         showToast("Aviso urgente enviado!");
       }catch(err){
         console.error(err);
@@ -4058,7 +4001,7 @@ ${corpo}
       enviandoCustom = true;
       render();
       try{
-        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ mensagemCustom: texto });
+        await httpsCallable(functionsApp, "enviarAvisoAoVivo")({ equipeId: currentEquipeId, mensagemCustom: texto });
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
@@ -4486,44 +4429,6 @@ ${corpo}
       render();
     });
 
-    document.querySelectorAll('[data-action="abrir-nova-temporada"]').forEach(el => {
-      el.addEventListener("click", () => {
-        abrindoNovaTemporada = true;
-        render();
-      });
-    });
-
-    document.querySelectorAll('[data-action="cancelar-nova-temporada"]').forEach(el => {
-      el.addEventListener("click", () => {
-        abrindoNovaTemporada = false;
-        render();
-      });
-    });
-
-    const formNovaTemporada = document.getElementById("form-nova-temporada");
-    if(formNovaTemporada) formNovaTemporada.addEventListener("submit", async e => {
-      e.preventDefault();
-      const input = document.getElementById("input-nome-temporada");
-      const nome = input.value.trim();
-      if(!nome) return;
-      if(!confirm(`Iniciar a temporada "${nome}"? Os dados de hoje não serão apagados, só arquivados para consulta.`)) return;
-      try{
-        const agora = Date.now();
-        if(data.temporadaAtiva){
-          await updateDoc(doc(temporadasCol, data.temporadaAtiva.id), { encerradaEm: agora });
-        }
-        const novaId = uid();
-        await setDoc(doc(temporadasCol, novaId), { id: novaId, nome, iniciadaEm: agora, encerradaEm: null });
-        await setDoc(temporadaAtivaDocRef, { id: novaId, nome, iniciadaEm: agora });
-        abrindoNovaTemporada = false;
-        showToast("Temporada iniciada!");
-      }catch(err){
-        console.error(err);
-        showToast("Erro ao iniciar temporada");
-      }
-      render();
-    });
-
     document.querySelectorAll('[data-action="abrir-novo-devocional"]').forEach(el => {
       el.addEventListener("click", () => {
         abrindoNovoDevocional = true;
@@ -4718,7 +4623,7 @@ ${corpo}
     function fontesEquipeAtual(){
       return {
         integrantes: data.integrantes, financeiro: data.financeiro, musicas: data.musicas,
-        roteiros: data.roteiros, coreografias: data.coreografias, temporadas: data.temporadas,
+        roteiros: data.roteiros, coreografias: data.coreografias,
         agenda: data.agenda, historicoEnsaios: data.historico, locais: data.locais,
         avisosHistorico: data.avisosHistorico, devocionais: data.devocionais, camisas: data.camisas
       };
@@ -4996,8 +4901,6 @@ ${corpo}
         locais: data.locais,
         historico: data.historico,
         financeiro: data.financeiro,
-        temporadas: data.temporadas,
-        temporadaAtiva: data.temporadaAtiva,
         devocionais: data.devocionais,
         camisas: data.camisas,
         configFinanceiro: data.configFinanceiro,

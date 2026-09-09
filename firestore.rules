@@ -12,9 +12,6 @@ service cloud.firestore {
     match /financeiro/{docId} {
       allow read, write: if isCoordenador();
     }
-    match /temporadas/{docId} {
-      allow read, write: if isCoordenador();
-    }
     match /devocionais/{docId} {
       allow read: if true;
       allow write: if isCoordenador();
@@ -104,7 +101,6 @@ service cloud.firestore {
 
       match /integrantes/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
       match /financeiro/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
-      match /temporadas/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
       match /devocionais/{docId} {
         allow read: if true;
         allow write: if isCoordenadorEquipe(equipeId);

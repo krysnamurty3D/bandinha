@@ -13,8 +13,28 @@ const COORDENADOR_EMAIL = "krysnamurty@gmail.com";
 initializeApp();
 const db = getFirestore();
 
-async function sendToAll(title, body, url) {
-  const tokensSnap = await db.collection("pushTokens").get();
+// ---------- Helpers multi-equipe ----------
+// equipeId === null/undefined -> equipe legada (coleções no topo do banco)
+function colPath(equipeId, nome) {
+  return equipeId ? `equipes/${equipeId}/${nome}` : nome;
+}
+function docPath(equipeId, nome, id) {
+  return equipeId ? `equipes/${equipeId}/${nome}/${id}` : `${nome}/${id}`;
+}
+function col(equipeId, nome) {
+  return db.collection(colPath(equipeId, nome));
+}
+function docRef(equipeId, nome, id) {
+  return db.doc(docPath(equipeId, nome, id));
+}
+
+async function todasEquipeIds() {
+  const snap = await db.collection("equipes").get();
+  return [null, ...snap.docs.map(d => d.id)];
+}
+
+async function sendToAll(equipeId, title, body, url) {
+  const tokensSnap = await col(equipeId, "pushTokens").get();
   if (tokensSnap.empty) return;
   const tokens = tokensSnap.docs.map(d => d.id);
   const res = await getMessaging().sendEachForMulticast({
@@ -27,88 +47,112 @@ async function sendToAll(title, body, url) {
       invalidos.push(tokens[i]);
     }
   });
-  await Promise.all(invalidos.map(t => db.collection("pushTokens").doc(t).delete()));
+  await Promise.all(invalidos.map(t => col(equipeId, "pushTokens").doc(t).delete()));
 }
 
-async function notificacaoAtiva(categoria) {
-  const snap = await db.collection("config").doc("notificacoes").get();
+async function notificacaoAtiva(equipeId, categoria) {
+  const snap = await docRef(equipeId, "config", "notificacoes").get();
   const cfg = snap.exists ? snap.data() : {};
   return cfg[categoria] !== false;
 }
 
 const HISTORICO_LIMITE = 15;
 
-async function registrarHistorico(tipo, texto) {
-  await db.collection("avisosHistorico").add({ tipo, texto, disparadoEm: Date.now() });
-  const snap = await db.collection("avisosHistorico").orderBy("disparadoEm", "desc").offset(HISTORICO_LIMITE).get();
+async function registrarHistorico(equipeId, tipo, texto) {
+  await col(equipeId, "avisosHistorico").add({ tipo, texto, disparadoEm: Date.now() });
+  const snap = await col(equipeId, "avisosHistorico").orderBy("disparadoEm", "desc").offset(HISTORICO_LIMITE).get();
   await Promise.all(snap.docs.map(d => d.ref.delete()));
 }
 
-exports.onNovaAgenda = onDocumentCreated("agenda/{id}", async event => {
-  if (!(await notificacaoAtiva("agenda"))) return;
+async function isCoordenadorDaEquipe(email, equipeId) {
+  if (email === COORDENADOR_EMAIL) return true;
+  if (!equipeId) return false;
+  const snap = await db.collection("equipes").doc(equipeId).get();
+  return snap.exists && (snap.data().coordenadores || []).includes(email);
+}
+
+// ---------- Triggers (legado + toda equipe, via par de exports) ----------
+function registrarCriado(nome, colecao, handler) {
+  exports[nome] = onDocumentCreated(`${colecao}/{id}`, event => handler(null, event));
+  exports[nome + "Equipe"] = onDocumentCreated(`equipes/{equipeId}/${colecao}/{id}`, event => handler(event.params.equipeId, event));
+}
+function registrarAtualizado(nome, colecao, handler) {
+  exports[nome] = onDocumentUpdated(`${colecao}/{id}`, event => handler(null, event));
+  exports[nome + "Equipe"] = onDocumentUpdated(`equipes/{equipeId}/${colecao}/{id}`, event => handler(event.params.equipeId, event));
+}
+function registrarEscrito(nome, caminho, handler) {
+  exports[nome] = onDocumentWritten(caminho, event => handler(null, event));
+  exports[nome + "Equipe"] = onDocumentWritten(`equipes/{equipeId}/${caminho}`, event => handler(event.params.equipeId, event));
+}
+
+registrarCriado("onNovaAgenda", "agenda", async (equipeId, event) => {
+  if (!(await notificacaoAtiva(equipeId, "agenda"))) return;
   const a = event.data.data();
   const titulo = a.titulo || "Novo dia marcado";
-  await sendToAll("Nova data na Agenda", `${titulo} — ${a.data?.split("-").reverse().join("/") || ""}`);
+  await sendToAll(equipeId, "Nova data na Agenda", `${titulo} — ${a.data?.split("-").reverse().join("/") || ""}`);
 });
 
-exports.onNovoRoteiro = onDocumentCreated("roteiros/{id}", async event => {
-  if (!(await notificacaoAtiva("roteiros"))) return;
+registrarCriado("onNovoRoteiro", "roteiros", async (equipeId, event) => {
+  if (!(await notificacaoAtiva(equipeId, "roteiros"))) return;
   const r = event.data.data();
-  await sendToAll("Novo roteiro criado", r.titulo || "Roteiro do próximo encontro");
+  await sendToAll(equipeId, "Novo roteiro criado", r.titulo || "Roteiro do próximo encontro");
 });
 
-exports.onNovaMusica = onDocumentCreated("musicas/{id}", async event => {
+registrarCriado("onNovaMusica", "musicas", async (equipeId, event) => {
   const m = event.data.data();
   if (m.visivel === false) return;
-  if (!(await notificacaoAtiva("musicas"))) return;
-  await sendToAll("Nova música adicionada", m.nome || "");
+  if (!(await notificacaoAtiva(equipeId, "musicas"))) return;
+  await sendToAll(equipeId, "Nova música adicionada", m.nome || "");
 });
 
-exports.onMusicaRevelada = onDocumentUpdated("musicas/{id}", async event => {
+registrarAtualizado("onMusicaRevelada", "musicas", async (equipeId, event) => {
   const antes = event.data.before.data();
   const depois = event.data.after.data();
   if (antes.visivel === false && depois.visivel !== false) {
-    if (!(await notificacaoAtiva("musicas"))) return;
-    await sendToAll("Nova música revelada", depois.nome || "");
+    if (!(await notificacaoAtiva(equipeId, "musicas"))) return;
+    await sendToAll(equipeId, "Nova música revelada", depois.nome || "");
   }
 });
 
-exports.onCamisasAtivado = onDocumentWritten("config/camisas", async event => {
+registrarEscrito("onCamisasAtivado", "config/camisas", async (equipeId, event) => {
   const antes = event.data.before.data() || {};
   const depois = event.data.after.data() || {};
   if (!antes.ativo && depois.ativo) {
-    if (!(await notificacaoAtiva("camisas"))) return;
-    await sendToAll("Campanha de camisas", "Escolha o tamanho da sua camisa!", "publico.html?tab=camisas");
+    if (!(await notificacaoAtiva(equipeId, "camisas"))) return;
+    await sendToAll(equipeId, "Campanha de camisas", "Escolha o tamanho da sua camisa!", "publico.html?tab=camisas");
   }
 });
 
-exports.onNovoDevocional = onDocumentCreated("devocionais/{id}", async event => {
+registrarCriado("onNovoDevocional", "devocionais", async (equipeId, event) => {
   const d = event.data.data();
   if (d.visivel === false) return;
-  if (!(await notificacaoAtiva("devocionais"))) return;
-  await sendToAll("Novo devocional", d.titulo || "");
+  if (!(await notificacaoAtiva(equipeId, "devocionais"))) return;
+  await sendToAll(equipeId, "Novo devocional", d.titulo || "");
 });
 
-exports.onDevocionalRevelado = onDocumentUpdated("devocionais/{id}", async event => {
+registrarAtualizado("onDevocionalRevelado", "devocionais", async (equipeId, event) => {
   const antes = event.data.before.data();
   const depois = event.data.after.data();
   if (antes.visivel === false && depois.visivel !== false) {
-    if (!(await notificacaoAtiva("devocionais"))) return;
-    await sendToAll("Novo devocional", depois.titulo || "");
+    if (!(await notificacaoAtiva(equipeId, "devocionais"))) return;
+    await sendToAll(equipeId, "Novo devocional", depois.titulo || "");
   }
 });
 
 exports.enviarAvisoAoVivo = onCall(async request => {
-  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
+  const equipeId = request.data?.equipeId || null;
+  const email = request.auth?.token?.email;
+  if (!(await isCoordenadorDaEquipe(email, equipeId))) {
     throw new HttpsError("permission-denied", "Apenas o coordenador pode enviar avisos ao vivo.");
   }
   const { proximaEtapa, minutos, urgente, avisoAntesMin, mensagemCustom } = request.data || {};
+  const aoVivoRef = docRef(equipeId, "aoVivo", "atual");
   if (mensagemCustom) {
     const textoLimpo = String(mensagemCustom).trim();
     if (!textoLimpo) {
       throw new HttpsError("invalid-argument", "Escreva o texto do aviso.");
     }
-    await db.collection("aoVivo").doc("atual").set({
+    await aoVivoRef.set({
       proximaEtapa: textoLimpo,
       minutos: 0,
       disparadoEm: Date.now(),
@@ -117,8 +161,8 @@ exports.enviarAvisoAoVivo = onCall(async request => {
       avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
       avisoAntesEnviado: true
     });
-    if (await notificacaoAtiva("aovivo")) await sendToAll("Aviso", textoLimpo, "publico.html?tab=aovivo");
-    await registrarHistorico("custom", textoLimpo);
+    if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, "Aviso", textoLimpo, "publico.html?tab=aovivo");
+    await registrarHistorico(equipeId, "custom", textoLimpo);
     return { ok: true };
   }
   if (!proximaEtapa || typeof minutos !== "number" || minutos < 0) {
@@ -129,7 +173,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     : minutos === 0
       ? `Posicionem-se agora em ${proximaEtapa}`
       : `Em ${minutos} min: ${proximaEtapa}`;
-  await db.collection("aoVivo").doc("atual").set({
+  await aoVivoRef.set({
     proximaEtapa,
     minutos,
     disparadoEm: Date.now(),
@@ -137,33 +181,39 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
     avisoAntesEnviado: false
   });
-  if (await notificacaoAtiva("aovivo")) await sendToAll(urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
-  await registrarHistorico(urgente ? "urgente" : "normal", texto);
+  if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
+  await registrarHistorico(equipeId, urgente ? "urgente" : "normal", texto);
   return { ok: true };
 });
 
 exports.avisoAntesFim = onSchedule("* * * * *", async () => {
-  const ref = db.collection("aoVivo").doc("atual");
-  const snap = await ref.get();
-  if (!snap.exists) return;
-  const a = snap.data();
-  if (a.urgente || !a.minutos || a.avisoAntesEnviado) return;
-  const limiar = a.avisoAntesMin || 5;
-  const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
-  if (restanteMin <= limiar && restanteMin > limiar - 1) {
-    if (await notificacaoAtiva("aovivo")) await sendToAll("Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
-    await ref.update({ avisoAntesEnviado: true });
+  const equipeIds = await todasEquipeIds();
+  for (const equipeId of equipeIds) {
+    const ref = docRef(equipeId, "aoVivo", "atual");
+    const snap = await ref.get();
+    if (!snap.exists) continue;
+    const a = snap.data();
+    if (a.urgente || !a.minutos || a.avisoAntesEnviado) continue;
+    const limiar = a.avisoAntesMin || 5;
+    const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
+    if (restanteMin <= limiar && restanteMin > limiar - 1) {
+      if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, "Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
+      await ref.update({ avisoAntesEnviado: true });
+    }
   }
 });
 
 exports.limparAoVivoExpirado = onSchedule("* * * * *", async () => {
-  const ref = db.collection("aoVivo").doc("atual");
-  const snap = await ref.get();
-  if (!snap.exists) return;
-  const a = snap.data();
-  const fimMs = (a.disparadoEm || 0) + (a.minutos || 0) * 60000;
-  if (Date.now() - fimMs >= 5 * 60000) {
-    await ref.delete();
+  const equipeIds = await todasEquipeIds();
+  for (const equipeId of equipeIds) {
+    const ref = docRef(equipeId, "aoVivo", "atual");
+    const snap = await ref.get();
+    if (!snap.exists) continue;
+    const a = snap.data();
+    const fimMs = (a.disparadoEm || 0) + (a.minutos || 0) * 60000;
+    if (Date.now() - fimMs >= 5 * 60000) {
+      await ref.delete();
+    }
   }
 });
 
@@ -176,15 +226,18 @@ const LIMIARES = [
 const NOVA_EXPIRACAO_DIAS = 14;
 
 exports.expirarMusicasNovas = onSchedule("every 24 hours", async () => {
+  const equipeIds = await todasEquipeIds();
   const agora = Date.now();
   const limite = agora - NOVA_EXPIRACAO_DIAS * 24 * 60 * 60 * 1000;
-  const snap = await db.collection("musicas").where("nova", "==", true).get();
-  const semData = snap.docs.filter(d => !d.data().novaDesde);
-  const expiradas = snap.docs.filter(d => d.data().novaDesde && d.data().novaDesde <= limite);
-  await Promise.all([
-    ...semData.map(d => d.ref.update({ novaDesde: agora })),
-    ...expiradas.map(d => d.ref.update({ nova: false, novaDesde: FieldValue.delete() }))
-  ]);
+  for (const equipeId of equipeIds) {
+    const snap = await col(equipeId, "musicas").where("nova", "==", true).get();
+    const semData = snap.docs.filter(d => !d.data().novaDesde);
+    const expiradas = snap.docs.filter(d => d.data().novaDesde && d.data().novaDesde <= limite);
+    await Promise.all([
+      ...semData.map(d => d.ref.update({ novaDesde: agora })),
+      ...expiradas.map(d => d.ref.update({ nova: false, novaDesde: FieldValue.delete() }))
+    ]);
+  }
 });
 
 const EXT_POR_TIPO = {
@@ -248,11 +301,7 @@ exports.uploadHeaderImagem = onCall({ timeoutSeconds: 60 }, async request => {
   }
   const email = request.auth.token.email;
   const alvo = equipeId || "default";
-  let autorizado = email === COORDENADOR_EMAIL;
-  if (!autorizado && alvo !== "default") {
-    const eqSnap = await db.collection("equipes").doc(alvo).get();
-    autorizado = eqSnap.exists && (eqSnap.data().coordenadores || []).includes(email);
-  }
+  const autorizado = await isCoordenadorDaEquipe(email, equipeId || null);
   if (!autorizado) {
     throw new HttpsError("permission-denied", "Você não é coordenador desta equipe.");
   }
@@ -269,20 +318,23 @@ exports.uploadHeaderImagem = onCall({ timeoutSeconds: 60 }, async request => {
 });
 
 exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
-  if (!(await notificacaoAtiva("lembretes"))) return;
+  const equipeIds = await todasEquipeIds();
   const agora = Date.now();
-  const snap = await db.collection("agenda").get();
-  for (const docSnap of snap.docs) {
-    const a = docSnap.data();
-    if (!a.data || !a.hora) continue;
-    const evento = new Date(`${a.data}T${a.hora}:00-03:00`).getTime();
-    const diffMin = (evento - agora) / 60000;
-    const enviados = a.lembretesEnviados || [];
-    for (const limiar of LIMIARES) {
-      if (diffMin <= limiar.minutos && diffMin > limiar.minutos - 15 && !enviados.includes(limiar.chave)) {
-        const faltaTexto = limiar.chave === "24h" ? "amanhã" : limiar.chave === "3h" ? "em 3 horas" : "em 30 minutos";
-        await sendToAll("Lembrete", `${a.titulo || "Evento"} começa ${faltaTexto} (${a.hora})`);
-        await docSnap.ref.update({ lembretesEnviados: [...enviados, limiar.chave] });
+  for (const equipeId of equipeIds) {
+    if (!(await notificacaoAtiva(equipeId, "lembretes"))) continue;
+    const snap = await col(equipeId, "agenda").get();
+    for (const docSnap of snap.docs) {
+      const a = docSnap.data();
+      if (!a.data || !a.hora) continue;
+      const evento = new Date(`${a.data}T${a.hora}:00-03:00`).getTime();
+      const diffMin = (evento - agora) / 60000;
+      const enviados = a.lembretesEnviados || [];
+      for (const limiar of LIMIARES) {
+        if (diffMin <= limiar.minutos && diffMin > limiar.minutos - 15 && !enviados.includes(limiar.chave)) {
+          const faltaTexto = limiar.chave === "24h" ? "amanhã" : limiar.chave === "3h" ? "em 3 horas" : "em 30 minutos";
+          await sendToAll(equipeId, "Lembrete", `${a.titulo || "Evento"} começa ${faltaTexto} (${a.hora})`);
+          await docSnap.ref.update({ lembretesEnviados: [...enviados, limiar.chave] });
+        }
       }
     }
   }
