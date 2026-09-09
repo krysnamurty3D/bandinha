@@ -1010,8 +1010,18 @@ if(firebaseConfig.measurementId){
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
-const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
-const ADMIN_EMAILS = ["krysnamurty@gmail.com"];
+const ROOT_ADMIN_EMAIL = "krysnamurty@gmail.com";
+let ADMIN_EMAILS = [ROOT_ADMIN_EMAIL];
+async function carregarAdmins(){
+  try{
+    const snap = await getDoc(doc(db, "config", "admins"));
+    const extras = snap.exists() && Array.isArray(snap.data().emails) ? snap.data().emails : [];
+    ADMIN_EMAILS = [...new Set([ROOT_ADMIN_EMAIL, ...extras])];
+  }catch(err){
+    console.error("Erro ao carregar lista de admins:", err);
+    ADMIN_EMAILS = [ROOT_ADMIN_EMAIL];
+  }
+}
 const equipesCol = collection(db, "equipes");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
@@ -1552,9 +1562,8 @@ ${corpo}
 
   function loadAuth(){
     onAuthStateChanged(auth, async user => {
-      if(user && EMAILS_PERMITIDOS.includes(user.email)){
-        currentEquipeId = null;
-      } else if(user && ADMIN_EMAILS.includes(user.email)){
+      if(user) await carregarAdmins();
+      if(user && ADMIN_EMAILS.includes(user.email)){
         currentEquipeId = null;
       } else if(user){
         try{
@@ -2194,6 +2203,29 @@ ${corpo}
       `;
     }
 
+    if(adminView === "administradores"){
+      const extras = ADMIN_EMAILS.filter(e => e !== ROOT_ADMIN_EMAIL);
+      return `
+        ${renderAdminVoltar()}
+        <div class="section-title" style="margin-top:0;">Administradores da plataforma</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:14px;">Quem estiver aqui tem acesso total a todas as equipes, sem precisar de deploy.</div>
+        <div class="card" style="padding:12px 14px;margin-bottom:10px;">
+          <div style="font-weight:700;">${escapeHtml(ROOT_ADMIN_EMAIL)}</div>
+          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Administrador principal — não pode ser removido por aqui</div>
+        </div>
+        ${extras.map(email => `
+          <div class="card" style="padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div style="font-weight:700;">${escapeHtml(email)}</div>
+            <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:var(--rose);color:#fff;" data-action="remover-admin" data-email="${escapeHtml(email)}">Remover</button>
+          </div>
+        `).join("")}
+        <form class="inline-add" id="form-add-admin" style="flex-wrap:wrap;margin-top:10px;">
+          <input type="email" id="input-add-admin-email" placeholder="E-mail do novo administrador" required style="flex:1 1 220px;" />
+          <button type="submit" class="btn-add">+</button>
+        </form>
+      `;
+    }
+
     return `
       <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:16px;">Área restrita ao administrador da plataforma — gerencia as equipes que usam este app, isoladas umas das outras.</div>
       <div class="home-grid">
@@ -2211,6 +2243,11 @@ ${corpo}
           <div class="sec-card-icon">${ICONS.progresso}</div>
           <div class="sec-card-label">Gerenciar equipes</div>
           <div class="sec-card-stat">Criar, importar, apagar</div>
+        </button>
+        <button type="button" class="sec-card" data-action="admin-ir" data-view="administradores">
+          <div class="sec-card-icon">${ICONS.presenca}</div>
+          <div class="sec-card-label">Administradores</div>
+          <div class="sec-card-stat">${ADMIN_EMAILS.length} com acesso total</div>
         </button>
       </div>
     `;
@@ -4723,6 +4760,43 @@ ${corpo}
     });
     const btnAdminVoltar = document.querySelector('[data-action="admin-voltar"]');
     if(btnAdminVoltar) btnAdminVoltar.addEventListener("click", () => { adminView = "landing"; render(); });
+
+    const formAddAdmin = document.getElementById("form-add-admin");
+    if(formAddAdmin) formAddAdmin.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = document.getElementById("input-add-admin-email");
+      const email = input.value.trim().toLowerCase();
+      if(!email) return;
+      if(ADMIN_EMAILS.includes(email)){ showToast("Esse e-mail já é administrador"); return; }
+      try{
+        const novaLista = ADMIN_EMAILS.filter(e => e !== ROOT_ADMIN_EMAIL).concat(email);
+        await setDoc(doc(db, "config", "admins"), { emails: novaLista }, { merge: true });
+        ADMIN_EMAILS = [...new Set([ROOT_ADMIN_EMAIL, ...novaLista])];
+        showToast("Administrador adicionado");
+        input.value = "";
+        render();
+      }catch(err){
+        console.error(err);
+        showToast(`Erro ao adicionar administrador: ${err.message || err}`);
+      }
+    });
+
+    document.querySelectorAll('[data-action="remover-admin"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const email = el.dataset.email;
+        if(!confirm(`Remover "${email}" da lista de administradores?`)) return;
+        try{
+          const novaLista = ADMIN_EMAILS.filter(e => e !== ROOT_ADMIN_EMAIL && e !== email);
+          await setDoc(doc(db, "config", "admins"), { emails: novaLista }, { merge: true });
+          ADMIN_EMAILS = [...new Set([ROOT_ADMIN_EMAIL, ...novaLista])];
+          showToast("Administrador removido");
+          render();
+        }catch(err){
+          console.error(err);
+          showToast(`Erro ao remover administrador: ${err.message || err}`);
+        }
+      });
+    });
 
     document.querySelectorAll('[data-action="toggle-ativa-equipe"]').forEach(el => {
       el.addEventListener("click", async () => {

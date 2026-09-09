@@ -1,10 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdminPlataforma() {
+      return request.auth != null && (
+        request.auth.token.email == 'krysnamurty@gmail.com' ||
+        request.auth.token.email in get(/databases/$(database)/documents/config/admins).data.emails
+      );
+    }
     function isCoordenador() {
-      return request.auth != null && request.auth.token.email in [
-        'krysnamurty@gmail.com'
-      ];
+      return isAdminPlataforma();
     }
     match /integrantes/{docId} {
       allow read, write: if isCoordenador();
@@ -82,11 +86,6 @@ service cloud.firestore {
     }
 
     // ---- Multi-equipe (novo modelo, aditivo — não afeta as coleções acima) ----
-    function isAdminPlataforma() {
-      return request.auth != null && request.auth.token.email in [
-        'krysnamurty@gmail.com'
-      ];
-    }
     function isCoordenadorEquipe(equipeId) {
       return request.auth != null && (
         isAdminPlataforma() ||

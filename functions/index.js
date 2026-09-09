@@ -64,8 +64,16 @@ async function registrarHistorico(equipeId, tipo, texto) {
   await Promise.all(snap.docs.map(d => d.ref.delete()));
 }
 
-async function isCoordenadorDaEquipe(email, equipeId) {
+async function isAdminPlataformaEmail(email) {
+  if (!email) return false;
   if (email === COORDENADOR_EMAIL) return true;
+  const snap = await db.doc("config/admins").get();
+  const emails = snap.exists ? (snap.data().emails || []) : [];
+  return emails.includes(email);
+}
+
+async function isCoordenadorDaEquipe(email, equipeId) {
+  if (await isAdminPlataformaEmail(email)) return true;
   if (!equipeId) return false;
   const snap = await db.collection("equipes").doc(equipeId).get();
   return snap.exists && (snap.data().coordenadores || []).includes(email);
@@ -263,8 +271,8 @@ async function baixarDoDrive(fileId) {
 }
 
 exports.migrarAudiosDrive = onCall({ timeoutSeconds: 300 }, async request => {
-  if (request.auth?.token?.email !== COORDENADOR_EMAIL) {
-    throw new HttpsError("permission-denied", "Apenas o coordenador pode migrar áudios.");
+  if (!(await isAdminPlataformaEmail(request.auth?.token?.email))) {
+    throw new HttpsError("permission-denied", "Apenas o administrador pode migrar áudios.");
   }
   const snap = await db.collection("musicas").get();
   const alvos = snap.docs.filter(d => d.data().audioId && !d.data().audioUrl);
