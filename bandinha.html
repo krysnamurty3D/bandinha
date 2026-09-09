@@ -1730,7 +1730,7 @@ ${corpo}
 
   function renderHome(){
     const voltarAdminHtml = isAdmin() ? `<button type="button" class="link-btn" style="padding:0;margin-bottom:16px;" data-action="ir-home">◀ Painel do administrador</button>` : "";
-    const linkPublicoEquipe = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}publico.html?equipe=${encodeURIComponent(currentEquipeId || "")}`;
+    const linkPublicoEquipe = `https://us-central1-bandinha-a22ce.cloudfunctions.net/compartilharEquipe?equipe=${encodeURIComponent(currentEquipeId || "")}`;
     const linkEquipeHtml = currentEquipeId ? `
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <button type="button" id="btn-copiar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:flex;align-items:center;justify-content:center;gap:8px;flex:1 1 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 10px;cursor:pointer;color:var(--gold);font-family:var(--font);">

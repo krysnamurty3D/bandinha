@@ -5,7 +5,7 @@ const { getStorage } = require("firebase-admin/storage");
 const { getMessaging } = require("firebase-admin/messaging");
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue } = require("firebase-admin/firestore");
 
 const COORDENADOR_EMAIL = "krysnamurty@gmail.com";
@@ -369,4 +369,46 @@ exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
       }
     }
   }
+});
+
+const SITE_BASE = "https://bandinha.k3d.app.br";
+
+function escaparHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+exports.compartilharEquipe = onRequest(async (req, res) => {
+  const equipeId = req.query.equipe || null;
+  let titulo = "Bandinha";
+  let descricao = "Músicas, coreografias, agenda e roteiro da Bandinha.";
+  let imagem = `${SITE_BASE}/header.png`;
+  let destino = `${SITE_BASE}/publico.html`;
+  if (equipeId) {
+    destino += `?equipe=${encodeURIComponent(equipeId)}`;
+    try {
+      const snap = await db.doc(`equipes/${equipeId}/config/main`).get();
+      const cfg = snap.exists ? snap.data() : {};
+      titulo = cfg.titulo || "Equipe";
+      descricao = `Músicas, coreografias, agenda e roteiro da ${titulo}.`;
+      if (cfg.headerUrl) imagem = cfg.headerUrl;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  res.set("Cache-Control", "public, max-age=300");
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escaparHtml(titulo)}</title>
+<meta property="og:title" content="${escaparHtml(titulo)}">
+<meta property="og:description" content="${escaparHtml(descricao)}">
+<meta property="og:image" content="${escaparHtml(imagem)}">
+<meta property="og:url" content="${escaparHtml(destino)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0;url=${escaparHtml(destino)}">
+</head><body>
+Redirecionando… <a href="${escaparHtml(destino)}">Toque aqui se não for redirecionado</a>
+<script>location.replace(${JSON.stringify(destino)});</script>
+</body></html>`);
 });
