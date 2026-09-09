@@ -3586,29 +3586,6 @@ ${corpo}
     `;
   }
 
-  function renderSetlistHoje(){
-    const setlist = getPlanoDoDia(new Date().toISOString().slice(0,10));
-    if(setlist.length === 0) return "";
-    return `
-      <div class="section-title" style="margin-top:20px;">Setlist de hoje — progresso da equipe</div>
-      ${setlist.map(m => {
-        const { titulo } = splitMusica(m.nome);
-        const entradas = data.progresso.filter(p => p.musicaId === m.id && p.status);
-        const counts = { precisa_treinar: 0, aprendi: 0, ensaiei: 0 };
-        entradas.forEach(p => { if(counts[p.status] !== undefined) counts[p.status]++; });
-        return `
-        <div class="card" style="padding:10px 14px;">
-          <div style="font-weight:600;margin-bottom:8px;">${escapeHtml(titulo)}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <span class="status-pill status-aprender" style="padding:3px 9px;font-size:calc(11px * var(--font-scale, 1));">${counts.precisa_treinar} treinar</span>
-            <span class="status-pill status-ensaiando" style="padding:3px 9px;font-size:calc(11px * var(--font-scale, 1));">${counts.aprendi} aprendeu</span>
-            <span class="status-pill status-pronta" style="padding:3px 9px;font-size:calc(11px * var(--font-scale, 1));">${counts.ensaiei} ensaiou</span>
-          </div>
-        </div>`;
-      }).join("")}
-    `;
-  }
-
   function renderAoVivo(){
     let html = renderAoVivoStatus() + `
       <div class="empty" style="text-align:left;padding:16px;margin-bottom:16px;border-style:solid;">
@@ -3660,7 +3637,7 @@ ${corpo}
         <button type="button" id="btn-disparar-custom" class="btn-import" style="margin-top:10px;" ${enviandoCustom ? "disabled" : ""}>${enviandoCustom ? "Enviando..." : `<span class="ico">${ICONS.megaphone}</span>Disparar aviso personalizado`}</button>
       </div>
     `;
-    html += renderSetlistHoje() + renderHistoricoAvisos();
+    html += renderHistoricoAvisos();
     return html;
   }
 
