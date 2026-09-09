@@ -824,7 +824,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       showToast("Notificações ativadas!");
     }catch(err){
       console.error(err);
-      showToast("Erro ao ativar notificações");
+      showToast(`Erro ao ativar notificações: ${err.message || err}`);
     }
   }
 
@@ -1715,7 +1715,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           showToast("Tamanho confirmado!");
         }catch(err){
           console.error(err);
-          showToast("Erro ao confirmar. Tente de novo.");
+          showToast(`Erro ao confirmar: ${err.message || err}`);
         }
         render();
       });
@@ -1760,7 +1760,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
           await setDoc(doc(avisoVistosCol, docId), { nome: meuNome, disparadoEm: data.aoVivo.disparadoEm, vistoEm: Date.now() });
         }catch(err){
           console.error(err);
-          showToast("Erro ao confirmar");
+          showToast(`Erro ao confirmar: ${err.message || err}`);
         }
       });
     });

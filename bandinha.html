@@ -1394,7 +1394,7 @@ ${corpo}
       showToast("Notificações ativadas!");
     }catch(err){
       console.error(err);
-      showToast("Erro ao ativar notificações");
+      showToast(`Erro ao ativar notificações: ${err.message || err}`);
     }
   }
 
@@ -3738,7 +3738,7 @@ ${corpo}
         showToast("Valores salvos");
       }catch(err){
         console.error(err);
-        showToast("Erro ao salvar valores");
+        showToast(`Erro ao salvar valores: ${err.message || err}`);
       }
       render();
     });
@@ -3884,7 +3884,7 @@ ${corpo}
         showToast(`Roteiro importado com ${itens.length} itens`);
       }catch(err){
         console.error(err);
-        showToast("Erro ao importar roteiro");
+        showToast(`Erro ao importar roteiro: ${err.message || err}`);
       }
       render();
     });
@@ -3897,7 +3897,7 @@ ${corpo}
           await updateDoc(doc(roteirosCol, r.id), { visivel: r.visivel === false });
         }catch(err){
           console.error(err);
-          showToast("Erro ao atualizar");
+          showToast(`Erro ao atualizar: ${err.message || err}`);
         }
       });
     });
@@ -3962,7 +3962,7 @@ ${corpo}
         input.value = "";
       }catch(err){
         console.error("Erro ao adicionar local:", err);
-        showToast("Erro: regras do Firestore ainda não publicadas");
+        showToast(`Erro ao adicionar local: ${err.message || err}`);
       }
     });
 
@@ -3983,7 +3983,7 @@ ${corpo}
           showToast("Local removido");
         }catch(err){
           console.error("Erro ao remover local:", err);
-          showToast("Erro: regras do Firestore ainda não publicadas");
+          showToast(`Erro ao remover local: ${err.message || err}`);
         }
       });
     });
@@ -4018,7 +4018,7 @@ ${corpo}
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
-        showToast("Erro ao enviar aviso");
+        showToast(`Erro ao enviar aviso: ${err.message || err}`);
       }
       enviandoAviso = false;
       render();
@@ -4034,7 +4034,7 @@ ${corpo}
         showToast("Aviso urgente enviado!");
       }catch(err){
         console.error(err);
-        showToast("Erro ao enviar aviso urgente");
+        showToast(`Erro ao enviar aviso urgente: ${err.message || err}`);
       }
       enviandoUrgente = false;
       render();
@@ -4052,7 +4052,7 @@ ${corpo}
         showToast("Aviso enviado!");
       }catch(err){
         console.error(err);
-        showToast("Erro ao enviar aviso");
+        showToast(`Erro ao enviar aviso: ${err.message || err}`);
       }
       enviandoCustom = false;
       render();
@@ -4066,7 +4066,7 @@ ${corpo}
         showToast("Aviso ao vivo parado");
       }catch(err){
         console.error(err);
-        showToast("Erro ao parar aviso");
+        showToast(`Erro ao parar aviso: ${err.message || err}`);
       }
     });
 
@@ -4077,7 +4077,7 @@ ${corpo}
         showToast("Timer reiniciado");
       }catch(err){
         console.error(err);
-        showToast("Erro ao reiniciar");
+        showToast(`Erro ao reiniciar: ${err.message || err}`);
       }
     });
 
@@ -4348,7 +4348,7 @@ ${corpo}
           showToast("Lista de presença atualizada");
         }catch(err){
           console.error(err);
-          showToast("Erro ao atualizar — verifique sua conexão e tente de novo");
+          showToast(`Erro ao atualizar: ${err.message || err}`);
         }
       });
     });
@@ -4443,7 +4443,7 @@ ${corpo}
         showToast("Setlist enviado para a equipe!");
       }catch(err){
         console.error(err);
-        showToast("Erro ao enviar setlist");
+        showToast(`Erro ao enviar setlist: ${err.message || err}`);
       }
       enviandoSetlist = false;
       render();
@@ -4470,7 +4470,7 @@ ${corpo}
         }
       }catch(err){
         console.error(err);
-        showToast("Erro ao migrar áudios");
+        showToast(`Erro ao migrar áudios: ${err.message || err}`);
       }
       migrandoAudios = false;
       render();
@@ -4507,7 +4507,7 @@ ${corpo}
         showToast(publicar ? "Devocional publicado" : "Devocional salvo como rascunho — toque no ícone de olho quando quiser publicar");
       }catch(err){
         console.error(err);
-        showToast("Erro ao salvar devocional");
+        showToast(`Erro ao salvar devocional: ${err.message || err}`);
       }
       render();
     });
@@ -4576,7 +4576,7 @@ ${corpo}
           showToast(ativo ? "Campanha ativada" : "Campanha encerrada");
         }catch(err){
           console.error(err);
-          showToast("Erro ao atualizar campanha");
+          showToast(`Erro ao atualizar campanha: ${err.message || err}`);
         }
         render();
       });
@@ -4618,7 +4618,7 @@ ${corpo}
           await setDoc(configNotificacoesDocRef, { [chave]: ativo }, { merge: true });
         }catch(err){
           console.error(err);
-          showToast("Erro ao salvar");
+          showToast(`Erro ao salvar: ${err.message || err}`);
         }
       });
     });
@@ -4639,7 +4639,7 @@ ${corpo}
         idInput.value = ""; nomeInput.value = ""; coordInput.value = "";
       }catch(err){
         console.error(err);
-        showToast("Erro ao criar equipe");
+        showToast(`Erro ao criar equipe: ${err.message || err}`);
       }
     });
 
@@ -4708,7 +4708,7 @@ ${corpo}
         showToast(`Migração concluída: ${ops.length} documentos copiados`);
       }catch(err){
         console.error(err);
-        showToast("Erro na migração — veja o console");
+        showToast(`Erro na migração: ${err.message || err}`);
       }
       migrandoEquipe = false;
       render();
@@ -4742,7 +4742,7 @@ ${corpo}
         showToast(`Clonagem concluída: ${ops.length} documentos copiados`);
       }catch(err){
         console.error(err);
-        showToast("Erro ao clonar — veja o console");
+        showToast(`Erro ao clonar: ${err.message || err}`);
       }
       clonandoEquipe = false;
       render();
@@ -4774,7 +4774,7 @@ ${corpo}
         showToast(`Equipe apagada: ${total} documentos removidos`);
       }catch(err){
         console.error(err);
-        showToast("Erro ao apagar — veja o console");
+        showToast(`Erro ao apagar: ${err.message || err}`);
       }
       apagandoEquipe = false;
       render();
@@ -4816,7 +4816,7 @@ ${corpo}
           await updateDoc(doc(camisasCol, item.id), { entregue: !item.entregue });
         }catch(err){
           console.error(err);
-          showToast("Erro ao atualizar");
+          showToast(`Erro ao atualizar: ${err.message || err}`);
         }
       });
     });
@@ -4832,7 +4832,7 @@ ${corpo}
         showToast("Tamanhos atualizados");
       }catch(err){
         console.error(err);
-        showToast("Erro ao salvar tamanhos");
+        showToast(`Erro ao salvar tamanhos: ${err.message || err}`);
       }
       render();
     });
@@ -4859,7 +4859,7 @@ ${corpo}
         if(quantidadeInput) quantidadeInput.value = "1";
       }catch(err){
         console.error(err);
-        showToast("Erro ao adicionar");
+        showToast(`Erro ao adicionar: ${err.message || err}`);
       }
     });
 
@@ -5137,7 +5137,7 @@ ${corpo}
         showToast("Lançamentos gerados");
       }catch(err){
         console.error(err);
-        showToast("Erro ao gerar lançamentos");
+        showToast(`Erro ao gerar lançamentos: ${err.message || err}`);
       }
     });
 
@@ -5414,7 +5414,7 @@ ${corpo}
           showToast(nova ? "Marcada como nova" : "Removida a marca de nova");
         }catch(err){
           console.error(err);
-          showToast("Erro ao atualizar");
+          showToast(`Erro ao atualizar: ${err.message || err}`);
         }
       });
     });
@@ -5426,7 +5426,7 @@ ${corpo}
           showToast("Categoria atualizada");
         }catch(err){
           console.error(err);
-          showToast("Erro ao atualizar");
+          showToast(`Erro ao atualizar: ${err.message || err}`);
         }
       });
     });
@@ -5446,7 +5446,7 @@ ${corpo}
           await Promise.all(grupo.map((m, i) => updateDoc(doc(musicasCol, m.id), { ordemCategoria: i })));
         }catch(err){
           console.error(err);
-          showToast("Erro ao reordenar");
+          showToast(`Erro ao reordenar: ${err.message || err}`);
         }
       });
     });
