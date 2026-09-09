@@ -941,7 +941,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, limit, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, where, getDocs, orderBy, limit, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -967,31 +967,41 @@ const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
 const ADMIN_EMAILS = ["krysnamurty@gmail.com"];
-const integrantesCol = collection(db, "integrantes");
-const financeiroCol = collection(db, "financeiro");
-const musicasCol = collection(db, "musicas");
-const roteirosCol = collection(db, "roteiros");
-const coreografiasCol = collection(db, "coreografias");
-const configDocRef = doc(db, "config", "main");
-const configFinanceiroDocRef = doc(db, "config", "financeiro");
-const setlistEquipeDocRef = doc(db, "config", "setlistEquipe");
-const temporadasCol = collection(db, "temporadas");
-const temporadaAtivaDocRef = doc(db, "config", "temporadaAtiva");
-const progressoCol = collection(db, "progresso");
-const visualizacoesCol = collection(db, "visualizacoes");
-const agendaCol = collection(db, "agenda");
-const historicoCol = collection(db, "historicoEnsaios");
-const pushTokensCol = collection(db, "pushTokens");
-const locaisCol = collection(db, "locais");
-const aoVivoDocRef = doc(db, "aoVivo", "atual");
-const avisosHistoricoCol = collection(db, "avisosHistorico");
-const devocionaisCol = collection(db, "devocionais");
-const camisasCol = collection(db, "camisas");
-const configCamisasDocRef = doc(db, "config", "camisas");
-const configNotificacoesDocRef = doc(db, "config", "notificacoes");
 const equipesCol = collection(db, "equipes");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 const functionsApp = getFunctions(firebaseApp);
+let integrantesCol, financeiroCol, musicasCol, roteirosCol, coreografiasCol,
+    configDocRef, configFinanceiroDocRef, setlistEquipeDocRef, temporadasCol, temporadaAtivaDocRef,
+    progressoCol, visualizacoesCol, agendaCol, historicoCol, pushTokensCol, locaisCol,
+    aoVivoDocRef, avisosHistoricoCol, devocionaisCol, camisasCol, configCamisasDocRef, configNotificacoesDocRef;
+
+function montarReferenciasColecoes(equipeId){
+  const base = equipeId ? ["equipes", equipeId] : [];
+  const col = (...seg) => collection(db, ...base, ...seg);
+  const dref = (...seg) => doc(db, ...base, ...seg);
+  integrantesCol = col("integrantes");
+  financeiroCol = col("financeiro");
+  musicasCol = col("musicas");
+  roteirosCol = col("roteiros");
+  coreografiasCol = col("coreografias");
+  configDocRef = dref("config", "main");
+  configFinanceiroDocRef = dref("config", "financeiro");
+  setlistEquipeDocRef = dref("config", "setlistEquipe");
+  temporadasCol = col("temporadas");
+  temporadaAtivaDocRef = dref("config", "temporadaAtiva");
+  progressoCol = col("progresso");
+  visualizacoesCol = col("visualizacoes");
+  agendaCol = col("agenda");
+  historicoCol = col("historicoEnsaios");
+  pushTokensCol = col("pushTokens");
+  locaisCol = col("locais");
+  aoVivoDocRef = dref("aoVivo", "atual");
+  avisosHistoricoCol = col("avisosHistorico");
+  devocionaisCol = col("devocionais");
+  camisasCol = col("camisas");
+  configCamisasDocRef = dref("config", "camisas");
+  configNotificacoesDocRef = dref("config", "notificacoes");
+}
 
 (function(){
   const ICON_STROKE = 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
@@ -1042,6 +1052,8 @@ const functionsApp = getFunctions(firebaseApp);
   let finTipoForm = "receita";
   let editandoValoresFinanceiro = false;
   let currentUser = null;
+  let currentEquipeId = null;
+  let currentEquipeNome = null;
   function isAdmin(){ return !!currentUser && ADMIN_EMAILS.includes(currentUser.email); }
   let authReady = false;
   let currentTab = "home";
@@ -1488,19 +1500,38 @@ ${corpo}
   }
 
   function loadAuth(){
-    onAuthStateChanged(auth, user => {
-      if(user && !EMAILS_PERMITIDOS.includes(user.email) && !ADMIN_EMAILS.includes(user.email)){
-        signOut(auth);
-        authReady = true;
-        currentUser = null;
-        renderAuthGate();
-        showToast("Este e-mail não tem acesso ao painel");
-        return;
+    onAuthStateChanged(auth, async user => {
+      if(user && EMAILS_PERMITIDOS.includes(user.email)){
+        currentEquipeId = null;
+      } else if(user && ADMIN_EMAILS.includes(user.email)){
+        currentEquipeId = null;
+      } else if(user){
+        try{
+          const snap = await getDocs(query(equipesCol, where("coordenadores", "array-contains", user.email)));
+          if(snap.empty){
+            signOut(auth);
+            authReady = true;
+            currentUser = null;
+            renderAuthGate();
+            showToast("Este e-mail não tem acesso ao painel");
+            return;
+          }
+          currentEquipeId = snap.docs[0].id;
+          currentEquipeNome = snap.docs[0].data().nome || currentEquipeId;
+        }catch(err){
+          console.error(err);
+          signOut(auth);
+          authReady = true;
+          currentUser = null;
+          renderAuthGate();
+          showToast("Erro ao verificar acesso — tente de novo");
+          return;
+        }
       }
       currentUser = user;
       authReady = true;
       renderAuthGate();
-      if(user){ load(); }
+      if(user){ montarReferenciasColecoes(currentEquipeId); load(); }
     });
   }
 
@@ -1654,6 +1685,13 @@ ${corpo}
   }
 
   function renderHome(){
+    const linkEquipeHtml = currentEquipeId ? `
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-weight:700;margin-bottom:4px;">${escapeHtml(currentEquipeNome || currentEquipeId)}</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:8px;">Link público desta equipe (compartilhe com o time):</div>
+        <div style="color:var(--gold);font-size:calc(13px * var(--font-scale, 1));word-break:break-all;">publico.html?equipe=${escapeHtml(currentEquipeId)}</div>
+      </div>
+    ` : "";
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
     const totalConfirmados = data.integrantes.filter(i => i.confirmado).length;
@@ -1680,6 +1718,7 @@ ${corpo}
     ];
 
     return `
+      ${linkEquipeHtml}
       <div class="home-grid">
         ${cards.map(c => `
           <button type="button" class="sec-card" data-action="ir-tab" data-tab="${c.key}">

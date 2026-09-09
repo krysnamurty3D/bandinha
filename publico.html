@@ -648,22 +648,25 @@ try{
   console.warn("Cache offline indisponível, usando Firestore padrão:", e);
   db = getFirestore(firebaseApp);
 }
-const musicasCol = collection(db, "musicas");
-const roteirosCol = collection(db, "roteiros");
-const coreografiasCol = collection(db, "coreografias");
-const configDocRef = doc(db, "config", "main");
-const agendaCol = collection(db, "agenda");
-const progressoCol = collection(db, "progresso");
-const visualizacoesCol = collection(db, "visualizacoes");
-const pushTokensCol = collection(db, "pushTokens");
-const aoVivoDocRef = doc(db, "aoVivo", "atual");
-const avisosHistoricoCol = collection(db, "avisosHistorico");
-const avisoVistosCol = collection(db, "avisoVistos");
-const setlistEquipeDocRef = doc(db, "config", "setlistEquipe");
-const devocionaisCol = collection(db, "devocionais");
-const historicoCol = collection(db, "historicoEnsaios");
-const camisasCol = collection(db, "camisas");
-const configCamisasDocRef = doc(db, "config", "camisas");
+const EQUIPE_ID = new URLSearchParams(location.search).get("equipe") || null;
+function colPub(...seg){ return EQUIPE_ID ? collection(db, "equipes", EQUIPE_ID, ...seg) : collection(db, ...seg); }
+function drefPub(...seg){ return EQUIPE_ID ? doc(db, "equipes", EQUIPE_ID, ...seg) : doc(db, ...seg); }
+const musicasCol = colPub("musicas");
+const roteirosCol = colPub("roteiros");
+const coreografiasCol = colPub("coreografias");
+const configDocRef = drefPub("config", "main");
+const agendaCol = colPub("agenda");
+const progressoCol = colPub("progresso");
+const visualizacoesCol = colPub("visualizacoes");
+const pushTokensCol = colPub("pushTokens");
+const aoVivoDocRef = drefPub("aoVivo", "atual");
+const avisosHistoricoCol = colPub("avisosHistorico");
+const avisoVistosCol = colPub("avisoVistos");
+const setlistEquipeDocRef = drefPub("config", "setlistEquipe");
+const devocionaisCol = colPub("devocionais");
+const historicoCol = colPub("historicoEnsaios");
+const camisasCol = colPub("camisas");
+const configCamisasDocRef = drefPub("config", "camisas");
 const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfqrHVo-g5I_r_RqQSC9Y9s2HWRvM";
 
 (function(){
