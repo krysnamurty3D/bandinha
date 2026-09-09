@@ -2157,7 +2157,7 @@ ${corpo}
           showToast("Imagem do header atualizada!");
         }catch(err){
           console.error(err);
-          showToast("Erro ao enviar imagem");
+          showToast(`Erro ao enviar imagem: ${err.code || err.message || err}`);
         }
         enviandoHeader = false;
         render();
