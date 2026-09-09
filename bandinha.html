@@ -81,6 +81,13 @@
     text-transform:uppercase;
     color:var(--gold);
   }
+  header.top.header-plain{
+    aspect-ratio:auto;
+    background-image:none;
+    min-height:52px;
+  }
+  header.top.header-plain::before{ display:none; }
+  header.top.header-plain #brand{ display:none; }
   .btn-logout{
     position:absolute;
     top:14px; right:14px;
@@ -1656,6 +1663,7 @@ ${corpo}
 
   function render(){
     const main = document.getElementById("main");
+    document.querySelector("header.top")?.classList.toggle("header-plain", currentTab === "admin");
     renderBrand();
     if(!loaded){
       main.innerHTML = '<div class="empty">Carregando…</div>';
@@ -1689,7 +1697,7 @@ ${corpo}
     else if(currentTab === "devocionais") main.innerHTML = renderSectionHeader(ICONS.devocional, "Devocionais") + renderDevocionais();
     else if(currentTab === "camisas") main.innerHTML = renderSectionHeader(ICONS.camisa, "Camisas") + renderCamisas();
     else if(currentTab === "notificacoes") main.innerHTML = renderSectionHeader(ICONS.bell, "Notificações") + renderNotificacoes();
-    else if(currentTab === "admin") main.innerHTML = renderSectionHeader(ICONS.temporada, "Admin") + renderAdmin();
+    else if(currentTab === "admin") main.innerHTML = renderAdmin();
     else main.innerHTML = renderSectionHeader(ICONS.aovivo, "Ao Vivo") + renderAoVivo();
 
     attachHandlers();
@@ -1709,6 +1717,7 @@ ${corpo}
   }
 
   function renderHome(){
+    const voltarAdminHtml = isAdmin() ? `<button type="button" class="link-btn" style="padding:0;margin-bottom:16px;" data-action="ir-home">◀ Painel do administrador</button>` : "";
     const linkPublicoEquipe = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}publico.html?equipe=${encodeURIComponent(currentEquipeId || "")}`;
     const linkEquipeHtml = currentEquipeId ? `
       <button type="button" id="btn-compartilhar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;cursor:pointer;color:#25D366;font-family:var(--font);">
@@ -1738,10 +1747,10 @@ ${corpo}
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` },
       { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo },
       { key: "notificacoes", icon: ICONS.bell, label: "Notificações", stat: `${Object.values(data.configNotificacoes).filter(Boolean).length}/${Object.keys(data.configNotificacoes).length} ativas` },
-      ...(isAdmin() ? [{ key: "admin", icon: ICONS.temporada, label: "Admin", stat: `${data.equipes.length} equipe${data.equipes.length === 1 ? "" : "s"}` }] : [])
     ];
 
     return `
+      ${voltarAdminHtml}
       ${linkEquipeHtml}
       <div class="home-grid">
         ${cards.map(c => `
@@ -2072,7 +2081,7 @@ ${corpo}
         <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">id: ${escapeHtml(idLabel)}</div>
         <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Coordenador(es): ${(e.coordenadores || []).map(escapeHtml).join(", ") || "—"}</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          ${e.legado ? `<button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="ir-home">Abrir painel</button>` : ""}
+          ${e.legado ? `<button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="abrir-painel-equipe">Abrir painel</button>` : ""}
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.ativa ? "var(--surface-2)" : "var(--green)"};" data-action="toggle-ativa-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativa="${e.ativa}">${e.ativa ? "Marcar como inativa" : "Reativar equipe"}</button>
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.linkPublicoAtivo ? "var(--surface-2)" : "var(--rose)"};" data-action="toggle-link-publico-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativo="${e.linkPublicoAtivo}">Link público: ${e.linkPublicoAtivo ? "ativo" : "desativado"}</button>
         </div>
@@ -2191,7 +2200,7 @@ ${corpo}
     if(!brand) return;
     const cfg = data.config || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
     const headerEl = document.querySelector("header.top");
-    if(headerEl) headerEl.style.backgroundImage = cfg.headerUrl ? `url('${cfg.headerUrl}')` : "";
+    if(headerEl) headerEl.style.backgroundImage = (currentTab === "admin") ? "" : (cfg.headerUrl ? `url('${cfg.headerUrl}')` : "");
     if(editingBrand){
       brand.onclick = null;
       brand.innerHTML = `
@@ -3633,6 +3642,9 @@ ${corpo}
   // ---------- HANDLERS ----------
   function attachHandlers(){
     document.querySelectorAll('[data-action="ir-home"]').forEach(el => {
+      el.addEventListener("click", () => voltarInicio());
+    });
+    document.querySelectorAll('[data-action="abrir-painel-equipe"]').forEach(el => {
       el.addEventListener("click", () => irParaTab("home"));
     });
 
@@ -5490,6 +5502,16 @@ ${corpo}
 
   function irParaTab(tab){
     currentTab = tab;
+    render();
+  }
+
+  function voltarInicio(){
+    if(isAdmin()){
+      currentTab = "admin";
+      adminView = "landing";
+    } else {
+      currentTab = "home";
+    }
     render();
   }
 
