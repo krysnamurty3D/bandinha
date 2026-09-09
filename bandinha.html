@@ -1099,6 +1099,8 @@ function montarReferenciasColecoes(equipeId){
   let editingRoteiroInfoId = null;
   let importandoRoteiro = false;
   let migrandoEquipe = false;
+  let clonandoEquipe = false;
+  let apagandoEquipe = false;
   let editingItemKey = null;
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
@@ -2040,6 +2042,35 @@ ${corpo}
           ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
         </select>
         <button type="button" id="btn-migrar-equipe" class="btn-import" ${migrandoEquipe ? "disabled" : ""}>${migrandoEquipe ? "Migrando..." : "Migrar dados atuais"}</button>
+      </div>
+
+      <div class="section-title">Clonar conteúdo desta equipe para outra</div>
+      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia só as coleções marcadas abaixo (nada de integrantes/financeiro por padrão) — pra reaproveitar músicas/coreografias numa equipe nova sem trazer o time e o caixa junto.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+        ${COLECOES_MIGRAVEIS.map(col => `
+          <label class="check-row-inline">
+            <input type="checkbox" class="check-clonar-colecao" value="${col}" ${["musicas","coreografias"].includes(col) ? "checked" : ""} />
+            ${col}
+          </label>
+        `).join("")}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+        <select id="input-clonar-equipe-alvo" style="flex:1 1 220px;">
+          <option value="">Escolha a equipe de destino...</option>
+          ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
+        </select>
+        <button type="button" id="btn-clonar-equipe" class="btn-import" ${clonandoEquipe ? "disabled" : ""}>${clonandoEquipe ? "Clonando..." : "Clonar selecionado"}</button>
+      </div>
+
+      <div class="section-title" style="color:var(--rose);">Apagar dados de uma equipe</div>
+      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Remove tudo que estiver nas coleções migráveis dessa equipe (não afeta a equipe atual nem outras equipes). Use pra limpar uma equipe cadastrada por engano ou testada. Digite o id da equipe pra confirmar.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+        <select id="input-apagar-equipe-alvo" style="flex:1 1 200px;">
+          <option value="">Escolha a equipe...</option>
+          ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
+        </select>
+        <input type="text" id="input-apagar-equipe-confirmacao" placeholder="Digite o id pra confirmar" style="flex:1 1 200px;" />
+        <button type="button" id="btn-apagar-equipe" class="btn-import" style="background:var(--rose);color:#fff;" ${apagandoEquipe ? "disabled" : ""}>${apagandoEquipe ? "Apagando..." : "Apagar dados"}</button>
       </div>
 
       <div class="section-title">Equipes cadastradas (${data.equipes.length})</div>
@@ -4455,6 +4486,15 @@ ${corpo}
       }
     });
 
+    function fontesEquipeAtual(){
+      return {
+        integrantes: data.integrantes, financeiro: data.financeiro, musicas: data.musicas,
+        roteiros: data.roteiros, coreografias: data.coreografias, temporadas: data.temporadas,
+        agenda: data.agenda, historicoEnsaios: data.historico, locais: data.locais,
+        avisosHistorico: data.avisosHistorico, devocionais: data.devocionais, camisas: data.camisas
+      };
+    }
+
     const btnMigrarEquipe = document.getElementById("btn-migrar-equipe");
     if(btnMigrarEquipe) btnMigrarEquipe.addEventListener("click", async () => {
       const equipeId = document.getElementById("input-migrar-equipe-alvo").value;
@@ -4463,12 +4503,7 @@ ${corpo}
       migrandoEquipe = true;
       render();
       try{
-        const fontes = {
-          integrantes: data.integrantes, financeiro: data.financeiro, musicas: data.musicas,
-          roteiros: data.roteiros, coreografias: data.coreografias, temporadas: data.temporadas,
-          agenda: data.agenda, historicoEnsaios: data.historico, locais: data.locais,
-          avisosHistorico: data.avisosHistorico, devocionais: data.devocionais, camisas: data.camisas
-        };
+        const fontes = fontesEquipeAtual();
         const configs = [
           ["config", "main", data.config], ["config", "financeiro", data.configFinanceiro],
           ["config", "camisas", data.configCamisas], ["config", "notificacoes", data.configNotificacoes]
@@ -4495,6 +4530,70 @@ ${corpo}
         showToast("Erro na migração — veja o console");
       }
       migrandoEquipe = false;
+      render();
+    });
+
+    const btnClonarEquipe = document.getElementById("btn-clonar-equipe");
+    if(btnClonarEquipe) btnClonarEquipe.addEventListener("click", async () => {
+      const equipeId = document.getElementById("input-clonar-equipe-alvo").value;
+      const colecoesSelecionadas = [...document.querySelectorAll(".check-clonar-colecao:checked")].map(el => el.value);
+      if(!equipeId){ showToast("Escolha a equipe de destino"); return; }
+      if(colecoesSelecionadas.length === 0){ showToast("Marque ao menos uma coleção"); return; }
+      if(!confirm(`Clonar ${colecoesSelecionadas.join(", ")} da equipe atual para "${equipeId}"? Nada será apagado no destino.`)) return;
+      clonandoEquipe = true;
+      render();
+      try{
+        const fontes = fontesEquipeAtual();
+        let ops = [];
+        colecoesSelecionadas.forEach(col => {
+          (fontes[col] || []).forEach(item => {
+            const docId = col === "historicoEnsaios" ? item.data : item.id;
+            if(!docId) return;
+            ops.push({ ref: doc(equipesCol, equipeId, col, docId), data: item });
+          });
+        });
+        for(let i = 0; i < ops.length; i += 400){
+          const batch = writeBatch(db);
+          ops.slice(i, i + 400).forEach(op => batch.set(op.ref, op.data));
+          await batch.commit();
+        }
+        showToast(`Clonagem concluída: ${ops.length} documentos copiados`);
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao clonar — veja o console");
+      }
+      clonandoEquipe = false;
+      render();
+    });
+
+    const btnApagarEquipe = document.getElementById("btn-apagar-equipe");
+    if(btnApagarEquipe) btnApagarEquipe.addEventListener("click", async () => {
+      const equipeId = document.getElementById("input-apagar-equipe-alvo").value;
+      const confirmacao = document.getElementById("input-apagar-equipe-confirmacao").value.trim();
+      if(!equipeId){ showToast("Escolha a equipe"); return; }
+      if(confirmacao !== equipeId){ showToast("Digite o id certo pra confirmar"); return; }
+      if(!confirm(`Apagar TODOS os dados migráveis da equipe "${equipeId}"? Isso não pode ser desfeito.`)) return;
+      apagandoEquipe = true;
+      render();
+      try{
+        const todasColecoes = [...COLECOES_MIGRAVEIS, "config"];
+        let total = 0;
+        for(const col of todasColecoes){
+          const snap = await getDocs(collection(db, "equipes", equipeId, col));
+          const refs = snap.docs.map(d => d.ref);
+          for(let i = 0; i < refs.length; i += 400){
+            const batch = writeBatch(db);
+            refs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+            await batch.commit();
+          }
+          total += refs.length;
+        }
+        showToast(`Dados apagados: ${total} documentos removidos`);
+      }catch(err){
+        console.error(err);
+        showToast("Erro ao apagar — veja o console");
+      }
+      apagandoEquipe = false;
       render();
     });
 
