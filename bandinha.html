@@ -980,7 +980,6 @@ import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteFiel
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { getAnalytics, isSupported as isAnalyticsSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
 const firebaseConfig = {
@@ -997,7 +996,6 @@ if(firebaseConfig.measurementId){
   isAnalyticsSupported().then(supported => { if(supported) getAnalytics(firebaseApp); }).catch(() => {});
 }
 const db = getFirestore(firebaseApp);
-const storage = getStorage(firebaseApp);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 const EMAILS_PERMITIDOS = ["krysnamurty@gmail.com"];
@@ -5278,19 +5276,27 @@ ${corpo}
       const musicaId = inputAudioFile.dataset.id;
       if(!file || !musicaId) return;
       if(!file.type.startsWith("audio/")){ showToast("Selecione um arquivo de áudio"); return; }
+      if(file.size > 20 * 1024 * 1024){ showToast("Áudio muito grande (máx. 20MB)"); return; }
       enviandoAudioId = musicaId;
       render();
       try{
-        const ext = file.name.includes(".") ? file.name.split(".").pop() : "mp3";
-        const path = `audio/${musicaId}-${Date.now()}.${ext}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
-        await updateDoc(doc(musicasCol, musicaId), { audioUrl: url, audioId: deleteField() });
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res = await httpsCallable(functionsApp, "uploadAudioMusica")({
+          equipeId: currentEquipeId || null,
+          musicaId,
+          base64,
+          contentType: file.type
+        });
+        await updateDoc(doc(musicasCol, musicaId), { audioUrl: res.data.url, audioId: deleteField() });
         showToast("Áudio enviado!");
       }catch(err){
         console.error(err);
-        showToast("Erro ao enviar áudio");
+        showToast(`Erro ao enviar áudio: ${err.message || err}`);
       }
       enviandoAudioId = null;
       editingAudioId = null;

@@ -289,6 +289,37 @@ exports.migrarAudiosDrive = onCall({ timeoutSeconds: 300 }, async request => {
   return { total: alvos.length, migradas, falhas };
 });
 
+const EXT_AUDIO_POR_CONTENT_TYPE = {
+  "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a",
+  "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/aac": "aac", "audio/webm": "webm"
+};
+
+exports.uploadAudioMusica = onCall({ timeoutSeconds: 120 }, async request => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Faça login para enviar o áudio.");
+  }
+  const { equipeId, musicaId, base64, contentType } = request.data || {};
+  if (!musicaId || !base64) {
+    throw new HttpsError("invalid-argument", "Selecione um arquivo de áudio válido.");
+  }
+  const email = request.auth.token.email;
+  const autorizado = await isCoordenadorDaEquipe(email, equipeId || null);
+  if (!autorizado) {
+    throw new HttpsError("permission-denied", "Você não é coordenador desta equipe.");
+  }
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.length > 20 * 1024 * 1024) {
+    throw new HttpsError("invalid-argument", "Áudio muito grande (máx. 20MB).");
+  }
+  const ext = EXT_AUDIO_POR_CONTENT_TYPE[contentType] || "mp3";
+  const alvo = equipeId || "default";
+  const path = `audio/${alvo}/${musicaId}-${Date.now()}.${ext}`;
+  const bucket = getStorage().bucket();
+  await bucket.file(path).save(buffer, { metadata: { contentType: contentType || "audio/mpeg" } });
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media`;
+  return { url };
+});
+
 const EXT_POR_CONTENT_TYPE = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 
 exports.uploadHeaderImagem = onCall({ timeoutSeconds: 60 }, async request => {
