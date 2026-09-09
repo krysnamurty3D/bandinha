@@ -1073,9 +1073,24 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
     const headerEl = document.querySelector("header.top");
     if(headerEl){
-      if(cfg.headerUrl) headerEl.style.backgroundImage = `url('${cfg.headerUrl}')`;
-      else if(EQUIPE_ID) headerEl.style.backgroundImage = "none";
-      else headerEl.style.backgroundImage = "";
+      if(cfg.headerUrl){
+        headerEl.style.backgroundImage = `url('${cfg.headerUrl}')`;
+        headerEl.style.backgroundSize = "contain";
+        headerEl.style.backgroundRepeat = "no-repeat";
+        headerEl.style.backgroundColor = cfg.headerCor || "var(--surface-2)";
+      }
+      else if(EQUIPE_ID){
+        headerEl.style.backgroundImage = "none";
+        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundRepeat = "";
+        headerEl.style.backgroundColor = "";
+      }
+      else{
+        headerEl.style.backgroundImage = "";
+        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundRepeat = "";
+        headerEl.style.backgroundColor = "";
+      }
     }
   }
 

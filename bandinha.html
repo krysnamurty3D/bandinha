@@ -2168,24 +2168,56 @@ ${corpo}
     `;
   }
 
+  function corPredominante(file){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        try{
+          const canvas = document.createElement("canvas");
+          const w = canvas.width = 24, h = canvas.height = 24;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          const { data } = ctx.getImageData(0, 0, w, h);
+          let r = 0, g = 0, b = 0, n = 0;
+          for(let i = 0; i < data.length; i += 4){
+            if(data[i + 3] < 32) continue;
+            r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+          }
+          n = n || 1;
+          const toHex = v => Math.round(v / n).toString(16).padStart(2, "0");
+          resolve(`#${toHex(r)}${toHex(g)}${toHex(b)}`);
+        }catch(err){
+          resolve(null);
+        }finally{
+          URL.revokeObjectURL(img.src);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   async function enviarHeaderImagem(file){
     if(!file) return;
     if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
     enviandoHeader = true;
     render();
     try{
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const [base64, headerCor] = await Promise.all([
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        }),
+        corPredominante(file)
+      ]);
       const res = await httpsCallable(functionsApp, "uploadHeaderImagem")({
         equipeId: currentEquipeId || null,
         base64,
         contentType: file.type
       });
-      await setDoc(configDocRef, { headerUrl: res.data.url }, { merge: true });
+      await setDoc(configDocRef, { headerUrl: res.data.url, headerCor: headerCor || null }, { merge: true });
       showToast("Imagem do header atualizada!");
     }catch(err){
       console.error(err);
@@ -2202,10 +2234,27 @@ ${corpo}
     const headerEl = document.querySelector("header.top");
     const semLogoPropria = currentEquipeId !== null && !cfg.headerUrl;
     if(headerEl){
-      if(currentTab === "admin") headerEl.style.backgroundImage = "";
-      else if(cfg.headerUrl) headerEl.style.backgroundImage = `url('${cfg.headerUrl}')`;
-      else if(currentEquipeId === null) headerEl.style.backgroundImage = "";
-      else headerEl.style.backgroundImage = "none";
+      if(currentTab === "admin"){
+        headerEl.style.backgroundImage = "";
+        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundRepeat = "";
+        headerEl.style.backgroundColor = "";
+      } else if(cfg.headerUrl){
+        headerEl.style.backgroundImage = `url('${cfg.headerUrl}')`;
+        headerEl.style.backgroundSize = "contain";
+        headerEl.style.backgroundRepeat = "no-repeat";
+        headerEl.style.backgroundColor = cfg.headerCor || "var(--surface-2)";
+      } else if(currentEquipeId === null){
+        headerEl.style.backgroundImage = "";
+        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundRepeat = "";
+        headerEl.style.backgroundColor = "";
+      } else {
+        headerEl.style.backgroundImage = "none";
+        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundRepeat = "";
+        headerEl.style.backgroundColor = "";
+      }
     }
     const slot = document.getElementById("header-empty-slot");
     if(slot){
