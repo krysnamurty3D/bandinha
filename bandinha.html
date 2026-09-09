@@ -2353,6 +2353,7 @@ ${corpo}
         <div style="display:flex;flex-direction:column;gap:6px;">
           <input type="text" id="input-brand-titulo" value="${escapeHtml(cfg.titulo)}" placeholder="Título" style="font-size:calc(18px * var(--font-scale, 1));padding:8px 10px;" />
           <input type="text" id="input-brand-subtitulo" value="${escapeHtml(cfg.subtitulo)}" placeholder="Subtítulo" style="font-size:calc(13px * var(--font-scale, 1));padding:7px 10px;" />
+          <textarea id="input-brand-link-descricao" placeholder="Descrição do link ao compartilhar (opcional — se vazio, é gerada automaticamente)" style="font-size:calc(13px * var(--font-scale, 1));padding:7px 10px;min-height:54px;resize:vertical;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--cream);font-family:inherit;">${escapeHtml(cfg.linkDescricao || "")}</textarea>
           <label class="btn-save-nome" style="width:auto;padding:0 14px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">
             ${enviandoHeader ? "Enviando..." : "Trocar imagem do header"}
             <input type="file" id="input-header-file" accept="image/*" style="display:none;" ${enviandoHeader ? "disabled" : ""} />
@@ -2374,7 +2375,8 @@ ${corpo}
       if(btn) btn.addEventListener("click", async () => {
         const titulo = document.getElementById("input-brand-titulo").value.trim();
         const subtitulo = document.getElementById("input-brand-subtitulo").value.trim();
-        if(titulo){ await setDoc(configDocRef, { titulo, subtitulo }, { merge: true }); }
+        const linkDescricao = document.getElementById("input-brand-link-descricao").value.trim();
+        if(titulo){ await setDoc(configDocRef, { titulo, subtitulo, linkDescricao: linkDescricao || deleteField() }, { merge: true }); }
         editingBrand = false;
         render();
       });

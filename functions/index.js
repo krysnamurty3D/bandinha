@@ -410,7 +410,7 @@ exports.compartilharEquipe = onRequest(async (req, res) => {
       const snap = await db.doc(`equipes/${equipeId}/config/main`).get();
       const cfg = snap.exists ? snap.data() : {};
       titulo = cfg.titulo || "Equipe";
-      descricao = montarDescricaoEquipe(titulo, cfg.cardsAtivos || null);
+      descricao = cfg.linkDescricao || montarDescricaoEquipe(titulo, cfg.cardsAtivos || null);
       if (cfg.headerUrl) imagem = cfg.headerUrl;
     } catch (err) {
       console.error(err);
