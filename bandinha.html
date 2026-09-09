@@ -1747,10 +1747,16 @@ ${corpo}
     const voltarAdminHtml = isAdmin() ? `<button type="button" class="link-btn" style="padding:0;margin-bottom:16px;" data-action="ir-home">◀ Painel do administrador</button>` : "";
     const linkPublicoEquipe = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}publico.html?equipe=${encodeURIComponent(currentEquipeId || "")}`;
     const linkEquipeHtml = currentEquipeId ? `
-      <button type="button" id="btn-compartilhar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;cursor:pointer;color:#25D366;font-family:var(--font);">
-        <span class="ico" style="flex:0 0 auto;">${ICONS.whatsapp}</span>
-        <span style="color:var(--cream);font-size:calc(13.5px * var(--font-scale, 1));">Compartilhar o link público desta equipe no WhatsApp</span>
-      </button>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button type="button" id="btn-copiar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:flex;align-items:center;justify-content:center;gap:8px;flex:1 1 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 10px;cursor:pointer;color:var(--gold);font-family:var(--font);">
+          <span class="ico" style="flex:0 0 auto;">${ICONS.cloud}</span>
+          <span style="color:var(--cream);font-size:calc(13px * var(--font-scale, 1));">Copiar link</span>
+        </button>
+        <button type="button" id="btn-compartilhar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:flex;align-items:center;justify-content:center;gap:8px;flex:1 1 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 10px;cursor:pointer;color:#25D366;font-family:var(--font);">
+          <span class="ico" style="flex:0 0 auto;">${ICONS.whatsapp}</span>
+          <span style="color:var(--cream);font-size:calc(13px * var(--font-scale, 1));">WhatsApp</span>
+        </button>
+      </div>
     ` : "";
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
@@ -4959,6 +4965,18 @@ ${corpo}
         ensaioIndex = ensaioIndex + 1;
         render();
       });
+    });
+
+    const btnCopiarLinkEquipe = document.getElementById("btn-copiar-link-equipe");
+    if(btnCopiarLinkEquipe) btnCopiarLinkEquipe.addEventListener("click", async () => {
+      const link = btnCopiarLinkEquipe.dataset.link;
+      try{
+        await navigator.clipboard.writeText(link);
+        showToast("Link copiado!");
+      }catch(err){
+        console.error(err);
+        showToast("Não foi possível copiar o link");
+      }
     });
 
     const btnCompartilharLinkEquipe = document.getElementById("btn-compartilhar-link-equipe");
