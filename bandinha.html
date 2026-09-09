@@ -976,7 +976,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, where, getDocs, orderBy, limit, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, where, getDocs, orderBy, limit, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -1132,6 +1132,8 @@ function montarReferenciasColecoes(equipeId){
   let apagandoEquipe = false;
   let adminView = "landing";
   let adminLandingAplicado = false;
+  let editingEquipeId = null;
+  let editingEquipeCardsAtivos = null;
   let listenerUnsubs = [];
   let editingItemKey = null;
   let selectedProximaEtapa = null;
@@ -2061,6 +2063,7 @@ ${corpo}
 
   function renderEquipeCardAdmin(e){
     const idLabel = e.legado ? "equipe atual (dados no topo, fora de /equipes)" : e.id;
+    const editando = !e.legado && editingEquipeId === e.id;
     return `
       <div class="card" style="padding:12px 14px;margin-bottom:10px;">
         <div style="font-weight:700;">${escapeHtml(e.nome || e.id || "—")}</div>
@@ -2070,7 +2073,24 @@ ${corpo}
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="abrir-painel-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-nome="${escapeHtml(e.nome || e.id || "")}">Abrir painel</button>
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.ativa ? "var(--surface-2)" : "var(--green)"};" data-action="toggle-ativa-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativa="${e.ativa}">${e.ativa ? "Marcar como inativa" : "Reativar equipe"}</button>
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.linkPublicoAtivo ? "var(--green)" : "var(--rose)"};color:#fff;" data-action="toggle-link-publico-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativo="${e.linkPublicoAtivo}">Link público: ${e.linkPublicoAtivo ? "ativo" : "desativado"}</button>
+          ${!e.legado ? `<button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="${editando ? "cancelar-editar-equipe" : "editar-equipe"}" data-id="${escapeHtml(e.id)}">${editando ? "Cancelar" : "Editar"}</button>` : ""}
         </div>
+        ${editando ? `
+          <form class="inline-add" id="form-editar-equipe" data-id="${escapeHtml(e.id)}" style="flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+            <input type="text" id="input-editar-equipe-nome" value="${escapeHtml(e.nome || "")}" placeholder="Nome da equipe" required style="flex:1 1 100%;" />
+            <input type="text" id="input-editar-equipe-coordenadores" value="${escapeHtml((e.coordenadores || []).join(", "))}" placeholder="E-mails dos coordenadores, separados por vírgula" required style="flex:1 1 100%;" />
+            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin:6px 0 4px;flex:1 1 100%;">Cards ativos:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;flex:1 1 100%;margin-bottom:10px;">
+              ${CARDS_DISPONIVEIS.map(c => `
+                <label class="check-row-inline">
+                  <input type="checkbox" class="check-card-editar-equipe" value="${c.key}" ${(editingEquipeCardsAtivos === null || editingEquipeCardsAtivos.includes(c.key)) ? "checked" : ""} />
+                  ${c.label}
+                </label>
+              `).join("")}
+            </div>
+            <button type="submit" class="btn-import" style="width:auto;padding:0 14px;height:34px;">Salvar</button>
+          </form>
+        ` : ""}
       </div>
     `;
   }
@@ -4691,6 +4711,49 @@ ${corpo}
         if(legado){ await setDoc(configDocRef, { linkPublicoAtivo: !ativoAtual }, { merge: true }); }
         else{ await setDoc(doc(equipesCol, el.dataset.id, "config", "main"), { linkPublicoAtivo: !ativoAtual }, { merge: true }); }
       });
+    });
+
+    document.querySelectorAll('[data-action="editar-equipe"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const id = el.dataset.id;
+        try{
+          const snap = await getDoc(doc(equipesCol, id, "config", "main"));
+          editingEquipeCardsAtivos = snap.data()?.cardsAtivos || null;
+        }catch(err){
+          console.error(err);
+          editingEquipeCardsAtivos = null;
+        }
+        editingEquipeId = id;
+        render();
+      });
+    });
+    document.querySelectorAll('[data-action="cancelar-editar-equipe"]').forEach(el => {
+      el.addEventListener("click", () => {
+        editingEquipeId = null;
+        editingEquipeCardsAtivos = null;
+        render();
+      });
+    });
+    const formEditarEquipe = document.getElementById("form-editar-equipe");
+    if(formEditarEquipe) formEditarEquipe.addEventListener("submit", async e => {
+      e.preventDefault();
+      const id = formEditarEquipe.dataset.id;
+      const nome = document.getElementById("input-editar-equipe-nome").value.trim();
+      const coordenadores = document.getElementById("input-editar-equipe-coordenadores").value
+        .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      const cardsAtivos = [...formEditarEquipe.querySelectorAll(".check-card-editar-equipe:checked")].map(el => el.value);
+      if(!nome || coordenadores.length === 0){ showToast("Preencha nome e ao menos um coordenador"); return; }
+      try{
+        await updateDoc(doc(equipesCol, id), { nome, coordenadores });
+        await setDoc(doc(equipesCol, id, "config", "main"), { cardsAtivos }, { merge: true });
+        showToast("Equipe atualizada");
+        editingEquipeId = null;
+        editingEquipeCardsAtivos = null;
+      }catch(err){
+        console.error(err);
+        showToast(`Erro ao salvar equipe: ${err.message || err}`);
+      }
+      render();
     });
 
     function fontesEquipeAtual(){
