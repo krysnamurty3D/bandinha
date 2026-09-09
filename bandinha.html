@@ -2038,10 +2038,28 @@ ${corpo}
   const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","temporadas","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
 
   function renderAdmin(){
+    const equipesAtivas = data.equipes.filter(e => e.ativa !== false);
+    const equipesInativas = data.equipes.filter(e => e.ativa === false);
+    const badgeEquipe = (e, ativa) => `
+      <button type="button" class="badge-equipe" data-action="toggle-ativa-equipe" data-id="${escapeHtml(e.id)}" data-ativa="${ativa}" title="${ativa ? "Toque para marcar como inativa" : "Toque para marcar como ativa"}" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--cream);font-family:var(--font);font-size:calc(12.5px * var(--font-scale, 1));">
+        <span style="width:8px;height:8px;border-radius:50%;background:${ativa ? "var(--green)" : "var(--muted)"};flex:0 0 auto;"></span>
+        ${escapeHtml(e.nome || e.id)}
+      </button>
+    `;
     return `
       <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:16px;">Área restrita ao administrador da plataforma — gerencia as equipes que usam este app, isoladas umas das outras.</div>
 
-      <div class="section-title" style="margin-top:0;">Criar equipe</div>
+      <div class="section-title" style="margin-top:0;">Equipes ativas (${equipesAtivas.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+        ${equipesAtivas.length === 0 ? `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhuma equipe ativa.</div>` : equipesAtivas.map(e => badgeEquipe(e, true)).join("")}
+      </div>
+
+      <div class="section-title">Equipes inativas (${equipesInativas.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+        ${equipesInativas.length === 0 ? `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhuma equipe inativa.</div>` : equipesInativas.map(e => badgeEquipe(e, false)).join("")}
+      </div>
+
+      <div class="section-title">Criar equipe</div>
       <form class="inline-add" id="form-criar-equipe" style="flex-wrap:wrap;margin-bottom:20px;">
         <input type="text" id="input-equipe-id" placeholder="id (ex: equipe-2icc-canto)" required style="flex:1 1 220px;" />
         <input type="text" id="input-equipe-nome" placeholder="Nome da equipe" required style="flex:1 1 220px;" />
@@ -4537,13 +4555,20 @@ ${corpo}
       const coordenador = coordInput.value.trim().toLowerCase();
       if(!id || !nome || !coordenador) return;
       try{
-        await setDoc(doc(equipesCol, id), { nome, coordenadores: [coordenador], criadaEm: Date.now() });
+        await setDoc(doc(equipesCol, id), { nome, coordenadores: [coordenador], criadaEm: Date.now(), ativa: true });
         showToast("Equipe criada");
         idInput.value = ""; nomeInput.value = ""; coordInput.value = "";
       }catch(err){
         console.error(err);
         showToast("Erro ao criar equipe");
       }
+    });
+
+    document.querySelectorAll('[data-action="toggle-ativa-equipe"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const ativaAtual = el.dataset.ativa === "true";
+        await updateDoc(doc(equipesCol, el.dataset.id), { ativa: !ativaAtual });
+      });
     });
 
     function fontesEquipeAtual(){
@@ -4599,11 +4624,12 @@ ${corpo}
       const colecoesSelecionadas = [...document.querySelectorAll(".check-clonar-colecao:checked")].map(el => el.value);
       if(!equipeId){ showToast("Escolha a equipe de destino"); return; }
       if(colecoesSelecionadas.length === 0){ showToast("Marque ao menos uma coleção"); return; }
-      if(!confirm(`Clonar ${colecoesSelecionadas.join(", ")} da equipe atual para "${equipeId}"? Nada será apagado no destino.`)) return;
+      const fontes = fontesEquipeAtual();
+      const resumoContagem = colecoesSelecionadas.map(c => `${c}: ${(fontes[c] || []).length}`).join(", ");
+      if(!confirm(`Clonar da equipe atual (${resumoContagem}) para "${equipeId}"? Nada será apagado no destino.`)) return;
       clonandoEquipe = true;
       render();
       try{
-        const fontes = fontesEquipeAtual();
         let ops = [];
         colecoesSelecionadas.forEach(col => {
           (fontes[col] || []).forEach(item => {
