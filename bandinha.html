@@ -2484,7 +2484,7 @@ ${corpo}
           <button type="button" class="pay-toggle ${finTipoForm === "despesa" ? "paid" : ""}" data-action="fin-tipo-form" data-tipo="despesa" style="flex:1;font-size:calc(16.5px * var(--font-scale, 1));">Despesa</button>
         </div>
         <input type="text" id="input-fin-descricao" placeholder="Nome da ${finTipoForm === "receita" ? "receita" : "despesa"} (ex: Refrigerante do ensaio)" required style="flex:2 1 200px;" />
-        <input type="text" inputmode="decimal" id="input-fin-valor" placeholder="Valor (ex: 5*32)" required style="flex:1 1 100px;font-size:calc(22px * var(--font-scale, 1));font-weight:700;" />
+        <input type="text" inputmode="decimal" id="input-fin-valor" placeholder="Valor (ex: 5*32)" required style="flex:1 1 100px;" />
         <input type="date" id="input-fin-data" required value="${new Date().toISOString().slice(0,10)}" style="flex:1 1 140px;" />
         <button type="submit" class="btn-add" style="font-size:calc(24px * var(--font-scale, 1));">+</button>
       </form>
