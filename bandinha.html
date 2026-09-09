@@ -1128,7 +1128,6 @@ function montarReferenciasColecoes(equipeId){
   let editingAgendaId = null;
   let editingRoteiroInfoId = null;
   let importandoRoteiro = false;
-  let migrandoEquipe = false;
   let clonandoEquipe = false;
   let apagandoEquipe = false;
   let adminView = "landing";
@@ -1763,7 +1762,7 @@ ${corpo}
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` },
       { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo },
       { key: "notificacoes", icon: ICONS.bell, label: "Notificações", stat: `${Object.values(data.configNotificacoes).filter(Boolean).length}/${Object.keys(data.configNotificacoes).length} ativas` },
-    ];
+    ].filter(c => !data.config.cardsAtivos || data.config.cardsAtivos.includes(c.key));
 
     return `
       ${voltarAdminHtml}
@@ -2026,6 +2025,20 @@ ${corpo}
 
   const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
 
+  const CARDS_DISPONIVEIS = [
+    { key: "integrantes", label: "Integrantes" },
+    { key: "financeiro", label: "Financeiro" },
+    { key: "musicas", label: "Músicas" },
+    { key: "coreografias", label: "Coreografias" },
+    { key: "ensaio-menu", label: "Ensaio" },
+    { key: "agenda", label: "Agenda" },
+    { key: "roteiros", label: "Roteiro" },
+    { key: "aovivo", label: "Ao Vivo" },
+    { key: "devocionais", label: "Devocionais" },
+    { key: "camisas", label: "Camisas" },
+    { key: "notificacoes", label: "Notificações" }
+  ];
+
   function equipeLegadoEntry(){
     const cfg = data.config || {};
     return {
@@ -2089,21 +2102,20 @@ ${corpo}
       return `
         ${renderAdminVoltar()}
         <div class="section-title" style="margin-top:0;">Criar equipe</div>
-        <form class="inline-add" id="form-criar-equipe" style="flex-wrap:wrap;margin-bottom:20px;">
+        <form class="inline-add" id="form-criar-equipe" style="flex-wrap:wrap;margin-bottom:10px;">
           <input type="text" id="input-equipe-id" placeholder="id (ex: equipe-2icc-canto)" required style="flex:1 1 220px;" />
           <input type="text" id="input-equipe-nome" placeholder="Nome da equipe" required style="flex:1 1 220px;" />
           <input type="email" id="input-equipe-coordenador" placeholder="E-mail do coordenador" required style="flex:1 1 220px;" />
           <button type="submit" class="btn-add">+</button>
         </form>
-
-        <div class="section-title">Migrar dados desta instalação (equipe atual) para uma equipe</div>
-        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia integrantes, músicas, roteiros, coreografias, financeiro, agenda, histórico de ensaios, locais, avisos, devocionais e camisas de hoje pra dentro da equipe escolhida abaixo. Não apaga nem altera nada do que já existe — é só uma cópia de segurança.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-          <select id="input-migrar-equipe-alvo" style="flex:1 1 220px;">
-            <option value="">Escolha a equipe de destino...</option>
-            ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
-          </select>
-          <button type="button" id="btn-migrar-equipe" class="btn-import" ${migrandoEquipe ? "disabled" : ""}>${migrandoEquipe ? "Migrando..." : "Migrar dados atuais"}</button>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:6px;">Cards que a nova equipe vai ter na Home (desmarque os que não fizerem sentido pra ela):</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+          ${CARDS_DISPONIVEIS.map(c => `
+            <label class="check-row-inline">
+              <input type="checkbox" class="check-card-nova-equipe" value="${c.key}" checked />
+              ${c.label}
+            </label>
+          `).join("")}
         </div>
 
         <div class="section-title">Clonar conteúdo desta equipe para outra</div>
@@ -4645,8 +4657,10 @@ ${corpo}
       const nome = nomeInput.value.trim();
       const coordenador = coordInput.value.trim().toLowerCase();
       if(!id || !nome || !coordenador) return;
+      const cardsAtivos = [...document.querySelectorAll(".check-card-nova-equipe:checked")].map(el => el.value);
       try{
         await setDoc(doc(equipesCol, id), { nome, coordenadores: [coordenador], criadaEm: Date.now(), ativa: true });
+        await setDoc(doc(equipesCol, id, "config", "main"), { cardsAtivos }, { merge: true });
         showToast("Equipe criada");
         idInput.value = ""; nomeInput.value = ""; coordInput.value = "";
       }catch(err){
@@ -4687,44 +4701,6 @@ ${corpo}
         avisosHistorico: data.avisosHistorico, devocionais: data.devocionais, camisas: data.camisas
       };
     }
-
-    const btnMigrarEquipe = document.getElementById("btn-migrar-equipe");
-    if(btnMigrarEquipe) btnMigrarEquipe.addEventListener("click", async () => {
-      const equipeId = document.getElementById("input-migrar-equipe-alvo").value;
-      if(!equipeId){ showToast("Escolha a equipe de destino"); return; }
-      if(!confirm(`Copiar todos os dados atuais para a equipe "${equipeId}"? Nada será apagado.`)) return;
-      migrandoEquipe = true;
-      render();
-      try{
-        const fontes = fontesEquipeAtual();
-        const configs = [
-          ["config", "main", data.config], ["config", "financeiro", data.configFinanceiro],
-          ["config", "camisas", data.configCamisas], ["config", "notificacoes", data.configNotificacoes]
-        ];
-        let ops = [];
-        COLECOES_MIGRAVEIS.forEach(col => {
-          (fontes[col] || []).forEach(item => {
-            const docId = col === "historicoEnsaios" ? item.data : item.id;
-            if(!docId) return;
-            ops.push({ ref: doc(equipesCol, equipeId, col, docId), data: item });
-          });
-        });
-        configs.forEach(([col, id, val]) => {
-          if(val) ops.push({ ref: doc(equipesCol, equipeId, col, id), data: val });
-        });
-        for(let i = 0; i < ops.length; i += 400){
-          const batch = writeBatch(db);
-          ops.slice(i, i + 400).forEach(op => batch.set(op.ref, op.data));
-          await batch.commit();
-        }
-        showToast(`Migração concluída: ${ops.length} documentos copiados`);
-      }catch(err){
-        console.error(err);
-        showToast(`Erro na migração: ${err.message || err}`);
-      }
-      migrandoEquipe = false;
-      render();
-    });
 
     const btnClonarEquipe = document.getElementById("btn-clonar-equipe");
     if(btnClonarEquipe) btnClonarEquipe.addEventListener("click", async () => {
