@@ -59,7 +59,7 @@
     position:relative;
     overflow:hidden;
     aspect-ratio:1920/819;
-    background-image:url('header.png');
+    background-color:var(--surface);
     background-size:cover;
     background-position:center;
     display:flex;
@@ -1090,8 +1090,8 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
         headerEl.style.backgroundColor = "";
       }
       else{
-        headerEl.style.backgroundImage = "";
-        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundImage = "url('header.png')";
+        headerEl.style.backgroundSize = "cover";
         headerEl.style.backgroundRepeat = "";
         headerEl.style.backgroundColor = "";
       }

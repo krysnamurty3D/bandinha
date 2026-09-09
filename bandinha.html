@@ -47,7 +47,7 @@
     position:relative;
     overflow:hidden;
     aspect-ratio:1920/819;
-    background-image:url('header.png');
+    background-color:var(--surface);
     background-size:cover;
     background-position:center;
     display:flex;
@@ -2329,8 +2329,8 @@ ${corpo}
         headerEl.style.backgroundRepeat = "no-repeat";
         headerEl.style.backgroundColor = cfg.headerCor || "var(--surface-2)";
       } else if(currentEquipeId === null){
-        headerEl.style.backgroundImage = "";
-        headerEl.style.backgroundSize = "";
+        headerEl.style.backgroundImage = "url('header.png')";
+        headerEl.style.backgroundSize = "cover";
         headerEl.style.backgroundRepeat = "";
         headerEl.style.backgroundColor = "";
       } else {
