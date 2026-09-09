@@ -1106,6 +1106,8 @@ function montarReferenciasColecoes(equipeId){
   let migrandoEquipe = false;
   let clonandoEquipe = false;
   let apagandoEquipe = false;
+  let adminView = "landing";
+  let adminLandingAplicado = false;
   let editingItemKey = null;
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
@@ -1547,6 +1549,11 @@ ${corpo}
       }
       currentUser = user;
       authReady = true;
+      if(user && ADMIN_EMAILS.includes(user.email) && !adminLandingAplicado){
+        adminLandingAplicado = true;
+        currentTab = "admin";
+        adminView = "landing";
+      }
       renderAuthGate();
       if(user){ montarReferenciasColecoes(currentEquipeId); load(); }
     });
@@ -2037,83 +2044,145 @@ ${corpo}
 
   const COLECOES_MIGRAVEIS = ["integrantes","financeiro","musicas","roteiros","coreografias","temporadas","agenda","historicoEnsaios","locais","avisosHistorico","devocionais","camisas"];
 
-  function renderAdmin(){
-    const equipesAtivas = data.equipes.filter(e => e.ativa !== false);
-    const equipesInativas = data.equipes.filter(e => e.ativa === false);
-    const badgeEquipe = (e, ativa) => `
-      <button type="button" class="badge-equipe" data-action="toggle-ativa-equipe" data-id="${escapeHtml(e.id)}" data-ativa="${ativa}" title="${ativa ? "Toque para marcar como inativa" : "Toque para marcar como ativa"}" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--cream);font-family:var(--font);font-size:calc(12.5px * var(--font-scale, 1));">
-        <span style="width:8px;height:8px;border-radius:50%;background:${ativa ? "var(--green)" : "var(--muted)"};flex:0 0 auto;"></span>
-        ${escapeHtml(e.nome || e.id)}
-      </button>
+  function equipeLegadoEntry(){
+    const cfg = data.config || {};
+    return {
+      id: null,
+      nome: cfg.titulo || "Equipe atual (legado)",
+      ativa: cfg.equipeAtiva !== false,
+      linkPublicoAtivo: cfg.linkPublicoAtivo !== false,
+      coordenadores: [ADMIN_EMAILS[0]],
+      legado: true
+    };
+  }
+
+  function todasEquipesAdmin(){
+    return [equipeLegadoEntry(), ...data.equipes.map(e => ({ ...e, ativa: e.ativa !== false, linkPublicoAtivo: e.linkPublicoAtivo !== false, legado: false }))];
+  }
+
+  function renderAdminVoltar(){
+    return `<button type="button" class="link-btn" style="padding:0;margin-bottom:16px;" data-action="admin-voltar">◀ Painel do administrador</button>`;
+  }
+
+  function renderEquipeCardAdmin(e){
+    const idLabel = e.legado ? "equipe atual (dados no topo, fora de /equipes)" : e.id;
+    return `
+      <div class="card" style="padding:12px 14px;margin-bottom:10px;">
+        <div style="font-weight:700;">${escapeHtml(e.nome || e.id || "—")}</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">id: ${escapeHtml(idLabel)}</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Coordenador(es): ${(e.coordenadores || []).map(escapeHtml).join(", ") || "—"}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+          ${e.legado ? `<button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="ir-home">Abrir painel</button>` : ""}
+          <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.ativa ? "var(--surface-2)" : "var(--green)"};" data-action="toggle-ativa-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativa="${e.ativa}">${e.ativa ? "Marcar como inativa" : "Reativar equipe"}</button>
+          <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.linkPublicoAtivo ? "var(--surface-2)" : "var(--rose)"};" data-action="toggle-link-publico-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativo="${e.linkPublicoAtivo}">Link público: ${e.linkPublicoAtivo ? "ativo" : "desativado"}</button>
+        </div>
+      </div>
     `;
+  }
+
+  function renderAdmin(){
+    const todas = todasEquipesAdmin();
+    const ativas = todas.filter(e => e.ativa);
+    const inativas = todas.filter(e => !e.ativa);
+
+    if(adminView === "ativas"){
+      return `
+        ${renderAdminVoltar()}
+        <div class="section-title" style="margin-top:0;">Equipes ativas (${ativas.length})</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:14px;">Equipes em atividade. Toque em "Abrir painel" pra gerenciar os dados da equipe atual, ou desative uma equipe quando ela encerrar (nada é apagado).</div>
+        ${ativas.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma equipe ativa.</div>` : ativas.map(renderEquipeCardAdmin).join("")}
+      `;
+    }
+
+    if(adminView === "inativas"){
+      return `
+        ${renderAdminVoltar()}
+        <div class="section-title" style="margin-top:0;">Equipes inativas (${inativas.length})</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:14px;">Equipes que encerraram. Os dados continuam guardados — reative quando quiser.</div>
+        ${inativas.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma equipe inativa.</div>` : inativas.map(renderEquipeCardAdmin).join("")}
+      `;
+    }
+
+    if(adminView === "gerenciar"){
+      return `
+        ${renderAdminVoltar()}
+        <div class="section-title" style="margin-top:0;">Criar equipe</div>
+        <form class="inline-add" id="form-criar-equipe" style="flex-wrap:wrap;margin-bottom:20px;">
+          <input type="text" id="input-equipe-id" placeholder="id (ex: equipe-2icc-canto)" required style="flex:1 1 220px;" />
+          <input type="text" id="input-equipe-nome" placeholder="Nome da equipe" required style="flex:1 1 220px;" />
+          <input type="email" id="input-equipe-coordenador" placeholder="E-mail do coordenador" required style="flex:1 1 220px;" />
+          <button type="submit" class="btn-add">+</button>
+        </form>
+
+        <div class="section-title">Migrar dados desta instalação (equipe atual) para uma equipe</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia integrantes, músicas, roteiros, coreografias, financeiro, agenda, histórico de ensaios, locais, avisos, devocionais e camisas de hoje pra dentro da equipe escolhida abaixo. Não apaga nem altera nada do que já existe — é só uma cópia de segurança.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+          <select id="input-migrar-equipe-alvo" style="flex:1 1 220px;">
+            <option value="">Escolha a equipe de destino...</option>
+            ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
+          </select>
+          <button type="button" id="btn-migrar-equipe" class="btn-import" ${migrandoEquipe ? "disabled" : ""}>${migrandoEquipe ? "Migrando..." : "Migrar dados atuais"}</button>
+        </div>
+
+        <div class="section-title">Clonar conteúdo desta equipe para outra</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia só as coleções marcadas abaixo (nada de integrantes/financeiro por padrão) — pra reaproveitar músicas/coreografias numa equipe nova sem trazer o time e o caixa junto.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          ${COLECOES_MIGRAVEIS.map(col => `
+            <label class="check-row-inline">
+              <input type="checkbox" class="check-clonar-colecao" value="${col}" ${["musicas","coreografias"].includes(col) ? "checked" : ""} />
+              ${col}
+            </label>
+          `).join("")}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+          <select id="input-clonar-equipe-alvo" style="flex:1 1 220px;">
+            <option value="">Escolha a equipe de destino...</option>
+            ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
+          </select>
+          <button type="button" id="btn-clonar-equipe" class="btn-import" ${clonandoEquipe ? "disabled" : ""}>${clonandoEquipe ? "Clonando..." : "Clonar selecionado"}</button>
+        </div>
+
+        <div class="section-title" style="color:var(--rose);">Apagar uma equipe</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Remove tudo que estiver nas coleções migráveis e a própria equipe (ela some da lista e o coordenador não consegue mais logar). Não afeta a equipe atual nem outras equipes. Pra só encerrar sem apagar nada, use "Equipes ativas" e marque como inativa. Digite o id da equipe pra confirmar.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+          <select id="input-apagar-equipe-alvo" style="flex:1 1 200px;">
+            <option value="">Escolha a equipe...</option>
+            ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
+          </select>
+          <input type="text" id="input-apagar-equipe-confirmacao" placeholder="Digite o id pra confirmar" style="flex:1 1 200px;" />
+          <button type="button" id="btn-apagar-equipe" class="btn-import" style="background:var(--rose);color:#fff;" ${apagandoEquipe ? "disabled" : ""}>${apagandoEquipe ? "Apagando..." : "Apagar equipe"}</button>
+        </div>
+
+        <div class="section-title">Equipes cadastradas (${data.equipes.length})</div>
+        ${data.equipes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma equipe criada ainda.</div>` : data.equipes.map(e => `
+          <div class="card" style="padding:12px 14px;">
+            <div style="font-weight:700;">${escapeHtml(e.nome || e.id)}</div>
+            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">id: ${escapeHtml(e.id)}</div>
+            <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Coordenador(es): ${(e.coordenadores || []).map(escapeHtml).join(", ") || "—"}</div>
+          </div>
+        `).join("")}
+      `;
+    }
+
     return `
       <div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));margin-bottom:16px;">Área restrita ao administrador da plataforma — gerencia as equipes que usam este app, isoladas umas das outras.</div>
-
-      <div class="section-title" style="margin-top:0;">Equipes ativas (${equipesAtivas.length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
-        ${equipesAtivas.length === 0 ? `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhuma equipe ativa.</div>` : equipesAtivas.map(e => badgeEquipe(e, true)).join("")}
+      <div class="home-grid">
+        <button type="button" class="sec-card" data-action="admin-ir" data-view="ativas">
+          <div class="sec-card-icon">${ICONS.temporada}</div>
+          <div class="sec-card-label">Equipes ativas</div>
+          <div class="sec-card-stat">${ativas.length} em atividade</div>
+        </button>
+        <button type="button" class="sec-card" data-action="admin-ir" data-view="inativas">
+          <div class="sec-card-icon">${ICONS.temporada}</div>
+          <div class="sec-card-label">Equipes inativas</div>
+          <div class="sec-card-stat">${inativas.length} encerradas</div>
+        </button>
+        <button type="button" class="sec-card" data-action="admin-ir" data-view="gerenciar">
+          <div class="sec-card-icon">${ICONS.temporada}</div>
+          <div class="sec-card-label">Gerenciar equipes</div>
+          <div class="sec-card-stat">Criar, clonar, apagar</div>
+        </button>
       </div>
-
-      <div class="section-title">Equipes inativas (${equipesInativas.length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
-        ${equipesInativas.length === 0 ? `<div style="color:var(--muted);font-size:calc(13px * var(--font-scale, 1));">Nenhuma equipe inativa.</div>` : equipesInativas.map(e => badgeEquipe(e, false)).join("")}
-      </div>
-
-      <div class="section-title">Criar equipe</div>
-      <form class="inline-add" id="form-criar-equipe" style="flex-wrap:wrap;margin-bottom:20px;">
-        <input type="text" id="input-equipe-id" placeholder="id (ex: equipe-2icc-canto)" required style="flex:1 1 220px;" />
-        <input type="text" id="input-equipe-nome" placeholder="Nome da equipe" required style="flex:1 1 220px;" />
-        <input type="email" id="input-equipe-coordenador" placeholder="E-mail do coordenador" required style="flex:1 1 220px;" />
-        <button type="submit" class="btn-add">+</button>
-      </form>
-
-      <div class="section-title">Migrar dados desta instalação (equipe atual) para uma equipe</div>
-      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia integrantes, músicas, roteiros, coreografias, financeiro, agenda, histórico de ensaios, locais, avisos, devocionais e camisas de hoje pra dentro da equipe escolhida abaixo. Não apaga nem altera nada do que já existe — é só uma cópia de segurança.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-        <select id="input-migrar-equipe-alvo" style="flex:1 1 220px;">
-          <option value="">Escolha a equipe de destino...</option>
-          ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
-        </select>
-        <button type="button" id="btn-migrar-equipe" class="btn-import" ${migrandoEquipe ? "disabled" : ""}>${migrandoEquipe ? "Migrando..." : "Migrar dados atuais"}</button>
-      </div>
-
-      <div class="section-title">Clonar conteúdo desta equipe para outra</div>
-      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia só as coleções marcadas abaixo (nada de integrantes/financeiro por padrão) — pra reaproveitar músicas/coreografias numa equipe nova sem trazer o time e o caixa junto.</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
-        ${COLECOES_MIGRAVEIS.map(col => `
-          <label class="check-row-inline">
-            <input type="checkbox" class="check-clonar-colecao" value="${col}" ${["musicas","coreografias"].includes(col) ? "checked" : ""} />
-            ${col}
-          </label>
-        `).join("")}
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-        <select id="input-clonar-equipe-alvo" style="flex:1 1 220px;">
-          <option value="">Escolha a equipe de destino...</option>
-          ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
-        </select>
-        <button type="button" id="btn-clonar-equipe" class="btn-import" ${clonandoEquipe ? "disabled" : ""}>${clonandoEquipe ? "Clonando..." : "Clonar selecionado"}</button>
-      </div>
-
-      <div class="section-title" style="color:var(--rose);">Apagar uma equipe</div>
-      <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Remove tudo que estiver nas coleções migráveis e a própria equipe (ela some da lista abaixo e o coordenador não consegue mais logar). Não afeta a equipe atual nem outras equipes. Use pra limpar uma equipe cadastrada por engano ou testada. Digite o id da equipe pra confirmar.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-        <select id="input-apagar-equipe-alvo" style="flex:1 1 200px;">
-          <option value="">Escolha a equipe...</option>
-          ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
-        </select>
-        <input type="text" id="input-apagar-equipe-confirmacao" placeholder="Digite o id pra confirmar" style="flex:1 1 200px;" />
-        <button type="button" id="btn-apagar-equipe" class="btn-import" style="background:var(--rose);color:#fff;" ${apagandoEquipe ? "disabled" : ""}>${apagandoEquipe ? "Apagando..." : "Apagar equipe"}</button>
-      </div>
-
-      <div class="section-title">Equipes cadastradas (${data.equipes.length})</div>
-      ${data.equipes.length === 0 ? `<div class="empty"><div class="note-dot"></div><br>Nenhuma equipe criada ainda.</div>` : data.equipes.map(e => `
-        <div class="card" style="padding:12px 14px;">
-          <div style="font-weight:700;">${escapeHtml(e.nome || e.id)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">id: ${escapeHtml(e.id)}</div>
-          <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Coordenador(es): ${(e.coordenadores || []).map(escapeHtml).join(", ") || "—"}</div>
-        </div>
-      `).join("")}
     `;
   }
 
@@ -4564,10 +4633,27 @@ ${corpo}
       }
     });
 
+    document.querySelectorAll('[data-action="admin-ir"]').forEach(el => {
+      el.addEventListener("click", () => { adminView = el.dataset.view; render(); });
+    });
+    const btnAdminVoltar = document.querySelector('[data-action="admin-voltar"]');
+    if(btnAdminVoltar) btnAdminVoltar.addEventListener("click", () => { adminView = "landing"; render(); });
+
     document.querySelectorAll('[data-action="toggle-ativa-equipe"]').forEach(el => {
       el.addEventListener("click", async () => {
         const ativaAtual = el.dataset.ativa === "true";
-        await updateDoc(doc(equipesCol, el.dataset.id), { ativa: !ativaAtual });
+        const legado = el.dataset.legado === "true";
+        if(legado){ await setDoc(configDocRef, { equipeAtiva: !ativaAtual }, { merge: true }); }
+        else{ await updateDoc(doc(equipesCol, el.dataset.id), { ativa: !ativaAtual }); }
+      });
+    });
+
+    document.querySelectorAll('[data-action="toggle-link-publico-equipe"]').forEach(el => {
+      el.addEventListener("click", async () => {
+        const ativoAtual = el.dataset.ativo === "true";
+        const legado = el.dataset.legado === "true";
+        if(legado){ await setDoc(configDocRef, { linkPublicoAtivo: !ativoAtual }, { merge: true }); }
+        else{ await setDoc(doc(equipesCol, el.dataset.id, "config", "main"), { linkPublicoAtivo: !ativoAtual }, { merge: true }); }
       });
     });
 

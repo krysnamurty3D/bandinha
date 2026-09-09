@@ -997,6 +997,10 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       main.innerHTML = '<div class="empty">Carregando…</div>';
       return;
     }
+    if(data.config && data.config.linkPublicoAtivo === false){
+      main.innerHTML = '<div class="empty">Esta equipe encerrou suas atividades.<br>O link público não está mais disponível.</div>';
+      return;
+    }
     const audioState = capturarAudioTocando();
     const focoState = capturarFocoInput();
     const scrollY = window.scrollY;
