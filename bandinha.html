@@ -1776,7 +1776,6 @@ ${corpo}
       { key: "agenda", icon: ICONS.agenda, label: "Agenda", stat: proximaAgenda ? agendaRelativo(proximaAgenda.data, hojeIso) : "Nada marcado" },
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
       { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
-      { key: "temporadas", icon: ICONS.temporada, label: "Temporadas", stat: data.temporadaAtiva ? data.temporadaAtiva.nome : "Nenhuma iniciada" },
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` },
       { key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: data.configCamisas.ativo ? `${data.camisas.length} respostas` : "Campanha inativa", live: data.configCamisas.ativo },
       { key: "notificacoes", icon: ICONS.bell, label: "Notificações", stat: `${Object.values(data.configNotificacoes).filter(Boolean).length}/${Object.keys(data.configNotificacoes).length} ativas` },
