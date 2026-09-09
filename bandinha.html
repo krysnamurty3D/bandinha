@@ -2273,6 +2273,7 @@ ${corpo}
             ${enviandoHeader ? "Enviando..." : "Trocar imagem do header"}
             <input type="file" id="input-header-file" accept="image/*" style="display:none;" ${enviandoHeader ? "disabled" : ""} />
           </label>
+          ${cfg.headerUrl ? `<button type="button" class="link-btn" style="padding:0;color:var(--rose);" data-action="remover-header">Remover imagem do header</button>` : ""}
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
             <span style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));">Tema:</span>
             ${TEMAS.map(t => `
@@ -2300,6 +2301,17 @@ ${corpo}
       });
       const inputHeaderFile = document.getElementById("input-header-file");
       if(inputHeaderFile) inputHeaderFile.addEventListener("change", () => enviarHeaderImagem(inputHeaderFile.files[0]));
+      const btnRemoverHeader = brand.querySelector('[data-action="remover-header"]');
+      if(btnRemoverHeader) btnRemoverHeader.addEventListener("click", async () => {
+        if(!confirm("Remover a imagem do header desta equipe?")) return;
+        try{
+          await setDoc(configDocRef, { headerUrl: deleteField(), headerCor: deleteField() }, { merge: true });
+          showToast("Imagem do header removida");
+        }catch(err){
+          console.error(err);
+          showToast(`Erro ao remover imagem: ${err.message || err}`);
+        }
+      });
     } else {
       brand.className = "brand";
       brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
