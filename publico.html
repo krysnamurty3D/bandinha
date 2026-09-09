@@ -32,6 +32,11 @@
     --radius: 16px;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+  body[data-theme="azul"]{ --gold:#4C93E8; --blue:#3C7FD8; }
+  body[data-theme="verde"]{ --gold:#5CB37D; --blue:#4C9C6B; }
+  body[data-theme="roxo"]{ --gold:#A57DE8; --blue:#8F63D8; }
+  body[data-theme="rosa"]{ --gold:#E86CA0; --blue:#D8548C; }
+  body[data-theme="vermelho"]{ --gold:#E85C4C; --blue:#D8492E; }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;touch-action:manipulation;}
   body{
@@ -861,6 +866,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
 
     onSnapshot(configDocRef, snap => {
       data.config = snap.data() || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
+      document.body.dataset.theme = data.config.tema || "";
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); });

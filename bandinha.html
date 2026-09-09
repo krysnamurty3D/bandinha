@@ -20,6 +20,11 @@
     --radius: 16px;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+  body[data-theme="azul"]{ --gold:#4C93E8; --blue:#3C7FD8; }
+  body[data-theme="verde"]{ --gold:#5CB37D; --blue:#4C9C6B; }
+  body[data-theme="roxo"]{ --gold:#A57DE8; --blue:#8F63D8; }
+  body[data-theme="rosa"]{ --gold:#E86CA0; --blue:#D8548C; }
+  body[data-theme="vermelho"]{ --gold:#E85C4C; --blue:#D8492E; }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;touch-action:manipulation;}
   body{
@@ -1112,6 +1117,14 @@ function montarReferenciasColecoes(equipeId){
   let collapsedProgressoGroups = {};
   let editingBrand = false;
   let enviandoHeader = false;
+  const TEMAS = [
+    { chave: "", nome: "Dourado (padrão)", cor: "#E8A63C" },
+    { chave: "azul", nome: "Azul", cor: "#4C93E8" },
+    { chave: "verde", nome: "Verde", cor: "#5CB37D" },
+    { chave: "roxo", nome: "Roxo", cor: "#A57DE8" },
+    { chave: "rosa", nome: "Rosa", cor: "#E86CA0" },
+    { chave: "vermelho", nome: "Vermelho", cor: "#E85C4C" }
+  ];
   let presencaAbertaData = null;
   let editingSessaoData = null;
 
@@ -1406,6 +1419,7 @@ ${corpo}
 
     onSnapshot(configDocRef, snap => {
       data.config = snap.data() || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
+      document.body.dataset.theme = data.config.tema || "";
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); showToast("Erro ao sincronizar"); });
@@ -2101,6 +2115,12 @@ ${corpo}
             ${enviandoHeader ? "Enviando..." : "Trocar imagem do header"}
             <input type="file" id="input-header-file" accept="image/*" style="display:none;" ${enviandoHeader ? "disabled" : ""} />
           </label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+            <span style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));">Tema:</span>
+            ${TEMAS.map(t => `
+              <button type="button" data-action="escolher-tema" data-tema="${t.chave}" title="${escapeHtml(t.nome)}" style="width:26px;height:26px;border-radius:50%;border:2px solid ${((cfg.tema || "") === t.chave) ? "var(--cream)" : "transparent"};background:${t.cor};cursor:pointer;padding:0;"></button>
+            `).join("")}
+          </div>
           <button type="button" class="btn-save-nome" style="width:auto;padding:0 14px;height:34px;" data-action="save-brand">Salvar</button>
         </div>
       `;
@@ -2114,6 +2134,11 @@ ${corpo}
         if(titulo){ await setDoc(configDocRef, { titulo, subtitulo }, { merge: true }); }
         editingBrand = false;
         render();
+      });
+      brand.querySelectorAll('[data-action="escolher-tema"]').forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await setDoc(configDocRef, { tema: btn.dataset.tema }, { merge: true });
+        });
       });
       const inputHeaderFile = document.getElementById("input-header-file");
       if(inputHeaderFile) inputHeaderFile.addEventListener("change", async () => {
