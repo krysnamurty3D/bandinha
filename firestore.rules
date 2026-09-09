@@ -97,9 +97,10 @@ service cloud.firestore {
       );
     }
     match /equipes/{equipeId} {
-      allow read: if isCoordenadorEquipe(equipeId);
+      allow read, update: if isAdminPlataforma() || (
+        request.auth != null && request.auth.token.email in resource.data.coordenadores
+      );
       allow create, delete: if isAdminPlataforma();
-      allow update: if isCoordenadorEquipe(equipeId);
 
       match /integrantes/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
       match /financeiro/{docId} { allow read, write: if isCoordenadorEquipe(equipeId); }
