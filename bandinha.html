@@ -81,13 +81,8 @@
     text-transform:uppercase;
     color:var(--gold);
   }
-  header.top.header-plain{
-    aspect-ratio:auto;
-    background-image:none;
-    min-height:52px;
-  }
-  header.top.header-plain::before{ display:none; }
-  header.top.header-plain #brand{ display:none; }
+  header.top.header-hidden{ display:none; }
+  header.top.header-hidden ~ main{ padding-top:44px; }
   #header-empty-slot{
     position:absolute;
     inset:0;
@@ -108,9 +103,9 @@
     font-weight:600;
   }
   .btn-logout{
-    position:absolute;
+    position:fixed;
     top:14px; right:14px;
-    z-index:2;
+    z-index:50;
     background:rgba(23,19,15,0.6);
     color:var(--cream);
     border:1px solid var(--line);
@@ -1694,7 +1689,7 @@ ${corpo}
 
   function render(){
     const main = document.getElementById("main");
-    document.querySelector("header.top")?.classList.toggle("header-plain", currentTab === "admin");
+    document.querySelector("header.top")?.classList.toggle("header-hidden", currentTab === "admin");
     renderBrand();
     if(!loaded){
       main.innerHTML = '<div class="empty">Carregando…</div>';
