@@ -2157,7 +2157,7 @@ ${corpo}
           showToast("Imagem do header atualizada!");
         }catch(err){
           console.error(err);
-          showToast(`Erro ao enviar imagem: ${err.code || err.message || err}`);
+          showToast(`Erro: ${err.code || err.message || err} | equipe=${currentEquipeId || "default"} | user=${currentUser?.email || "?"}`);
         }
         enviandoHeader = false;
         render();
