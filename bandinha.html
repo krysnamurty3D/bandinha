@@ -4171,6 +4171,7 @@ ${corpo}
 
     document.querySelectorAll('[data-action="del-aviso-historico"]').forEach(el => {
       el.addEventListener("click", async () => {
+        if(!confirm("Remover este aviso do histórico?")) return;
         await deleteDoc(doc(avisosHistoricoCol, el.dataset.id));
       });
     });
@@ -4450,6 +4451,7 @@ ${corpo}
 
     document.querySelectorAll('[data-action="remover-do-plano"]').forEach(el => {
       el.addEventListener("click", async () => {
+        if(!confirm("Remover esta música do setlist de hoje?")) return;
         const agendaDoDia = getAgendaDoDia(ensaioData);
         if(agendaDoDia){
           await updateDoc(doc(agendaCol, agendaDoDia.id), { musicaIds: arrayRemove(el.dataset.id) });
