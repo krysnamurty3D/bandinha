@@ -1111,6 +1111,7 @@ function montarReferenciasColecoes(equipeId){
   let gerenciarLocais = false;
   let collapsedProgressoGroups = {};
   let editingBrand = false;
+  let enviandoHeader = false;
   let presencaAbertaData = null;
   let editingSessaoData = null;
 
@@ -2088,12 +2089,18 @@ ${corpo}
     const brand = document.getElementById("brand");
     if(!brand) return;
     const cfg = data.config || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
+    const headerEl = document.querySelector("header.top");
+    if(headerEl) headerEl.style.backgroundImage = cfg.headerUrl ? `url('${cfg.headerUrl}')` : "";
     if(editingBrand){
       brand.onclick = null;
       brand.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:6px;">
           <input type="text" id="input-brand-titulo" value="${escapeHtml(cfg.titulo)}" placeholder="Título" style="font-size:calc(18px * var(--font-scale, 1));padding:8px 10px;" />
           <input type="text" id="input-brand-subtitulo" value="${escapeHtml(cfg.subtitulo)}" placeholder="Subtítulo" style="font-size:calc(13px * var(--font-scale, 1));padding:7px 10px;" />
+          <label class="btn-save-nome" style="width:auto;padding:0 14px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">
+            ${enviandoHeader ? "Enviando..." : "Trocar imagem do header"}
+            <input type="file" id="input-header-file" accept="image/*" style="display:none;" ${enviandoHeader ? "disabled" : ""} />
+          </label>
           <button type="button" class="btn-save-nome" style="width:auto;padding:0 14px;height:34px;" data-action="save-brand">Salvar</button>
         </div>
       `;
@@ -2104,14 +2111,36 @@ ${corpo}
       if(btn) btn.addEventListener("click", async () => {
         const titulo = document.getElementById("input-brand-titulo").value.trim();
         const subtitulo = document.getElementById("input-brand-subtitulo").value.trim();
-        if(titulo){ await setDoc(configDocRef, { titulo, subtitulo }); }
+        if(titulo){ await setDoc(configDocRef, { titulo, subtitulo }, { merge: true }); }
         editingBrand = false;
+        render();
+      });
+      const inputHeaderFile = document.getElementById("input-header-file");
+      if(inputHeaderFile) inputHeaderFile.addEventListener("change", async () => {
+        const file = inputHeaderFile.files[0];
+        if(!file) return;
+        if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
+        enviandoHeader = true;
+        render();
+        try{
+          const ext = file.name.includes(".") ? file.name.split(".").pop() : "png";
+          const path = `headers/${currentEquipeId || "default"}/header-${Date.now()}.${ext}`;
+          const fileRef = storageRef(storage, path);
+          await uploadBytes(fileRef, file);
+          const url = await getDownloadURL(fileRef);
+          await setDoc(configDocRef, { headerUrl: url }, { merge: true });
+          showToast("Imagem do header atualizada!");
+        }catch(err){
+          console.error(err);
+          showToast("Erro ao enviar imagem");
+        }
+        enviandoHeader = false;
         render();
       });
     } else {
       brand.className = "brand";
       brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
-      brand.setAttribute("title", "Toque para editar o título");
+      brand.setAttribute("title", "Toque para editar o título e a imagem");
       brand.style.cursor = "pointer";
       brand.onclick = () => { editingBrand = true; render(); };
     }
