@@ -947,7 +947,15 @@
     #print-report th, #print-report td{border:1px solid #ccc;padding:6px 8px;text-align:left;}
     #print-report th{background:#eee;}
   }
+  #header-crop-overlay{
+    position:fixed;inset:0;z-index:999;background:rgba(10,7,4,0.92);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;
+  }
+  #header-crop-container{width:100%;max-width:560px;max-height:60vh;background:#000;}
+  #header-crop-container img{max-width:100%;display:block;}
+  .cropper-view-box, .cropper-face{border-radius:0;}
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 </head>
 <body>
 <div id="auth-gate"></div>
@@ -964,6 +972,14 @@
   <main id="main"></main>
 </div>
 
+<div id="header-crop-overlay" class="hidden">
+  <div id="header-crop-container"><img id="header-crop-img" alt="" /></div>
+  <div style="display:flex;gap:10px;margin-top:16px;">
+    <button type="button" id="btn-cancelar-crop-header" class="del-x" style="width:auto;padding:8px 16px;border:1px solid var(--line);border-radius:10px;">Cancelar</button>
+    <button type="button" id="btn-confirmar-crop-header" class="btn-import">Usar esta imagem</button>
+  </div>
+</div>
+
 <div id="print-report"></div>
 
 <div id="ensaio-overlay" class="hidden"></div>
@@ -973,6 +989,7 @@
 <button type="button" id="btn-font-size" class="font-ctrl hidden" title="Tamanho da fonte">Aa</button>
 <button type="button" id="btn-push" class="font-ctrl push-ctrl hidden" title="Ativar notificações"><span class="ico" style="margin:0;width:16px;height:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4.5 1.6 5.8 1.6 5.8H4.4S6 15 6 10.5Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/></svg></span></button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -1146,6 +1163,7 @@ function montarReferenciasColecoes(equipeId){
   let collapsedProgressoGroups = {};
   let editingBrand = false;
   let enviandoHeader = false;
+  let cropperHeaderInstance = null;
   const TEMAS = [
     { chave: "", nome: "Dourado (padrão)", cor: "#E8A63C" },
     { chave: "azul", nome: "Azul", cor: "#4C93E8" },
@@ -2233,6 +2251,35 @@ ${corpo}
     });
   }
 
+  function abrirCropHeader(file){
+    if(!file) return;
+    if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
+    const overlay = document.getElementById("header-crop-overlay");
+    const img = document.getElementById("header-crop-img");
+    img.src = URL.createObjectURL(file);
+    overlay.classList.remove("hidden");
+    img.onload = () => {
+      if(cropperHeaderInstance) cropperHeaderInstance.destroy();
+      cropperHeaderInstance = new Cropper(img, {
+        aspectRatio: 1920 / 819,
+        viewMode: 1,
+        autoCropArea: 1,
+        background: false,
+        movable: true,
+        zoomable: true
+      });
+    };
+  }
+
+  function fecharCropHeader(){
+    const overlay = document.getElementById("header-crop-overlay");
+    const img = document.getElementById("header-crop-img");
+    if(cropperHeaderInstance){ cropperHeaderInstance.destroy(); cropperHeaderInstance = null; }
+    if(img.src) URL.revokeObjectURL(img.src);
+    img.src = "";
+    overlay.classList.add("hidden");
+  }
+
   async function enviarHeaderImagem(file){
     if(!file) return;
     if(!file.type.startsWith("image/")){ showToast("Selecione uma imagem"); return; }
@@ -2298,7 +2345,7 @@ ${corpo}
       slot.classList.toggle("hidden", currentTab === "admin" || !semLogoPropria);
       const quickInput = document.getElementById("input-header-quick-file");
       slot.onclick = () => quickInput && quickInput.click();
-      if(quickInput) quickInput.onchange = () => enviarHeaderImagem(quickInput.files[0]);
+      if(quickInput) quickInput.onchange = () => abrirCropHeader(quickInput.files[0]);
     }
     if(editingBrand){
       brand.onclick = null;
@@ -2337,7 +2384,7 @@ ${corpo}
         });
       });
       const inputHeaderFile = document.getElementById("input-header-file");
-      if(inputHeaderFile) inputHeaderFile.addEventListener("change", () => enviarHeaderImagem(inputHeaderFile.files[0]));
+      if(inputHeaderFile) inputHeaderFile.addEventListener("change", () => abrirCropHeader(inputHeaderFile.files[0]));
       const btnRemoverHeader = brand.querySelector('[data-action="remover-header"]');
       if(btnRemoverHeader) btnRemoverHeader.addEventListener("click", async () => {
         if(!confirm("Remover a imagem do header desta equipe?")) return;
@@ -5594,6 +5641,17 @@ ${corpo}
   if(tabDaUrl) currentTab = tabDaUrl;
 
   document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
+
+  document.getElementById("btn-cancelar-crop-header").addEventListener("click", () => fecharCropHeader());
+  document.getElementById("btn-confirmar-crop-header").addEventListener("click", () => {
+    if(!cropperHeaderInstance) return;
+    cropperHeaderInstance.getCroppedCanvas({ width: 1600, height: Math.round(1600 * 819 / 1920) }).toBlob(blob => {
+      if(!blob){ showToast("Erro ao recortar imagem"); return; }
+      const file = new File([blob], "header.jpg", { type: "image/jpeg" });
+      fecharCropHeader();
+      enviarHeaderImagem(file);
+    }, "image/jpeg", 0.9);
+  });
 
   initFontScale();
   initPush();
