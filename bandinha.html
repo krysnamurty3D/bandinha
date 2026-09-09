@@ -2138,23 +2138,27 @@ ${corpo}
           `).join("")}
         </div>
 
-        <div class="section-title">Clonar conteúdo desta equipe para outra</div>
-        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Copia só as coleções marcadas abaixo (nada de integrantes/financeiro por padrão) — pra reaproveitar músicas/coreografias numa equipe nova sem trazer o time e o caixa junto.</div>
+        <div class="section-title">Importar dados de uma equipe para outra</div>
+        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Escolha a equipe de origem, a de destino e só as coleções marcadas abaixo (nada de integrantes/financeiro por padrão) — pra reaproveitar músicas/coreografias sem trazer o time e o caixa junto. Nada é apagado no destino.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <select id="input-importar-equipe-origem" style="flex:1 1 220px;">
+            <option value="">Equipe de origem...</option>
+            ${todasEquipesAdmin().map(e => `<option value="${e.id === null ? "__legado__" : escapeHtml(e.id)}">${escapeHtml(e.nome || e.id || "Equipe atual (legado)")}</option>`).join("")}
+          </select>
+          <select id="input-importar-equipe-destino" style="flex:1 1 220px;">
+            <option value="">Equipe de destino...</option>
+            ${todasEquipesAdmin().map(e => `<option value="${e.id === null ? "__legado__" : escapeHtml(e.id)}">${escapeHtml(e.nome || e.id || "Equipe atual (legado)")}</option>`).join("")}
+          </select>
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
           ${COLECOES_MIGRAVEIS.map(col => `
             <label class="check-row-inline">
-              <input type="checkbox" class="check-clonar-colecao" value="${col}" ${["musicas","coreografias"].includes(col) ? "checked" : ""} />
+              <input type="checkbox" class="check-importar-colecao" value="${col}" ${["musicas","coreografias"].includes(col) ? "checked" : ""} />
               ${col}
             </label>
           `).join("")}
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-          <select id="input-clonar-equipe-alvo" style="flex:1 1 220px;">
-            <option value="">Escolha a equipe de destino...</option>
-            ${data.equipes.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nome || e.id)}</option>`).join("")}
-          </select>
-          <button type="button" id="btn-clonar-equipe" class="btn-import" ${clonandoEquipe ? "disabled" : ""}>${clonandoEquipe ? "Clonando..." : "Clonar selecionado"}</button>
-        </div>
+        <button type="button" id="btn-importar-equipe" class="btn-import" style="margin-bottom:20px;" ${clonandoEquipe ? "disabled" : ""}>${clonandoEquipe ? "Importando..." : "Importar selecionado"}</button>
 
         <div class="section-title" style="color:var(--rose);">Apagar uma equipe</div>
         <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:10px;">Remove tudo que estiver nas coleções migráveis e a própria equipe (ela some da lista e o coordenador não consegue mais logar). Não afeta a equipe atual nem outras equipes. Pra só encerrar sem apagar nada, use "Equipes ativas" e marque como inativa. Digite o id da equipe pra confirmar.</div>
@@ -4756,44 +4760,45 @@ ${corpo}
       render();
     });
 
-    function fontesEquipeAtual(){
-      return {
-        integrantes: data.integrantes, financeiro: data.financeiro, musicas: data.musicas,
-        roteiros: data.roteiros, coreografias: data.coreografias,
-        agenda: data.agenda, historicoEnsaios: data.historico, locais: data.locais,
-        avisosHistorico: data.avisosHistorico, devocionais: data.devocionais, camisas: data.camisas
-      };
-    }
-
-    const btnClonarEquipe = document.getElementById("btn-clonar-equipe");
-    if(btnClonarEquipe) btnClonarEquipe.addEventListener("click", async () => {
-      const equipeId = document.getElementById("input-clonar-equipe-alvo").value;
-      const colecoesSelecionadas = [...document.querySelectorAll(".check-clonar-colecao:checked")].map(el => el.value);
-      if(!equipeId){ showToast("Escolha a equipe de destino"); return; }
+    const btnImportarEquipe = document.getElementById("btn-importar-equipe");
+    if(btnImportarEquipe) btnImportarEquipe.addEventListener("click", async () => {
+      const origemSel = document.getElementById("input-importar-equipe-origem").value;
+      const destinoSel = document.getElementById("input-importar-equipe-destino").value;
+      const colecoesSelecionadas = [...document.querySelectorAll(".check-importar-colecao:checked")].map(el => el.value);
+      if(!origemSel || !destinoSel){ showToast("Escolha a equipe de origem e a de destino"); return; }
+      if(origemSel === destinoSel){ showToast("Origem e destino não podem ser a mesma equipe"); return; }
       if(colecoesSelecionadas.length === 0){ showToast("Marque ao menos uma coleção"); return; }
-      const fontes = fontesEquipeAtual();
-      const resumoContagem = colecoesSelecionadas.map(c => `${c}: ${(fontes[c] || []).length}`).join(", ");
-      if(!confirm(`Clonar da equipe atual (${resumoContagem}) para "${equipeId}"? Nada será apagado no destino.`)) return;
+      const origemId = origemSel === "__legado__" ? null : origemSel;
+      const destinoId = destinoSel === "__legado__" ? null : destinoSel;
+      const colRef = (equipeId, col) => equipeId ? collection(db, "equipes", equipeId, col) : collection(db, col);
+      const docRefAlvo = (equipeId, col, docId) => equipeId ? doc(equipesCol, equipeId, col, docId) : doc(db, col, docId);
       clonandoEquipe = true;
       render();
       try{
         let ops = [];
-        colecoesSelecionadas.forEach(col => {
-          (fontes[col] || []).forEach(item => {
-            const docId = col === "historicoEnsaios" ? item.data : item.id;
+        for(const col of colecoesSelecionadas){
+          const snap = await getDocs(colRef(origemId, col));
+          snap.docs.forEach(d => {
+            const item = d.data();
+            const docId = col === "historicoEnsaios" ? (item.data || d.id) : (item.id || d.id);
             if(!docId) return;
-            ops.push({ ref: doc(equipesCol, equipeId, col, docId), data: item });
+            ops.push({ ref: docRefAlvo(destinoId, col, docId), data: item });
           });
-        });
+        }
+        if(!confirm(`Importar ${ops.length} documentos de "${origemSel === "__legado__" ? "Equipe atual (legado)" : origemSel}" para "${destinoSel === "__legado__" ? "Equipe atual (legado)" : destinoSel}"? Nada será apagado no destino.`)){
+          clonandoEquipe = false;
+          render();
+          return;
+        }
         for(let i = 0; i < ops.length; i += 400){
           const batch = writeBatch(db);
           ops.slice(i, i + 400).forEach(op => batch.set(op.ref, op.data));
           await batch.commit();
         }
-        showToast(`Clonagem concluída: ${ops.length} documentos copiados`);
+        showToast(`Importação concluída: ${ops.length} documentos copiados`);
       }catch(err){
         console.error(err);
-        showToast(`Erro ao clonar: ${err.message || err}`);
+        showToast(`Erro ao importar: ${err.message || err}`);
       }
       clonandoEquipe = false;
       render();
