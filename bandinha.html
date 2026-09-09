@@ -1702,12 +1702,12 @@ ${corpo}
   }
 
   function renderHome(){
+    const linkPublicoEquipe = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}publico.html?equipe=${encodeURIComponent(currentEquipeId || "")}`;
     const linkEquipeHtml = currentEquipeId ? `
-      <div class="card" style="margin-bottom:16px;">
-        <div style="font-weight:700;margin-bottom:4px;">${escapeHtml(currentEquipeNome || currentEquipeId)}</div>
-        <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-bottom:8px;">Link público desta equipe (compartilhe com o time):</div>
-        <div style="color:var(--gold);font-size:calc(13px * var(--font-scale, 1));word-break:break-all;">publico.html?equipe=${escapeHtml(currentEquipeId)}</div>
-      </div>
+      <button type="button" id="btn-copiar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;cursor:pointer;color:var(--gold);font-size:calc(13px * var(--font-scale, 1));word-break:break-all;font-family:var(--font);">
+        <div style="color:var(--muted);font-size:calc(11.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Toque para copiar o link e enviar para sua equipe</div>
+        ${escapeHtml(linkPublicoEquipe)}
+      </button>
     ` : "";
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
     const prontas = musicasVisiveis.filter(m => m.status === "pronta").length;
@@ -4787,6 +4787,18 @@ ${corpo}
         ensaioIndex = ensaioIndex + 1;
         render();
       });
+    });
+
+    const btnCopiarLinkEquipe = document.getElementById("btn-copiar-link-equipe");
+    if(btnCopiarLinkEquipe) btnCopiarLinkEquipe.addEventListener("click", async () => {
+      const link = btnCopiarLinkEquipe.dataset.link;
+      try{
+        await navigator.clipboard.writeText(link);
+        showToast("Link copiado!");
+      }catch(err){
+        console.error(err);
+        showToast("Não foi possível copiar o link");
+      }
     });
 
     const btnExportarDados = document.getElementById("btn-exportar-dados");
