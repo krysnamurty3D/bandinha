@@ -2267,6 +2267,7 @@ ${corpo}
     const brand = document.getElementById("brand");
     if(!brand) return;
     const cfg = data.config || (currentEquipeId === null ? { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } : { titulo: "NOME DA SUA EQUIPE", subtitulo: "NOME DA IGREJA" });
+    document.title = cfg.titulo || "Bandinha";
     const headerEl = document.querySelector("header.top");
     const semLogoPropria = currentEquipeId !== null && !cfg.headerUrl;
     if(headerEl){

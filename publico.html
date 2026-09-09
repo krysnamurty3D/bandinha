@@ -1036,7 +1036,10 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     const aoVivoAtivo = !!data.aoVivo;
     const ids = data.setlistEquipe?.musicaIds || [];
 
-    const cards = [
+    const cardsAtivos = data.config?.cardsAtivos || null;
+    const cardAtivo = key => !cardsAtivos || cardsAtivos.includes(key);
+
+    let cards = [
       { key: "musicas", icon: ICONS.musicas, label: "Músicas", stat: `${data.musicas.filter(m => m.visivel !== false).length} cadastradas` },
       { key: "coreografias", icon: ICONS.coreografias, label: "Coreografias", stat: `${data.coreografias.length} cadastradas` },
       { key: "ensaios", icon: ICONS.ensaio, label: "Ensaios", stat: `${ids.length} no setlist` },
@@ -1044,9 +1047,9 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
       { key: "roteiros", icon: ICONS.roteiro, label: "Roteiro", stat: `${data.roteiros.length} cadastrados` },
       { key: "aovivo", icon: ICONS.aovivo, label: "Ao Vivo", stat: aoVivoAtivo ? "Aviso ativo" : "Nenhum aviso", live: aoVivoAtivo },
       { key: "devocionais", icon: ICONS.devocional, label: "Devocionais", stat: `${data.devocionais.filter(d => d.visivel !== false).length} publicados` }
-    ];
+    ].filter(c => cardAtivo(c.key === "ensaios" ? "ensaio-menu" : c.key));
 
-    if(data.configCamisas.ativo){
+    if(data.configCamisas.ativo && cardAtivo("camisas")){
       const slug = meuNome ? slugify(meuNome) : null;
       const jaRespondeu = slug ? data.camisas.some(c => c.id === slug) : false;
       cards.unshift({ key: "camisas", icon: ICONS.camisa, label: "Camisas", stat: jaRespondeu ? "Você já escolheu" : "Escolha seu tamanho!", live: true, featured: true });
@@ -1071,6 +1074,7 @@ const VAPID_KEY = "BAcCBOhrGoqnmA4cLwyRSFsSvSIafZGDB-tFHdTTC5gxCzAYLQjIb-AH5rFfq
     if(!brand) return;
     const cfg = data.config || (EQUIPE_ID ? { titulo: "NOME DA SUA EQUIPE", subtitulo: "NOME DA IGREJA" } : { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" });
     brand.innerHTML = `${escapeHtml(cfg.titulo)} <small>${escapeHtml(cfg.subtitulo)}</small>`;
+    document.title = cfg.titulo || "Bandinha";
     const headerEl = document.querySelector("header.top");
     if(headerEl){
       if(cfg.headerUrl){
