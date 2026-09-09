@@ -377,10 +377,31 @@ function escaparHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+const LABELS_CARDS_PUBLICOS = [
+  { key: "musicas", label: "músicas" },
+  { key: "coreografias", label: "coreografias" },
+  { key: "ensaio-menu", label: "ensaios" },
+  { key: "agenda", label: "agenda" },
+  { key: "roteiros", label: "roteiro" },
+  { key: "aovivo", label: "avisos ao vivo" },
+  { key: "devocionais", label: "devocionais" },
+  { key: "camisas", label: "camisas" }
+];
+
+function montarDescricaoEquipe(titulo, cardsAtivos) {
+  const labels = cardsAtivos
+    ? LABELS_CARDS_PUBLICOS.filter(c => cardsAtivos.includes(c.key)).map(c => c.label)
+    : LABELS_CARDS_PUBLICOS.map(c => c.label);
+  if (labels.length === 0) return `Acompanhe a ${titulo}.`;
+  const lista = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}`;
+  const listaCapitalizada = lista.charAt(0).toUpperCase() + lista.slice(1);
+  return `${listaCapitalizada} da ${titulo}.`;
+}
+
 exports.compartilharEquipe = onRequest(async (req, res) => {
   const equipeId = req.query.equipe || null;
   let titulo = "Bandinha";
-  let descricao = "Músicas, coreografias, agenda e roteiro da Bandinha.";
+  let descricao = montarDescricaoEquipe("Bandinha", null);
   let imagem = `${SITE_BASE}/header.png`;
   let destino = `${SITE_BASE}/publico.html`;
   if (equipeId) {
@@ -389,7 +410,7 @@ exports.compartilharEquipe = onRequest(async (req, res) => {
       const snap = await db.doc(`equipes/${equipeId}/config/main`).get();
       const cfg = snap.exists ? snap.data() : {};
       titulo = cfg.titulo || "Equipe";
-      descricao = `Músicas, coreografias, agenda e roteiro da ${titulo}.`;
+      descricao = montarDescricaoEquipe(titulo, cfg.cardsAtivos || null);
       if (cfg.headerUrl) imagem = cfg.headerUrl;
     } catch (err) {
       console.error(err);
