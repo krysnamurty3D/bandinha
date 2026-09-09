@@ -1115,6 +1115,7 @@ function montarReferenciasColecoes(equipeId){
   let apagandoEquipe = false;
   let adminView = "landing";
   let adminLandingAplicado = false;
+  let listenerUnsubs = [];
   let editingItemKey = null;
   let selectedProximaEtapa = null;
   let enviandoAviso = false;
@@ -1397,102 +1398,105 @@ ${corpo}
   }
 
   function load(){
-    onSnapshot(integrantesCol, snap => {
+    listenerUnsubs.forEach(u => u());
+    listenerUnsubs = [];
+    const sub = (...args) => listenerUnsubs.push(onSnapshot(...args));
+    sub(integrantesCol, snap => {
       data.integrantes = snap.docs.map(d => d.data());
       markLoaded("integrantes");
       renderSeRelevante(["integrantes", "financeiro", "camisas"]);
     }, e => { console.error("Erro ao sincronizar integrantes:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(financeiroCol, snap => {
+    sub(financeiroCol, snap => {
       data.financeiro = snap.docs.map(d => d.data());
       renderSeRelevante(["financeiro"]);
     }, e => console.error("Erro ao sincronizar financeiro:", e));
 
-    onSnapshot(musicasCol, snap => {
+    sub(musicasCol, snap => {
       data.musicas = snap.docs.map(d => d.data());
       markLoaded("musicas");
       renderSeRelevante(["musicas", "agenda", "ensaio-menu"]);
     }, e => { console.error("Erro ao sincronizar músicas:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(roteirosCol, snap => {
+    sub(roteirosCol, snap => {
       data.roteiros = snap.docs.map(d => d.data());
       markLoaded("roteiros");
       renderSeRelevante(["roteiros"]);
     }, e => { console.error("Erro ao sincronizar roteiros:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(coreografiasCol, snap => {
+    sub(coreografiasCol, snap => {
       data.coreografias = snap.docs.map(d => d.data());
       markLoaded("coreografias");
       renderSeRelevante(["coreografias"]);
     }, e => { console.error("Erro ao sincronizar coreografias:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(configDocRef, snap => {
+    sub(configDocRef, snap => {
       data.config = snap.data() || { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" };
       document.body.dataset.theme = data.config.tema || "";
       markLoaded("config");
       safeRender();
     }, e => { console.error("Erro ao sincronizar config:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(configFinanceiroDocRef, snap => {
+    sub(configFinanceiroDocRef, snap => {
       data.configFinanceiro = snap.data() || { valorInscricao: 0, valorCamisa: 0, valorTaxa: 0 };
       renderSeRelevante(["financeiro"]);
     }, e => console.error("Erro ao sincronizar valores financeiros:", e));
 
-    onSnapshot(temporadasCol, snap => {
+    sub(temporadasCol, snap => {
       data.temporadas = snap.docs.map(d => d.data());
       renderSeRelevante(["temporadas"]);
     }, e => console.error("Erro ao sincronizar temporadas:", e));
 
-    onSnapshot(temporadaAtivaDocRef, snap => {
+    sub(temporadaAtivaDocRef, snap => {
       data.temporadaAtiva = snap.data() || null;
       renderSeRelevante(["temporadas"]);
     }, e => console.error("Erro ao sincronizar temporada ativa:", e));
 
-    onSnapshot(devocionaisCol, snap => {
+    sub(devocionaisCol, snap => {
       data.devocionais = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSeRelevante(["devocionais"]);
     }, e => console.error("Erro ao sincronizar devocionais:", e));
 
-    onSnapshot(camisasCol, snap => {
+    sub(camisasCol, snap => {
       data.camisas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSeRelevante(["camisas"]);
     }, e => console.error("Erro ao sincronizar camisas:", e));
 
-    onSnapshot(configCamisasDocRef, snap => {
+    sub(configCamisasDocRef, snap => {
       data.configCamisas = snap.data() || { ativo: false, tamanhos: ["PP","P","M","G","GG","XG"] };
       renderSeRelevante(["camisas"]);
     }, e => console.error("Erro ao sincronizar config de camisas:", e));
 
-    onSnapshot(configNotificacoesDocRef, snap => {
+    sub(configNotificacoesDocRef, snap => {
       data.configNotificacoes = { agenda: true, roteiros: true, musicas: true, devocionais: true, camisas: true, aovivo: true, lembretes: true, ...(snap.data() || {}) };
       renderSeRelevante(["notificacoes"]);
     }, e => console.error("Erro ao sincronizar config de notificações:", e));
 
-    onSnapshot(progressoCol, snap => {
+    sub(progressoCol, snap => {
       data.progresso = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       markLoaded("progresso");
       renderSeRelevante(["progresso", "aovivo"]);
     }, e => { console.error("Erro ao sincronizar progresso:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(visualizacoesCol, snap => {
+    sub(visualizacoesCol, snap => {
       data.visualizacoes = snap.docs.map(d => d.data());
       markLoaded("visualizacoes");
       renderSeRelevante(["musicas", "coreografias"]);
     }, e => { console.error("Erro ao sincronizar visualizações:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(agendaCol, snap => {
+    sub(agendaCol, snap => {
       data.agenda = snap.docs.map(d => d.data());
       markLoaded("agenda");
       renderSeRelevante(["agenda", "ensaio-menu"]);
     }, e => { console.error("Erro ao sincronizar agenda:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(historicoCol, snap => {
+    sub(historicoCol, snap => {
       data.historico = snap.docs.map(d => d.data());
       markLoaded("historico");
       renderSeRelevante(["integrantes", "ensaio-menu"]);
     }, e => { console.error("Erro ao sincronizar histórico:", e); showToast("Erro ao sincronizar"); });
 
-    onSnapshot(locaisCol, snap => {
+    sub(locaisCol, snap => {
       data.locais = snap.docs.map(d => d.data());
       markLoaded("locais");
       renderSeRelevante(["aovivo"]);
@@ -1502,7 +1506,7 @@ ${corpo}
       renderSeRelevante(["aovivo"]);
     });
 
-    onSnapshot(aoVivoDocRef, snap => {
+    sub(aoVivoDocRef, snap => {
       data.aoVivo = snap.exists() ? snap.data() : null;
       markLoaded("aoVivo");
       renderSeRelevante(["aovivo"]);
@@ -1512,13 +1516,13 @@ ${corpo}
       renderSeRelevante(["aovivo"]);
     });
 
-    onSnapshot(query(avisosHistoricoCol, orderBy("disparadoEm", "desc"), limit(10)), snap => {
+    sub(query(avisosHistoricoCol, orderBy("disparadoEm", "desc"), limit(10)), snap => {
       data.avisosHistorico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSeRelevante(["aovivo"]);
     }, e => console.error("Erro ao sincronizar histórico de avisos:", e));
 
     if(isAdmin()){
-      onSnapshot(equipesCol, snap => {
+      sub(equipesCol, snap => {
         data.equipes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderSeRelevante(["admin"]);
       }, e => console.error("Erro ao sincronizar equipes:", e));
@@ -2081,7 +2085,7 @@ ${corpo}
         <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">id: ${escapeHtml(idLabel)}</div>
         <div style="color:var(--muted);font-size:calc(12px * var(--font-scale, 1));margin-top:2px;">Coordenador(es): ${(e.coordenadores || []).map(escapeHtml).join(", ") || "—"}</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          ${e.legado ? `<button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="abrir-painel-equipe">Abrir painel</button>` : ""}
+          <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;" data-action="abrir-painel-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-nome="${escapeHtml(e.nome || e.id || "")}">Abrir painel</button>
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.ativa ? "var(--surface-2)" : "var(--green)"};" data-action="toggle-ativa-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativa="${e.ativa}">${e.ativa ? "Marcar como inativa" : "Reativar equipe"}</button>
           <button type="button" class="btn-import" style="width:auto;padding:0 12px;height:32px;background:${e.linkPublicoAtivo ? "var(--green)" : "var(--rose)"};color:#fff;" data-action="toggle-link-publico-equipe" data-id="${e.id === null ? "" : escapeHtml(e.id)}" data-legado="${e.legado}" data-ativo="${e.linkPublicoAtivo}">Link público: ${e.linkPublicoAtivo ? "ativo" : "desativado"}</button>
         </div>
@@ -3645,7 +3649,7 @@ ${corpo}
       el.addEventListener("click", () => voltarInicio());
     });
     document.querySelectorAll('[data-action="abrir-painel-equipe"]').forEach(el => {
-      el.addEventListener("click", () => irParaTab("home"));
+      el.addEventListener("click", () => abrirPainelEquipe(el.dataset.id || null, el.dataset.nome));
     });
 
     document.querySelectorAll('[data-action="ir-tab"]').forEach(el => {
@@ -5505,8 +5509,24 @@ ${corpo}
     render();
   }
 
+  function mudarContextoEquipe(equipeId, nome){
+    currentEquipeId = equipeId;
+    currentEquipeNome = nome || null;
+    loaded = false;
+    Object.keys(loadedFlags).forEach(k => { loadedFlags[k] = false; });
+    montarReferenciasColecoes(equipeId);
+    load();
+  }
+
+  function abrirPainelEquipe(equipeId, nome){
+    if(currentEquipeId !== equipeId) mudarContextoEquipe(equipeId, nome);
+    currentTab = "home";
+    render();
+  }
+
   function voltarInicio(){
     if(isAdmin()){
+      if(currentEquipeId !== null) mudarContextoEquipe(null, null);
       currentTab = "admin";
       adminView = "landing";
     } else {
