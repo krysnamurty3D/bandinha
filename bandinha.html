@@ -1704,9 +1704,9 @@ ${corpo}
   function renderHome(){
     const linkPublicoEquipe = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}publico.html?equipe=${encodeURIComponent(currentEquipeId || "")}`;
     const linkEquipeHtml = currentEquipeId ? `
-      <button type="button" id="btn-copiar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;cursor:pointer;color:var(--gold);font-size:calc(13px * var(--font-scale, 1));word-break:break-all;font-family:var(--font);">
-        <div style="color:var(--muted);font-size:calc(11.5px * var(--font-scale, 1));text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Toque para copiar o link e enviar para sua equipe</div>
-        ${escapeHtml(linkPublicoEquipe)}
+      <button type="button" id="btn-compartilhar-link-equipe" data-link="${escapeHtml(linkPublicoEquipe)}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;cursor:pointer;color:#25D366;font-family:var(--font);">
+        <span class="ico" style="flex:0 0 auto;">${ICONS.whatsapp}</span>
+        <span style="color:var(--cream);font-size:calc(13.5px * var(--font-scale, 1));">Compartilhar o link público desta equipe no WhatsApp</span>
       </button>
     ` : "";
     const musicasVisiveis = data.musicas.filter(m => m.visivel !== false);
@@ -4789,16 +4789,10 @@ ${corpo}
       });
     });
 
-    const btnCopiarLinkEquipe = document.getElementById("btn-copiar-link-equipe");
-    if(btnCopiarLinkEquipe) btnCopiarLinkEquipe.addEventListener("click", async () => {
-      const link = btnCopiarLinkEquipe.dataset.link;
-      try{
-        await navigator.clipboard.writeText(link);
-        showToast("Link copiado!");
-      }catch(err){
-        console.error(err);
-        showToast("Não foi possível copiar o link");
-      }
+    const btnCompartilharLinkEquipe = document.getElementById("btn-compartilhar-link-equipe");
+    if(btnCompartilharLinkEquipe) btnCompartilharLinkEquipe.addEventListener("click", () => {
+      const link = btnCompartilharLinkEquipe.dataset.link;
+      window.open(`https://wa.me/?text=${encodeURIComponent(link)}`, "_blank");
     });
 
     const btnExportarDados = document.getElementById("btn-exportar-dados");
