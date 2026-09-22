@@ -4745,6 +4745,11 @@ ${corpo}
       if(!id || !nome || !coordenador) return;
       const cardsAtivos = [...document.querySelectorAll(".check-card-nova-equipe:checked")].map(el => el.value);
       try{
+        const existente = await getDoc(doc(equipesCol, id));
+        if(existente.exists()){
+          showToast(`Já existe uma equipe com o id "${id}" — escolha outro id`);
+          return;
+        }
         await setDoc(doc(equipesCol, id), { nome, coordenadores: [coordenador], criadaEm: Date.now(), ativa: true });
         await setDoc(doc(equipesCol, id, "config", "main"), { cardsAtivos }, { merge: true });
         showToast("Equipe criada");
