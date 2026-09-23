@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Bandinha</title>
-<link rel="manifest" href="manifest-editor.json">
+<link rel="manifest" href="/manifest-editor.json">
 <style>
   :root{
     --bg: #140E09;
@@ -1409,7 +1409,7 @@ ${corpo}
     try{
       const permissao = await Notification.requestPermission();
       if(permissao !== "granted"){ showToast("Permissão de notificação negada"); return; }
-      const registration = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
       const messaging = getMessaging(firebaseApp);
       const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
       if(!token){ showToast("Não foi possível gerar o token de notificação"); return; }
@@ -2362,7 +2362,7 @@ ${corpo}
         headerEl.style.backgroundRepeat = "no-repeat";
         headerEl.style.backgroundColor = cfg.headerCor || "var(--surface-2)";
       } else if(currentEquipeId === null){
-        headerEl.style.backgroundImage = "url('header.png')";
+        headerEl.style.backgroundImage = "url('/header.png')";
         headerEl.style.backgroundSize = "cover";
         headerEl.style.backgroundRepeat = "";
         headerEl.style.backgroundColor = "";

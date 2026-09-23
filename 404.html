@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bandinha</title>
+<style>
+  body{background:#140E09;color:#F6EEDC;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;}
+  a{color:#E8A63C;}
+</style>
+</head>
+<body>
+  <div id="msg">Página não encontrada. <a href="/">Voltar ao início</a></div>
+  <script>
+    // Rotas "bonitas" por equipe (ex: k3d.app.br/janeladeoracaodinamerica) não têm
+    // pasta própria no repositório — reconhecemos aqui e redirecionamos pra
+    // publico.html?equipe=... . Qualquer outro caminho desconhecido cai no aviso acima.
+    (function(){
+      const path = location.pathname.replace(/^\/+|\/+$/g, "");
+      const reservado = ["painel", "publico.html", "index.html", "404.html", "manifest.json", "manifest-editor.json", "firebase-messaging-sw.js", "header.png"];
+      if(path && /^[a-z0-9-]+$/.test(path) && !reservado.includes(path)){
+        location.replace("/publico.html?equipe=" + encodeURIComponent(path) + location.search.replace(/^\?/, "&"));
+      }
+    })();
+  </script>
+</body>
+</html>

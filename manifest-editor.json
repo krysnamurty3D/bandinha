@@ -1,7 +1,7 @@
 {
   "name": "Bandinha Editor",
   "short_name": "Bandinha",
-  "start_url": "bandinha.html",
+  "start_url": "/painel/",
   "display": "standalone",
   "background_color": "#140E09",
   "theme_color": "#140E09",
