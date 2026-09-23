@@ -379,7 +379,7 @@ exports.lembretesAgenda = onSchedule("every 15 minutes", async () => {
   }
 });
 
-const SITE_BASE = "https://bandinha.k3d.app.br";
+const SITE_BASE = "https://k3d.app.br/eccejc";
 
 function escaparHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
