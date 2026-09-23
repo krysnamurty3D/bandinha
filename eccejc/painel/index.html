@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Bandinha</title>
+<title>ECC | EJC - Painel</title>
 <link rel="manifest" href="/eccejc/manifest-editor.json">
 <style>
   :root{
@@ -2347,7 +2347,7 @@ ${corpo}
     const brand = document.getElementById("brand");
     if(!brand) return;
     const cfg = data.config || (currentEquipeId === null ? { titulo: "Bandinha", subtitulo: "2ª Igreja Congregacional" } : { titulo: "NOME DA SUA EQUIPE", subtitulo: "NOME DA IGREJA" });
-    document.title = cfg.titulo || "Bandinha";
+    document.title = "ECC | EJC - Painel";
     const headerEl = document.querySelector("header.top");
     const semLogoPropria = currentEquipeId !== null && !cfg.headerUrl;
     if(headerEl){
