@@ -39,7 +39,7 @@ async function sendToAll(equipeId, title, body, url) {
   const tokens = tokensSnap.docs.map(d => d.id);
   const res = await getMessaging().sendEachForMulticast({
     tokens,
-    data: { title, body, url: url || "publico.html" }
+    data: { title, body, url: url || `${SITE_BASE}/publico.html` }
   });
   const invalidos = [];
   res.responses.forEach((r, i) => {
@@ -127,7 +127,7 @@ registrarEscrito("onCamisasAtivado", "config/camisas", async (equipeId, event) =
   const depois = event.data.after.data() || {};
   if (!antes.ativo && depois.ativo) {
     if (!(await notificacaoAtiva(equipeId, "camisas"))) return;
-    await sendToAll(equipeId, "Campanha de camisas", "Escolha o tamanho da sua camisa!", "publico.html?tab=camisas");
+    await sendToAll(equipeId, "Campanha de camisas", "Escolha o tamanho da sua camisa!", `${SITE_BASE}/publico.html?tab=camisas`);
   }
 });
 
@@ -169,7 +169,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
       avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
       avisoAntesEnviado: true
     });
-    if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, "Aviso", textoLimpo, "publico.html?tab=aovivo");
+    if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, "Aviso", textoLimpo, `${SITE_BASE}/publico.html?tab=aovivo`);
     await registrarHistorico(equipeId, "custom", textoLimpo);
     return { ok: true };
   }
@@ -189,7 +189,7 @@ exports.enviarAvisoAoVivo = onCall(async request => {
     avisoAntesMin: avisoAntesMin === 10 ? 10 : 5,
     avisoAntesEnviado: false
   });
-  if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, "publico.html?tab=aovivo");
+  if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, urgente ? "🚨 Urgente" : "Aviso ao vivo", texto, `${SITE_BASE}/publico.html?tab=aovivo`);
   await registrarHistorico(equipeId, urgente ? "urgente" : "normal", texto);
   return { ok: true };
 });
@@ -205,7 +205,7 @@ exports.avisoAntesFim = onSchedule("* * * * *", async () => {
     const limiar = a.avisoAntesMin || 5;
     const restanteMin = (a.disparadoEm + a.minutos * 60000 - Date.now()) / 60000;
     if (restanteMin <= limiar && restanteMin > limiar - 1) {
-      if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, "Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, "publico.html?tab=aovivo");
+      if (await notificacaoAtiva(equipeId, "aovivo")) await sendToAll(equipeId, "Atenção", `Faltam ${limiar} minutos — próxima etapa: ${a.proximaEtapa}`, `${SITE_BASE}/publico.html?tab=aovivo`);
       await ref.update({ avisoAntesEnviado: true });
     }
   }
